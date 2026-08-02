@@ -48,7 +48,7 @@ While auditing, look for epics with empty `design` fields. These are time bombs 
 WARNING: epic <id> has empty design field.
   Title: <title>
   Children filed: <count>
-  Action: dispatch `plan` to fill the design before any child is claimed.
+  Action: dispatch `work-plan` to fill the design before any child is claimed.
 ```
 
 Do not auto-fix. Do not block. Just warn. The `beads-creator` agent already enforces this on new children; you're flagging pre-existing gaps.
@@ -85,7 +85,7 @@ bead <id>:
   why not auto-fixed: <reason>
 
 === Design gate warnings ===
-epic <id>: empty design, <N> children filed — dispatch `plan`
+epic <id>: empty design, <N> children filed — dispatch `work-plan`
 ```
 
 # What you MUST NOT do

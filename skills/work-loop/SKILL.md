@@ -1,26 +1,28 @@
 ---
-name: loop
-description: Orchestrate one work unit end-to-end — claim → implement → independent cross-model review → fix iterations → gate → push → close. Beads (bd) is the canonical tracker, with gh/Linear/no-tracker fallbacks. Use when implementing a planned work unit ("work X", "run the loop", "next unit") or resuming one. Not for one-line fixes, planning (use the plan skill), or repos that ship their own loop skill — defer to the repo's version.
+name: work-loop
+description: Orchestrate one work unit end-to-end — claim → implement → independent cross-model review → fix iterations → gate → push → close. Beads (bd) is the canonical tracker, with gh/Linear/no-tracker fallbacks. Use when implementing a planned work unit ("work X", "run the loop", "next unit") or resuming one. Not for one-line fixes, planning (use work-plan), or repos that ship their own loop skill — defer to the repo's version.
 argument-hint: [unit-id]
+arguments: [unit]
+shell: bash
 ---
 
-# Loop — generic implement → review → fix → push → close
+# work-loop — generic implement → review → fix → push → close
 
 You are the root orchestrator: **you guide, you never implement.** Work is
 done by fresh isolated subagents; you select units, resolve models, build
 packets, enforce verdicts, and own git + tracker mechanics.
 
 **Overlay rule:** if the repo ships its own loop skill
-(`.claude/skills/*loop*/SKILL.md`), stop here — load and follow that skill
-instead. Repo doctrine always wins over this generic core.
+(`.claude/skills/*loop*/SKILL.md`, e.g. `nps-loop`), stop here — load and
+follow that skill instead. Repo doctrine always wins over this generic core.
 
 ## State at load (injected — read it, don't re-run it)
 
 ### Pool (repo pool wins; global default is the fallback)
-!`cat "${CLAUDE_PROJECT_DIR}/.claude/skills/loop/pool.md" 2>/dev/null || cat ~/.claude/skills/loop/pool.md`
+!`cat "${CLAUDE_PROJECT_DIR}/.claude/skills/work-loop/pool.md" 2>/dev/null || cat "${CLAUDE_PROJECT_DIR}/.claude/skills/loop/pool.md" 2>/dev/null || cat ~/.claude/skills/work-loop/pool.md 2>/dev/null || echo "(no pool.md found — fail loudly before any dispatch)"`
 
 ### Unit contract (only when a unit id was passed)
-!`bd show $0 --json 2>/dev/null || echo "(no unit id, no beads here, or unit not found)"`
+!`bd show $unit --json 2>/dev/null || echo "(no unit id, no beads here, or unit not found)"`
 
 ### Ready units
 !`bd ready 2>/dev/null || echo "(no beads initialized — use the repo's tracker or your own notes)"`
@@ -39,7 +41,7 @@ every later unit.
    just the title.
 3. Tree clean of unrelated edits (see injected state). Dirty → stop, ask.
 4. Previous unit closed and pushed before claiming the next. Sequential.
-5. Unit has substantive design notes. Absent or stale → run the `plan`
+5. Unit has substantive design notes. Absent or stale → run the `work-plan`
    skill first.
 
 ## Pool resolution (dispatch-time)
@@ -99,7 +101,7 @@ the committed diff is the unit of truth.
 - **PASS** → step 5.
 - **FIX** → step 4.
 - **ROLLBACK** → `git revert <sha>`, document, close as design-needs-rework
-  or replan via `plan`. Stop.
+  or replan via `work-plan`. Stop.
 
 ### 4. Fix loop (only on FIX)
 Fresh coder, findings JSON verbatim, prior SHA. Loop 3–4 until PASS. Each
@@ -149,7 +151,7 @@ The loop is a discipline, not a religion. The user is the final reviewer.
 ## Worker report format (demand it)
 
 ```
-Unit: <id>
+Work unit: <id>
 Files: <path> (created|modified, ±lines) — one per line
 Tests: <N> passed, 0 failed; full suite <N> passed
 Commit: <sha>

@@ -1,21 +1,24 @@
 ---
-name: plan
-description: Decompose a feature into atomic, testable work units via a 3-panelist design round (deep-module / minimal-diff / seam), judged and synthesized into an ordered DAG. Beads (bd) is the canonical tracker; output adapts to gh/Linear/markdown. Use before any non-trivial change ("plan X", "decompose this"), when a work unit's design is empty or stale (called from loop). Not for implementation (use loop), one-line fixes, or architecture Q&A.
+name: work-plan
+description: Decompose a feature into atomic, testable work units via a 3-panelist design round (deep-module / minimal-diff / seam), judged and synthesized into an ordered DAG. Beads (bd) is the canonical tracker; output adapts to gh/Linear/markdown. Use before any non-trivial change ("plan X", "decompose this"), when a work unit's design is empty or stale (called from work-loop). Not for implementation (use work-loop), one-line fixes, or architecture Q&A (use architecture-design).
 argument-hint: [feature-or-unit]
+shell: bash
 ---
 
-# Plan — design before build
+# work-plan — design before build
 
 You are the planning orchestrator. Three independent read-only panelists
-propose; you judge and synthesize ONE plan. Execution belongs to the `loop`
-skill — this skill ends at an approved unit list.
+propose; you judge and synthesize ONE plan. Execution belongs to the
+`work-loop` skill — this skill ends at an approved unit list.
 
-**Overlay rule:** if the repo ships its own plan skill, defer to it.
+**Overlay rule:** if the repo ships its own plan skill
+(`.claude/skills/*plan*/SKILL.md`, e.g. `nps-plan`), stop here — load and
+follow that skill instead. Repo doctrine always wins over this generic core.
 
 ## State at load (injected)
 
 ### Pool (panel composition source; repo pool wins)
-!`cat "${CLAUDE_PROJECT_DIR}/.claude/skills/loop/pool.md" 2>/dev/null || cat ~/.claude/skills/loop/pool.md`
+!`cat "${CLAUDE_PROJECT_DIR}/.claude/skills/work-loop/pool.md" 2>/dev/null || cat "${CLAUDE_PROJECT_DIR}/.claude/skills/loop/pool.md" 2>/dev/null || cat ~/.claude/skills/work-loop/pool.md 2>/dev/null || echo "(no pool.md found — panel tiers fall back to inherit)"`
 
 ### Tree state
 !`git status --short --branch 2>/dev/null || echo "(not a git repo)"`
@@ -24,11 +27,11 @@ skill — this skill ends at an approved unit list.
 
 1. Read the repo's conventions file (`AGENTS.md`, else `CLAUDE.md`) for
    non-negotiables.
-2. If the project provides a code map generator (e.g. `scripts/gen-map.*`
-   emitting `module-index.md` / `hot-spots.md`), refresh it first. Otherwise
-   skip — panelists do their own recon.
+2. If the project provides a generated code map (some repos ship a map
+   generator producing `module-index.md` / `hot-spots.md`), refresh it
+   first. Otherwise skip — panelists do their own recon.
 3. Confirm the user wants planning, not implementation. "Just do it" → at
-   most a single-panelist scout, then straight to `loop`.
+   most a single-panelist scout, then straight to `work-loop`.
 
 ## The panel
 
@@ -111,15 +114,15 @@ max, then escalate to the user with the conflict laid out.
 
 ## What you never do
 
-- Never implement, never claim units, never push. Execution is `loop`.
+- Never implement, never claim units, never push. Execution is `work-loop`.
 - Never file a refactor unit that fails the Drop Test.
 - Never file before the approval gate.
 - Never skip the parallel panel and design it yourself — independence is
   the value (trivial panel-of-1 excepted).
 - Never run a 4th panelist. Three forces disagreement resolution.
 
-## Handoff to loop
+## Handoff to work-loop
 
 State the synthesis and unit order, suggest the first unit (first leaf,
-smallest S). Proceed to `loop` only on an explicit or implicit go-ahead —
-the plan is a contract the user signs by not interrupting.
+smallest S). Proceed to `work-loop` only on an explicit or implicit go-ahead
+— the plan is a contract the user signs by not interrupting.
