@@ -37,4 +37,9 @@ if [ -d "$ROOT/agents/panelists" ]; then
     count=$((count + 1))
   done
 fi
+# default model pool -> $DEST/pool.md (repo-local .claude/pool.md wins at load)
+cp "$ROOT/pool.md" "$DEST/pool.md"
+echo "installed pool:   pool.md -> $DEST/pool.md"
+# stale cleanup: pool used to live inside the skill dir
+rm -f "$DEST/skills/work-loop/pool.md"
 echo "done: $count items installed into $DEST"

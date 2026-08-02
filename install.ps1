@@ -30,4 +30,9 @@ if (Test-Path $panel) {
     $count++
   }
 }
+# default model pool -> $dest\pool.md (repo-local .claude\pool.md wins at load)
+Copy-Item -Force (Join-Path $root 'pool.md') (Join-Path $dest 'pool.md')
+Write-Output "installed pool:   pool.md -> $dest\pool.md"
+# stale cleanup: pool used to live inside the skill dir
+Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $dest 'skills\work-loop\pool.md')
 Write-Output "done: $count items installed into $dest"

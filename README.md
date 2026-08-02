@@ -53,12 +53,14 @@ both project skills and Claude Code's bundled `/loop` interval skill.
 
 ## The pool
 
-`skills/work-loop/pool.md` is the global default model pool. A repo's own
-`.claude/skills/work-loop/pool.md` (or legacy `.claude/skills/loop/pool.md`)
-overrides it at load time — pools are per-repo cost decisions. Pin
-`coder:` / `reviewer:` / `beads:` or let class-based resolution pick. Rule in
-one sentence: coder and reviewer must be different models whenever the pool
-allows (same-tier is a valid degraded run, flagged `degradedRun: true`).
+`pool.md` (repo root) is the global default model pool, installed to
+`~/.claude/pool.md`. A repo's own `.claude/pool.md` overrides it at load
+time — pools are per-repo cost decisions that travel with the repo. The
+skills inject the pool at load (repo first, then global, then loud failure)
+— the model reads state, it doesn't fetch it. Pin `coder:` / `reviewer:` /
+`beads:` or let class-based resolution pick. Rule in one sentence: coder and
+reviewer must be different models whenever the pool allows (same-tier is a
+valid degraded run, flagged `degradedRun: true`).
 
 ## Overlay + extension points
 
