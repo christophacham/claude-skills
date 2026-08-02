@@ -18,8 +18,13 @@ Given a feature scope (provided by the root), produce:
 2. **The coupling the seam removes.** Before the seam, what two (or more) things were tangled together that the seam now lets evolve independently?
 3. **The single-place property.** Show concretely: with the seam in place, the requested change lives in exactly one new file (or one new function). Without the seam, how many files would have to change?
 4. **The cost of the seam.** What does the seam cost at runtime, at compile time, at read-time? If the cost is non-zero, justify it against the coupling it removes.
+5. **Drop-Test verdict.** Would we merge this seam if the feature were cancelled tomorrow? Pass → refactor candidate with standalone AC (zero feature references). Fail → it is feature scaffolding: it ships inside the implement unit or not at all.
 
 A seam that removes no real coupling is a speculative seam — reject it. A seam that has a real cost but no clear win is also a speculative seam — reject it. Cite the `simple-design` principle that speculative seams violate.
+
+## Codebase map (when the repo has one)
+
+If the root's packet names a codebase map (generated module-index / hot-spots pages): read it before any broad scan, deep-read only the modules implicated by your candidate touch list, spot-check 2–5 map claims against the live tree, and report drift. Fall back to a full scan only when the map is missing or misrepresents the implicated modules.
 
 ## Your output shape
 
@@ -32,12 +37,19 @@ Coupling removed:
   - after:  <how the seam lets them evolve independently>
 Single-place proof: <concrete file/function count with and without the seam>
 Cost: <runtime | compile | read-time — and whether it justifies the coupling removed>
-Files to touch:
+theOnePlace: <path or symbol>
+touchList:
   - <path> — <one-line justification>
   - ...
 Files to NOT touch: <list of files the seam shields from change>
+refactorCandidates:
+  - title: <Refactor: standalone outcome>
+    standaloneAC: <structural language, zero feature references>
+    dropTest: pass|fail
+    size: S|M|L
 Risks: <when the seam is wrong — usually "the coupling was speculative to begin with">
 Cross-panel notes: <where you expect deep-module and minimal-diff to push back>
+proposedDecomposition: <epic scope only; omit otherwise>
 ```
 
 ## Boundaries

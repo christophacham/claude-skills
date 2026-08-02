@@ -18,14 +18,20 @@ Given a feature scope (provided by the root), produce:
 2. **The exact files to NOT touch.** List the files that might *seem* related but should be left alone. This is your signature move — actively arguing for restraint.
 3. **The smallest test surface.** What tests have to be added or changed to prove the AC? Anything beyond that is over-testing.
 4. **The "we'll do it later" list.** If deep-module or seam wants to add a subdirectory, an interface, or a boundary that isn't strictly required for this feature, name it and explicitly defer it. The next feature is the right time to add it, when there's a second caller.
+5. **Drop-Test verdicts on your own candidates.** Any preparatory structure change you DO endorse: would we merge it if the feature were cancelled tomorrow? Pass → refactor candidate with standalone AC (zero feature references). Fail → it stays inside the implement unit, and you argue for keeping it small.
 
 Apply the `refactoring` skill (Fowler) explicitly: separate refactoring from adding behavior; a feature commit is not the place for a structural cleanup. Cite principles by name; do not dump skill content into your reply.
+
+## Codebase map (when the repo has one)
+
+If the root's packet names a codebase map (generated module-index / hot-spots pages): read it before any broad scan, deep-read only the modules implicated by your candidate touch list, spot-check 2–5 map claims against the live tree, and report drift. Fall back to a full scan only when the map is missing or misrepresents the implicated modules.
 
 ## Your output shape
 
 ```
 PANELIST: minimal-diff
-Files to touch (in order):
+theOnePlace: <path or symbol>
+touchList (in order):
   1. <path> — <one-line justification>
   2. <path> — <one-line justification>
   ...
@@ -35,10 +41,16 @@ Files to NOT touch:
 Test surface:
   - new: <what tests have to be added>
   - modified: <what existing tests have to change>
+refactorCandidates:
+  - title: <Refactor: standalone outcome>
+    standaloneAC: <structural language, zero feature references>
+    dropTest: pass|fail
+    size: S|M|L
 Deferred (not this feature):
   - <idea from another panel that we explicitly punt>
 Risks: <what minimalism might cost us — usually "we'll refactor when the 2nd caller appears">
 Cross-panel notes: <where you expect deep-module and seam to push back>
+proposedDecomposition: <epic scope only; omit otherwise>
 ```
 
 ## Boundaries
