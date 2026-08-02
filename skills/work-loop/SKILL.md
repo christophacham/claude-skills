@@ -23,8 +23,7 @@ through THIS loop. Don't inline an epic walk here.
 
 ## State at load (injected — read it, don't re-run it)
 
-### Pool (repo `.claude/pool.md` wins; global `~/.claude/pool.md` is the fallback)
-!`cat "${CLAUDE_PROJECT_DIR}/.claude/pool.md" 2>/dev/null || cat ~/.claude/pool.md 2>/dev/null || echo "(no pool.md found — fail loudly before any dispatch)"`
+!`cat "${CLAUDE_PROJECT_DIR}/.claude/pool.md" 2>/dev/null || cat ~/.claude/pool.md 2>/dev/null || echo "(no pool.md — fail loudly before any dispatch)"`
 
 ### Unit contract (only when a unit id was passed)
 !`if [ -n "$unit" ] && out=$(bd show "$unit" --json 2>/dev/null); then printf '%s\n' "$out"; else echo "(no unit id, no beads here, or unit not found)"; fi`

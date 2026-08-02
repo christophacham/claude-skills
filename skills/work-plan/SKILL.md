@@ -18,8 +18,7 @@ load and follow that skill instead. Repo doctrine always wins over this core.
 
 ## State at load (injected)
 
-### Pool (panel composition source; repo `.claude/pool.md` wins)
-!`cat "${CLAUDE_PROJECT_DIR}/.claude/pool.md" 2>/dev/null || cat ~/.claude/pool.md 2>/dev/null || echo "(no pool.md found — panel tiers fall back to inherit)"`
+!`cat "${CLAUDE_PROJECT_DIR}/.claude/pool.md" 2>/dev/null || cat ~/.claude/pool.md 2>/dev/null || echo "(no pool.md — panel tiers fall back to inherit)"`
 
 ### Tree state
 !`git status --short --branch 2>/dev/null || echo "(not a git repo)"`
