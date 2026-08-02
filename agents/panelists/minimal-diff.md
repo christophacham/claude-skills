@@ -4,6 +4,7 @@ description: Read-only design panelist for `work-plan`. Argues for the fewest ho
 tools: Read, Grep, Glob, Bash
 model: inherit
 effort: high
+disallowedTools: Write, Edit
 skills: refactoring
 ---
 

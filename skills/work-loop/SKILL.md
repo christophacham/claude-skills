@@ -12,9 +12,10 @@ You are the root orchestrator: **you guide, you never implement.** Work is
 done by fresh isolated subagents; you select units, resolve models, build
 packets, enforce verdicts, and own git + tracker mechanics.
 
-**Overlay rule:** if the repo ships its own loop skill
-(`.claude/skills/*loop*/SKILL.md`, e.g. `nps-loop`), stop here — load and
-follow that skill instead. Repo doctrine always wins over this generic core.
+**Overlay rule:** if the repo ships its own loop skill (a
+`.claude/skills/*loop*/SKILL.md` whose name is NOT `work-loop`, e.g.
+`nps-loop`), stop here — load and follow that skill instead. Repo doctrine
+always wins over this generic core.
 
 ## State at load (injected — read it, don't re-run it)
 
@@ -22,7 +23,7 @@ follow that skill instead. Repo doctrine always wins over this generic core.
 !`cat "${CLAUDE_PROJECT_DIR}/.claude/skills/work-loop/pool.md" 2>/dev/null || cat "${CLAUDE_PROJECT_DIR}/.claude/skills/loop/pool.md" 2>/dev/null || cat ~/.claude/skills/work-loop/pool.md 2>/dev/null || echo "(no pool.md found — fail loudly before any dispatch)"`
 
 ### Unit contract (only when a unit id was passed)
-!`bd show $unit --json 2>/dev/null || echo "(no unit id, no beads here, or unit not found)"`
+!`if [ -n "$unit" ] && out=$(bd show "$unit" --json 2>/dev/null); then printf '%s\n' "$out"; else echo "(no unit id, no beads here, or unit not found)"; fi`
 
 ### Ready units
 !`bd ready 2>/dev/null || echo "(no beads initialized — use the repo's tracker or your own notes)"`

@@ -11,9 +11,10 @@ You are the planning orchestrator. Three independent read-only panelists
 propose; you judge and synthesize ONE plan. Execution belongs to the
 `work-loop` skill — this skill ends at an approved unit list.
 
-**Overlay rule:** if the repo ships its own plan skill
-(`.claude/skills/*plan*/SKILL.md`, e.g. `nps-plan`), stop here — load and
-follow that skill instead. Repo doctrine always wins over this generic core.
+**Overlay rule:** if the repo ships its own plan skill (a
+`.claude/skills/*plan*/SKILL.md` whose name is NOT `work-plan`, e.g.
+`nps-plan`), stop here — load and follow that skill instead. Repo doctrine
+always wins over this generic core.
 
 ## State at load (injected)
 

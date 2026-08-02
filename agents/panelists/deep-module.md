@@ -4,6 +4,7 @@ description: Read-only design panelist for `work-plan`. Argues for one deep modu
 tools: Read, Grep, Glob, Bash
 model: inherit
 effort: high
+disallowedTools: Write, Edit
 skills: simple-design
 ---
 
