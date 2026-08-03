@@ -16,8 +16,19 @@ else
   echo "Downloading latest claude-skills from GitHub..."
   TMP_DIR="$(mktemp -d 2>/dev/null || mktemp -d -t 'claude-skills')"
   CLEANUP_TMP="$TMP_DIR"
-  curl -fsSL https://github.com/christophacham/claude-skills/archive/refs/heads/main.tar.gz | tar -xz -C "$TMP_DIR"
-  ROOT="$TMP_DIR/claude-skills-main"
+
+  TOKEN=""
+  if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
+    TOKEN="$(gh auth token 2>/dev/null || echo "")"
+  fi
+
+  if [ -n "$TOKEN" ]; then
+    curl -fsSL -H "Authorization: token $TOKEN" -H "Accept: application/vnd.github+json" https://api.github.com/repos/christophacham/claude-skills/tarball/main | tar -xz -C "$TMP_DIR"
+  else
+    curl -fsSL https://github.com/christophacham/claude-skills/archive/refs/heads/main.tar.gz | tar -xz -C "$TMP_DIR"
+  fi
+
+  ROOT="$(find "$TMP_DIR" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
 fi
 
 if [ "$1" = "--project" ]; then

@@ -16,9 +16,32 @@ if ($scriptDir -and (Test-Path (Join-Path $scriptDir 'skills'))) {
   New-Item -ItemType Directory -Force $tmpDir | Out-Null
   $cleanupTmp = $tmpDir
   $zipPath = Join-Path $tmpDir 'repo.zip'
-  Invoke-RestMethod -Uri 'https://github.com/christophacham/claude-skills/archive/refs/heads/main.zip' -OutFile $zipPath
+
+  $token = $null
+  if (Get-Command gh -ErrorAction SilentlyContinue) {
+    $token = (gh auth token 2>$null)
+  }
+
+  $headers = @{}
+  if ($token) {
+    $headers['Authorization'] = "token $token"
+  }
+
+  try {
+    if ($token) {
+      $apiUrl = 'https://api.github.com/repos/christophacham/claude-skills/zipball/main'
+      Invoke-RestMethod -Uri $apiUrl -Headers $headers -OutFile $zipPath
+    } else {
+      $publicUrl = 'https://github.com/christophacham/claude-skills/archive/refs/heads/main.zip'
+      Invoke-RestMethod -Uri $publicUrl -OutFile $zipPath
+    }
+  } catch {
+    $publicUrl = 'https://github.com/christophacham/claude-skills/archive/refs/heads/main.zip'
+    Invoke-RestMethod -Uri $publicUrl -OutFile $zipPath
+  }
+
   Expand-Archive -Path $zipPath -DestinationPath $tmpDir -Force
-  $root = Join-Path $tmpDir 'claude-skills-main'
+  $root = Get-ChildItem $tmpDir -Directory | Select-Object -First 1 | Select-Object -ExpandProperty FullName
 }
 
 $dest = if ($Project) { Join-Path (Get-Location) '.claude' } else { Join-Path $HOME '.claude' }
