@@ -82,4 +82,4 @@ Beads (`bd`) is the canonical work tracker, with fallback support for GitHub, Li
 
 - **Repo Overlays**: If a repo has its own `.claude/skills/*loop*` or `*plan*` skill, it overrides `work-loop` or `work-plan`.
 - **Agent Shadowing**: Placing a custom agent in `.claude/agents/coder.md` or `reviewer.md` extends the global role contract with stack-specific rules.
-- **Project Bindings**: Test commands, commit formats, and non-negotiables are discovered from `AGENTS.md` / `CLAUDE.md`.
+- **Project Bindings**: Test commands, commit formats, and non-negotiables are discovered from `CLAUDE.md`.

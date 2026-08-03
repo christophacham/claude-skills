@@ -25,7 +25,7 @@ load and follow that skill instead. Repo doctrine always wins over this core.
 
 ## Conventions discovery (every flow start)
 
-Read the repo's conventions file (`AGENTS.md`, else `CLAUDE.md`). Extract:
+Read the repo's conventions file (`CLAUDE.md`). Extract:
 
 - **Non-negotiables** — product rules every design must respect.
 - **Map generator** (optional) — if the repo ships one (a script producing

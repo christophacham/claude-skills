@@ -32,7 +32,6 @@ and conventions.
 !`if [ -n "$epic" ]; then bd ready --parent "$epic" 2>/dev/null || bd ready 2>/dev/null || echo "(bd unavailable)"; else echo "(no epic arg)"; fi`
 
 ### Repo conventions (if present)
-!`cat AGENTS.md 2>/dev/null || echo "(no AGENTS.md)"`
 !`cat CLAUDE.md 2>/dev/null || echo "(no CLAUDE.md)"`
 
 ### Tree state
@@ -44,7 +43,7 @@ mid-walk is a bug.
 
 ## 1. Setup (once, before the first unit)
 
-1. Conventions (`AGENTS.md` / `CLAUDE.md`) are injected above. Extract and hold:
+1. Conventions (`CLAUDE.md`) are injected above. Extract and hold:
    - **Test gate command.** If no gate is stated anywhere, ask the user
      once, then proceed with their answer.
    - **Commit format** (default: `<type>: <summary> (<unit-id>)`).

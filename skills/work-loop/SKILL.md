@@ -1,6 +1,6 @@
 ---
 name: work-loop
-description: Orchestrate one work unit end-to-end with the full quality doctrine — design-provenance gate, Beck pairs (implement + Cleanup sibling), TDD, independent cross-model review, fix escalation, committed-tree gate, push, tracker close. Beads (bd) is the canonical tracker, with gh/Linear/no-tracker fallbacks; repo conventions (gate, commit format, map generator) are discovered from AGENTS.md/CLAUDE.md. Use when implementing a non-trivial planned unit ("work X", "run the loop", "next unit") or resuming one. Not for one-line fixes, planning (use work-plan), epic walks (use bd-epic-runner), or repos that ship their own loop skill — defer to the repo's version.
+description: Orchestrate one work unit end-to-end with the full quality doctrine — design-provenance gate, Beck pairs (implement + Cleanup sibling), TDD, independent cross-model review, fix escalation, committed-tree gate, push, tracker close. Beads (bd) is the canonical tracker, with gh/Linear/no-tracker fallbacks; repo conventions (gate, commit format, map generator) are discovered from CLAUDE.md. Use when implementing a non-trivial planned unit ("work X", "run the loop", "next unit") or resuming one. Not for one-line fixes, planning (use work-plan), epic walks (use bd-epic-runner), or repos that ship their own loop skill — defer to the repo's version.
 argument-hint: [unit-id]
 arguments: [unit]
 shell: bash
@@ -39,8 +39,7 @@ every later unit.
 
 ## Conventions discovery (first unit in a session)
 
-Read the repo's conventions file (`AGENTS.md`, else `CLAUDE.md`, both if both
-exist). Extract and hold for the whole session:
+Read the repo's conventions file (`CLAUDE.md`). Extract and hold for the whole session:
 
 - **Test gate command** — the exact command(s) that must be green before push.
   None stated → ask the user once, hold the answer.

@@ -71,7 +71,7 @@ Phase B design posture is **Fowler smell + catalog move**, not comments-first. C
 ## Proof rules (always)
 
 1. **Gate after commit.** The repo's test gate counts as evidence only on the committed tree. Commit first, then run the gate. (Zero-commit `nothingToTidy` Phase B: no gate required from you — report and return.)
-2. **Map rides the commit.** If the repo has a codebase-map generator (named in `AGENTS.md`/`CLAUDE.md`) and you touched code, regenerate the map and include it in the same commit — before the gate. Do not open a map-only "refactor" when structure did not change.
+2. **Map rides the commit.** If the repo has a codebase-map generator (named in `CLAUDE.md`) and you touched code, regenerate the map and include it in the same commit — before the gate. Do not open a map-only "refactor" when structure did not change.
 3. **Wired, not declared.** Every new option/flag/constant/helper must have a consumer in the same diff. A declaration nobody reads is a placeholder and fails review.
 4. **Smallest honest proof harness.** For tooling/script units: exercise the new code's success path directly — do not rely on the gate happening to touch it.
 5. **Never stop mid-flow.** Emit the structured report the moment gates pass (or the moment you confirm nothingToTidy); an unfinished report is a failed dispatch.
@@ -121,7 +121,7 @@ If you cannot complete, still return the report. Mark the partial commit (if any
 
 Stop and report via `Blockers` if:
 
-- The acceptance criteria contradict the project's non-negotiables (`AGENTS.md`)
+- The acceptance criteria contradict the project's non-negotiables (`CLAUDE.md`)
 - The work unit's design is wrong for the actual code (not just suboptimal)
 - You discover the work unit needs a sibling unit first (cross-unit dependency not in the spec)
 - A test reveals a pre-existing bug in code you're not supposed to touch
