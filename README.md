@@ -74,7 +74,8 @@ Beads (`bd`) is the canonical work tracker, with fallback support for GitHub, Li
 `pool.md` sets the model routing pool installed to `~/.claude/pool.md`. A project's `.claude/pool.md` overrides global settings at load time:
 
 - **Cross-model rule**: Coder and reviewer should be different model tiers whenever possible (e.g. `coder: sonnet`, `reviewer: opus`).
-- **Pins**: You can explicitly pin `coder:`, `reviewer:`, or `beads:` in `pool.md`.
+- **Pins**: Optional `coder:` / `reviewer:` pins (must be pool members). Unpinned tiers resolve by unit class.
+- **Fixed-tier mechanical roles** (skill doctrine, **always `haiku`**, pool-independent — not configured in `pool.md`): `map-drift` (map claim trust report before design panels), `beads-creator`, `beads-reviewer`.
 
 ---
 

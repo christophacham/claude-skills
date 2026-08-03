@@ -26,7 +26,7 @@ Apply skill **`simple-design`** (Ousterhout) for depth, surfaces, leakage, red f
 
 ## Codebase map (when the repo has one)
 
-If the root's packet names a codebase map (generated module-index / hot-spots pages): read it before any broad scan, deep-read only the modules implicated by your candidate touch list, spot-check 2–5 map claims against the live tree, and report drift. Fall back to a full scan only when the map is missing or misrepresents the implicated modules.
+If the packet includes a `MAP_TRUST` block (from the haiku map-drift pre-pass) and/or names map pages: read `MAP_TRUST` + the map first, then deep-read only modules on your candidate touch list. Do **not** re-run the global 2–5 claim spot-check when `verdict: trust-map`. On `partial`, re-check only implicated modules; on `full-scan` or missing map, full-scan. Never blind full-scan when the map is trusted.
 
 ## Catalog rules for refactorCandidates
 

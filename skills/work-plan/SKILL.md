@@ -36,6 +36,48 @@ Read the repo's conventions file (`CLAUDE.md`). Extract:
 - **Design-provenance label** — default `designed`.
 - **Tracker** — bd (canonical), gh, Linear, or markdown files.
 
+## Fixed-tier mechanical roles (pool-independent)
+
+These jobs always dispatch `model=haiku`. They are **not** pool pins, do **not**
+need to appear in `pool:`, and must not be retargeted to coder/reviewer tiers
+for "quality." Cheap + bounded is the point.
+
+| Role | When | Output |
+|---|---|---|
+| **map-drift** | Repo has a codebase map (generator or checked-in map pages) | `MAP_TRUST` report (below) |
+| **beads-creator** / **beads-reviewer** | Any tracker write or hygiene sweep | tracker mutations only |
+
+If haiku is unavailable in the runtime, fail loudly once and ask — do not
+silently promote map-drift or beads to a pool design tier.
+
+### map-drift pre-pass (before every design round that has a map)
+
+When conventions discovery found a map (or map generator produced one), run
+**one** agent **before** the panel:
+
+```
+Agent(subagent_type="general-purpose", model=haiku, run_in_background: false)
+```
+
+Prompt: map page paths + implicated scope (feature/unit AC + any known paths);
+spot-check 2–5 concrete map claims against the live tree; no design proposals;
+no full-repo scan unless the map is missing. Demand this report shape:
+
+```text
+MAP_TRUST
+mapPresent: true|false
+claimsChecked:
+  - claim: <map assertion>
+    path: <path>
+    live: match|mismatch|missing
+verdict: trust-map | partial | full-scan
+notes: <one line; on uncertainty prefer partial/full-scan>
+```
+
+**Fail open:** uncertainty → `partial` or `full-scan`, never `trust-map`.
+Paste the full `MAP_TRUST` block into every PANEL_PACKET. Skip this pre-pass
+only when no map exists (then panelists full-scan as today).
+
 ## The panel
 
 Three named read-only agents (installed beside this skill under
@@ -71,8 +113,10 @@ below · the scored question:
 ```text
 Skills (load by name): refactoring (required for any refactorCandidates entry);
   simple-design (red flags §9; deep-module lens always).
-Scan: you are the code scan — map first, then live files/symbols under where.
-  No candidates from titles alone. The judge will not invent refactors.
+Scan: you are the code scan — MAP_TRUST + map first (if present), then live
+  files/symbols under where. No candidates from titles alone. No global map
+  re-spot-check when MAP_TRUST verdict is trust-map. The judge will not invent
+  refactors.
 Each refactorCandidates entry MUST use catalog-literal smell + move from the
   refactoring skill matrix; optional redFlag 1–14 from simple-design §9.
 Comments smell → move only Extract Function | Rename Function | Rename Variable
@@ -81,12 +125,12 @@ Drop Test every candidate: pass = standalone Refactor unit AC (zero feature
   refs); fail = scaffolding or discard.
 ```
 
-**Codebase map consumption** (when the repo has one): each panelist reads
-the map pages first, deep-reads the modules implicated by the candidate
-touch list, and spot-checks 2–5 map claims against the live tree (reported
-as drift). Fall back to a full scan only when the map is missing or the
-spot-checks show it misrepresents the implicated modules. Never a blind
-full scan when a map exists.
+**Codebase map consumption** (when the repo has one): the haiku **map-drift**
+pre-pass already produced `MAP_TRUST`. Each panelist reads that report + the
+map pages first, then deep-reads only modules on the candidate touch list.
+Do **not** re-run the 2–5 claim spot-check unless `verdict` is `partial` (then
+re-check only implicated modules) or `full-scan` / map missing (then full
+scan). Never a blind full scan when `verdict: trust-map`.
 
 **Panel size:**
 - Panel of 1 (weakest sufficient tier) — trivial single-unit scope.

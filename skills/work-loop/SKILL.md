@@ -125,8 +125,8 @@ candidates: []" \
 
 - `pool:` → available tier short-names (`fable`, `opus`, `sonnet`, `haiku`,
   …). Empty → fail loudly.
-- `coder:` / `reviewer:` / `beads:` → pins win absolutely, every unit class.
-  Unpinned → class table below; `beads` unpinned → weakest pool member.
+- `coder:` / `reviewer:` → pins win absolutely, every unit class.
+  Unpinned → class table below.
 - **Cross-model rule:** coder ≠ reviewer tier names — that is what makes the
   review independent. Same name in = same model, regardless of pool size.
   Collapsed → loop still runs, reviewer sets `degradedRun: true`, warn once.
@@ -144,6 +144,20 @@ candidates: []" \
 
 Reviewer = strongest pool member ≠ coder (for full-loop units). Free-close and
 comment-nit paths skip the reviewer dispatch entirely.
+
+### Fixed-tier mechanical roles (pool-independent)
+
+Always `model=haiku` — **not** pool pins, need not appear in `pool:`, never
+promoted to a design/coder tier for "quality." Shared with `work-plan`.
+
+| Role | Dispatch | Notes |
+|---|---|---|
+| **map-drift** | `model=haiku` | Only when a codebase map exists; produces `MAP_TRUST` for plan/panel packets. Loop rarely needs this unless it re-invokes plan or orients from a map mid-flight. |
+| **beads-creator** | `model=haiku` | All tracker writes. Ignore legacy `beads:` pool pins if present. |
+| **beads-reviewer** | `model=haiku` | Tracker hygiene sweeps only. |
+
+If haiku is unavailable, fail loudly once and ask — do not silently substitute
+opus/sonnet for these roles.
 
 ## Roles (delegated)
 
@@ -350,7 +364,8 @@ implement unit.
 - `model=` takes built-in short-names only — never brand names.
 - `effort=` accepts only `low|medium|high|xhigh|max` — session modes like
   ultracode are NOT effort tiers; never pass them.
-- Echo the pool and any pins at walk start (one line, no questions).
+- Echo the pool, any coder/reviewer pins, and fixed-tier roles
+  (`map-drift=haiku`, `beads=haiku`) at walk start (one line, no questions).
 
 ## Hard rules
 
