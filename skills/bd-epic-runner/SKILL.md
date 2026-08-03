@@ -20,11 +20,20 @@ and conventions.
 
 ## State at load (injected — read it, don't re-run it)
 
+!`cat "${CLAUDE_PROJECT_DIR}/.claude/pool.md" 2>/dev/null || cat ~/.claude/pool.md 2>/dev/null || echo "(no pool.md — default model tiers active)"`
+
 ### Epic contract
 !`if [ -n "$epic" ] && out=$(bd show "$epic" --json 2>/dev/null); then printf '%s\n' "$out"; else echo "(no epic arg, no beads here, or epic not found)"; fi`
 
+### Child graph
+!`if [ -n "$epic" ]; then bd list --parent "$epic" --json 2>/dev/null || echo "(no child graph)"; else echo "(no epic arg)"; fi`
+
 ### Ready children
 !`if [ -n "$epic" ]; then bd ready --parent "$epic" 2>/dev/null || bd ready 2>/dev/null || echo "(bd unavailable)"; else echo "(no epic arg)"; fi`
+
+### Repo conventions (if present)
+!`cat AGENTS.md 2>/dev/null || echo "(no AGENTS.md)"`
+!`cat CLAUDE.md 2>/dev/null || echo "(no CLAUDE.md)"`
 
 ### Tree state
 !`git status --short --branch 2>/dev/null || echo "(not a git repo)"`
@@ -35,8 +44,7 @@ mid-walk is a bug.
 
 ## 1. Setup (once, before the first unit)
 
-1. Read the repo's conventions file — `AGENTS.md`, else `CLAUDE.md`, both if
-   both exist. Extract and hold for the whole run:
+1. Conventions (`AGENTS.md` / `CLAUDE.md`) are injected above. Extract and hold:
    - **Test gate command.** If no gate is stated anywhere, ask the user
      once, then proceed with their answer.
    - **Commit format** (default: `<type>: <summary> (<unit-id>)`).
