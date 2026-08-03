@@ -62,6 +62,10 @@ exist). Extract and hold for the whole session:
    make it right, behavior-preserving, tests byte-identical). There is no
    in-unit Phase B. At agent speed "later" means minutes, so the tidy hat is
    always its own unit, worked immediately after its implement unit.
+   **Cleanup is seeded, not scavenged:** Phase A finalize writes the Cleanup
+   design from reviewer `cleanupCandidates` + coder Follow-ups + structural
+   `hotspotNotes`. Empty seed → free close (`nothingToTidy`). Comment-only
+   residue never opens a full Phase B loop.
 3. **Independent review.** A different model tier reviews the committed diff
    before anything pushes. "Tests pass" is not a review.
 4. **Tidy First.** Structure and behavior never share a commit. Micro-tidy
@@ -76,14 +80,21 @@ exist). Extract and hold for the whole session:
    just the title. (First unit: already injected.)
 2. **Triviality check:** one AC, one file, no semantic change → implement
    inline, no loop, no pair, no design gate. Still run the gate before push.
-3. **Design gate (before claim):** the unit must carry a substantive design
-   AND the design-provenance label (`designed` by default — proof the design
-   came from a `work-plan` cross-model round; hand-written designs do not
-   pass). With bd, check `bd show <id> --json` for the label and
-   `bd history <id>` for freshness: a design is **stale** when a dependency
-   closed after the design was written, or the design text names another
-   unit's scope (rewrite it, don't re-stamp). Missing or stale → invoke
-   `work-plan` at unit scope (its Flow C — no user gate), then re-check.
+3. **Design gate (before claim):**
+   - **Implement / Refactor units:** must carry a substantive design AND the
+     design-provenance label (`designed` by default — proof the design came
+     from a `work-plan` cross-model round; hand-written designs do not pass).
+     With bd, check `bd show <id> --json` for the label and `bd history <id>`
+     for freshness: a design is **stale** when a dependency closed after the
+     design was written, or the design text names another unit's scope
+     (rewrite it, don't re-stamp). Missing or stale → invoke `work-plan` at
+     unit scope (its Flow C — no user gate), then re-check.
+   - **Cleanup units:** do **not** require a `work-plan` provenance stamp.
+     They require a **seeded** design (see Cleanup seed shape below) and must
+     **not** carry `cleanup-unseeded`. Unseeded Cleanup is **not claimable** —
+     seed it from the implement unit's Phase A review first (or free-close if
+     the seed is empty). If the design says `nothingToTidy: true`, take the
+     free-close path (pair affinity step 5) — do not claim for a full loop.
 4. **Ensure the pair (implement units only):** look for an open
    `Cleanup: <title>` sibling that depends on this unit. Missing → dispatch
    beads-creator to file it now (you never run tracker mutations inline):
@@ -91,14 +102,19 @@ exist). Extract and hold for the whole session:
    ```bash
    bd create --title="Cleanup: <short title> (refactor + simple-design)" \
      --type=task --priority=<same> --parent=<same parent, if any> \
-     --description="Phase B ONLY (Beck make-it-right). Behavior-preserving cleanup of the deliverable from <implement-id>. Mandatory skills: refactoring + simple-design. No new features, no behavior change; tests stay byte-identical and green between steps. If nothing to tidy, report that explicitly."
+     --labels=cleanup-unseeded \
+     --design="seed: pending Phase A review
+nothingToTidy: pending
+smells: []
+candidates: []" \
+     --description="Phase B ONLY (Beck make-it-right). Behavior-preserving cleanup of the deliverable from <implement-id>. Mandatory skills: refactoring + simple-design. No new features, no behavior change; tests stay byte-identical and green between steps. Work ONLY the seeded smells/candidates in the design field after Phase A seeds it. If design says nothingToTidy: true, orchestrator free-closes — do not invent comment-only work."
    bd dep add <cleanup-id> <implement-id>
    ```
 
    **Skip for `Refactor:` units** — a Drop-Test-passed refactor unit IS the
    tidy hat; pairing it is turtles all the way down. If the unit you were
    given IS a `Cleanup:` unit (or declares "Phase B ONLY"), run Phase B +
-   review only — never re-run Phase A.
+   review only — never re-run Phase A — after the Cleanup design gate above.
 5. Tree clean of unrelated edits; prior unit's commits landed and pushed.
    Never start on a red tree.
 6. Claim via beads-creator. **One unit in progress at a time, ever.**
@@ -114,15 +130,19 @@ exist). Extract and hold for the whole session:
   review independent. Same name in = same model, regardless of pool size.
   Collapsed → loop still runs, reviewer sets `degradedRun: true`, warn once.
 - Tier names pass to `Agent(model=...)` as-is. No alias tables.
+- **Pins must name pool members.** A pin outside `pool:` is a config bug —
+  fail loudly and ask, do not silently use an out-of-pool model.
 
 | Unit class | Preferred coder |
 |---|---|
 | Hardest: architecture-sensitive, ABI/border, ops extraction | strongest pool member |
 | Large mechanical: re-homes, deletions, multi-file refactors | second-strongest |
 | Standard implementation | middle |
-| Trivial / lint sweeps / scripts | weakest |
+| Structural Cleanup (seeded structural smells) | middle (or second-strongest if multi-file) |
+| Trivial / lint sweeps / scripts / dead-code-only Cleanup | weakest |
 
-Reviewer = strongest pool member ≠ coder.
+Reviewer = strongest pool member ≠ coder (for full-loop units). Free-close and
+comment-nit paths skip the reviewer dispatch entirely.
 
 ## Roles (delegated)
 
@@ -130,7 +150,8 @@ Reviewer = strongest pool member ≠ coder.
   commit. Phase B: behavior-preserving refactor commits only. Commits; never
   pushes, never amends, never touches the tracker.
 - **reviewer** — independent audit of the committed diff, PASS/FIX/ROLLBACK,
-  micro-fix commits only (typo/format/dead code, listed in its report).
+  micro-fix commits only (typo/format/dead code, listed in its report). On
+  Phase A PASS, must emit `cleanupCandidates[]` (may be empty).
 - **beads-creator** — all tracker mutations. You and the workers never run
   tracker writes inline.
 - **beads-reviewer** — tracker hygiene sweeps.
@@ -165,20 +186,42 @@ with a **WORKER_PACKET**:
      success path directly, don't rely on the gate happening to touch it.
   5. **Never stop mid-flow** — emit the structured report the moment gates
      pass; an unfinished report is a failed dispatch.
+- **Phase B only — smell rank (mandatory in the packet):**
+  1. Work **only** the seeded `smells` / `candidates` from the Cleanup design.
+     Do not hunt for extra work.
+  2. Rank (Fowler): Duplicated Code → Shotgun Surgery → Long Function →
+     Feature Envy → Dead Code / Speculative Generality → Long Parameter List
+     → other structural smells.
+  3. **Comments last** — and only if the seed explicitly lists a Comments
+     smell with a structural move (prefer Extract Function named after the
+     comment). Comment-only rewrites without a seed entry are forbidden.
+  4. If every seeded candidate is gone or already fixed → report
+     `nothingToTidy: true` and stop. That is a successful Phase B outcome.
+  5. Default success is structure or honest nothing-to-tidy — never invent
+     glyph/header/prose tidy to fill the dispatch.
 - report format (below). Read the report before dispatching anything else.
 
 ### 2. Independent review
 `Agent(subagent_type="reviewer", model=<reviewer tier>, run_in_background:
 false)` with a **REVIEW_PACKET**: unit id + AC, commit SHA(s), coder tier
-(for `degradedRun`), and the reminders: re-run the gate independently (never
-trust pasted output); mutation check mandatory (perturb one assert in the
-new/changed tests → confirm red → restore); check plan adherence (diff ⊆
-touch list or justified) and commit order (`refactor:` before behavior,
-micro-tidy byte-identical at that commit, mixed structure+behavior = FIX);
-the committed diff is the unit of truth.
+(for `degradedRun`), phase (A/B), and the reminders: re-run the gate
+independently (never trust pasted output); mutation check mandatory (perturb
+one assert in the new/changed tests → confirm red → restore); check plan
+adherence (diff ⊆ touch list or justified) and commit order (`refactor:`
+before behavior, micro-tidy byte-identical at that commit, mixed
+structure+behavior = FIX); the committed diff is the unit of truth.
+
+**Phase A reviews** must demand `cleanupCandidates[]` in the verdict (empty
+array is valid and authorizes nothing-to-tidy). Comment nits belong in
+`microFixCommits` **now**, not as Cleanup fuel.
+
+**Phase B reviews** check: zero behavior delta, tests byte-identical, diff ⊆
+seeded candidates (or justified), no comment-only inventiveness.
 
 - **PASS** requires: every AC met AND zero blocker/major findings AND
-  independent gate reruns green AND mutation check went red.
+  independent gate reruns green AND mutation check went red (Phase A; Phase B
+  mutation check applies when tests changed — if tests are byte-identical and
+  untouched, record `mutationCheck: skipped-byte-identical-tests`).
 - **FIX** → step 3.
 - **ROLLBACK** (AC unmet AND the approach is wrong — wrong seam, wrong owner,
   unfixable by iteration) → `git revert <sha>`, document, close as
@@ -200,7 +243,8 @@ FRESH worker — independence, not punishment.
 
 1. Map refresh already landed in the worker's commit when code was touched
    (proof rule 2). If the repo keeps a curated hot-spots doc, append the
-   reviewer's `hotspotNotes` advisories there in the map commit.
+   reviewer's `hotspotNotes` advisories there in the map commit (structural
+   advisories only — not comment nits).
 2. Run the repo's test gate yourself on the committed tree. Red → back to
    the FIX loop; do not push.
 3. `git pull --rebase` (re-run the gate if the rebase moved HEAD onto new
@@ -209,15 +253,59 @@ FRESH worker — independence, not punishment.
 4. beads-creator: close with a one-line reason mapping to the AC + tracker
    sync (`bd dolt push` when bd).
 5. Tree carries only this unit's commits before the next unit starts.
+6. **After implement Phase A PASS only — seed the Cleanup sibling** (via
+   beads-creator; do this before pair affinity runs):
+
+   Merge into the Cleanup design field, in this priority order:
+   1. reviewer `cleanupCandidates[]` (structural only)
+   2. coder report `Follow-ups` / structural deviations that are tidy debt
+   3. reviewer structural `hotspotNotes` that are in-scope for this deliverable
+
+   **Exclude from the seed:** comment/prose/docs nits, taste renames without
+   a smell, anything the reviewer already landed as `microFixCommits`.
+
+   **Cleanup seed shape** (write this into `--design`):
+
+   ```text
+   seed: from <implement-id> @ <phaseA-sha>
+   nothingToTidy: true|false
+   smells:
+     - <SmellName>: <path:line or symbol> — <one line>
+   candidates:
+     - move: <Extract X / Inline Y / …>
+       where: <path or symbol>
+       dropTest: pass|fail
+       size: S|M|L
+   ```
+
+   Then:
+   - If `cleanupCandidates` + structural follow-ups + in-scope structural
+     hotspots are all empty → set `nothingToTidy: true`, clear smells/
+     candidates, remove `cleanup-unseeded`, add label `cleanup-seeded` (or
+     leave only the design). Pair affinity will free-close.
+   - Else → set `nothingToTidy: false`, fill smells/candidates, remove
+     `cleanup-unseeded`, add `cleanup-seeded`.
+
+   Do **not** stamp work-plan `designed` on Cleanup for this seed — the seed
+   is loop-owned residue, not a design-panel product. (If a repo requires a
+   label for claimability, `cleanup-seeded` is the Cleanup claim token.)
 
 ### 5. Pair affinity (mandatory)
 
 After finalizing an implement unit, its Cleanup sibling is NEXT — guaranteed
-to exist (precondition 4) and now unblocked. Run the same loop with Phase B:
-coder with `refactoring` + `simple-design`, behavior-preserving, tests
-byte-identical, reviewer checks zero behavior delta. "Nothing to tidy" is a
-legitimate outcome ONLY if the worker says so explicitly — silent skip is a
-process failure. Finish the pair before opening any new implement unit.
+to exist (precondition 4) and now unblocked. **Triage before dispatching
+Phase B** (read the seeded design):
+
+| Cleanup design | Path |
+|---|---|
+| `nothingToTidy: true` (or empty smells **and** empty candidates after seed) | **Free close** via beads-creator: claim optional, close with reason `nothing to tidy — Phase A left no structural residue`, `bd dolt push`. No coder, no reviewer, no gate re-run beyond what Phase A already proved. |
+| Only comment/doc/prose nits in the seed (no structural smell) | **Do not open full Phase B.** Prefer: already fixed as Phase A `microFixCommits`, or one orchestrator/inline docs commit + gate. Then close Cleanup. Never pay full dual-harness + mutation for a glyph or restated header. |
+| ≥1 structural smell / candidate | **Full Phase B loop:** coder with `refactoring` + `simple-design`, behavior-preserving, tests byte-identical, WORKER_PACKET smell-rank rules, reviewer checks zero behavior delta and seed adherence. |
+
+"Nothing to tidy" is a **first-class success** when the seed says so — silent
+skip of the sibling is still a process failure; free-close is the honest
+path. Finish the pair (including free-close) before opening any new
+implement unit.
 
 ## Model routing notes
 
@@ -231,12 +319,15 @@ process failure. Finish the pair before opening any new implement unit.
 - **One writer at a time.** Never parallelize implementation touching
   shared files or shared state. (`isolation: "worktree"` exists; the default
   stays serialized — tracker and tree are shared.)
-- **Reviewer is mandatory before push.** "Tests pass" is not a substitute.
+- **Reviewer is mandatory before push** on full-loop units. Free-close and
+  pure comment-nit Cleanup paths are the documented exceptions.
 - **No amend.** Fixes add commits; the audit trail matters.
 - **Worker never pushes, never closes, never claims, never writes the
   tracker.** You own git; beads-creator owns tracker writes.
 - **User sign-off mid-process → split at the gate.** Present between stages;
   no agent chain pauses for user input.
+- **No comment theater.** Phase B does not invent header/glyph/prose tidy
+  when the seed is empty or structural-only.
 
 ## When to skip the loop
 
@@ -260,13 +351,19 @@ religion. The user is the final reviewer.
 | No Phase A without a plan | provenance label present + design fresh | orchestrator, before claim |
 | Design came from a cross-model round | only work-plan stamps the label | orchestrator |
 | Pair exists | Cleanup sibling filed at precondition | orchestrator via beads-creator |
-| Pair order | Cleanup next after implement | orchestrator |
+| Cleanup starts unseeded | `cleanup-unseeded` + pending design at create | orchestrator via beads-creator |
+| Cleanup seed before claim | design has seed shape; no `cleanup-unseeded` | orchestrator, before Cleanup claim |
+| Empty seed → free close | `nothingToTidy: true` closes without coder/reviewer | orchestrator pair affinity |
+| Comment nits ≠ full Phase B | comment-only residue → micro-fix or inline, not Beck loop | orchestrator pair affinity |
+| Phase B stays on seed | diff ⊆ seeded candidates, or justified | reviewer |
+| Phase B smell rank | comments last; no invented comment-only commits | coder packet + reviewer |
+| Pair order | Cleanup next after implement (incl. free-close) | orchestrator |
 | Cross-model review | coder tier ≠ reviewer tier; else `degradedRun: true` | orchestrator + reviewer |
 | Plan adherence | diff ⊆ touch list, or justified | reviewer |
 | Commit discipline | `refactor:`→behavior order; micro-tidy ≤2 files, byte-identical tests | reviewer via `git log`/`git show` |
 | Refactor independence | AC has zero feature references | orchestrator at filing, reviewer re-checks |
 | Gate evidence | gate runs on the committed tree | worker + reviewer (independent reruns) |
-| Tests actually test | mutation check went red | reviewer |
+| Tests actually test | mutation check went red (or Phase B skip when tests untouched) | reviewer |
 | Push only green | phase PASS + gate green | orchestrator finalize |
 | Tracker writes | beads-creator / beads-reviewer only | standing rule |
 
@@ -277,7 +374,8 @@ report-field tracking, no hooks.
 
 "stop after this unit" · "skip X, do Y" · "use haiku here" · "approve anyway"
 (note override on the unit) · "escalate model" · "dry run" (show packets,
-spawn nothing).
+spawn nothing) · "force full Cleanup" (run Phase B even if seed empty — note
+override on the unit).
 
 ## Worker report format (demand it)
 
@@ -289,6 +387,8 @@ Tests: <N> passed, 0 failed; full suite <N> passed
 Commit: <sha>
 Deviations: <list or "none">
 Blockers: <list or "none">
+Follow-ups: <structural tidy debt for Cleanup seed, or "none">
+nothingToTidy: <true|false|n/a>   ← required on Phase B; true is success
 ```
 
 Incomplete → ask for reformat, or treat gaps as review findings.
@@ -298,14 +398,18 @@ Incomplete → ask for reformat, or treat gaps as review findings.
 ```
 <unit-id> <title>
   coder=<model> reviewer=<model> degraded=<yes|no> iterations=<n>
-  A: <verdict summary>  B: <verdict summary>
-  commits: <sha behavior> <sha refactor>  pushed: ✓  closed: <reason>
+  A: <verdict summary>  B: <verdict summary | free-close nothingToTidy | comment-nit path>
+  commits: <sha behavior> <sha refactor|none>  pushed: ✓  closed: <reason>
+  cleanupSeed: <N structural candidates | nothingToTidy>
 ```
 
 ## Gotchas
 
 - Never dispatch Phase A before the Cleanup sibling exists — the pair is the
-  unit of work.
+  unit of work (sibling may still be `cleanup-unseeded` until Phase A finalize).
+- Never claim an unseeded Cleanup — seed first, or free-close if empty.
+- Empty `cleanupCandidates[]` is a valid Phase A PASS outcome; it authorizes
+  free-close. Do not pressure the reviewer to invent candidates.
 - Reviewer without independently pasted gate output = invalid verdict;
   re-dispatch.
 - Memory lives in files (unit, findings, diff) — never in conversation
@@ -313,3 +417,5 @@ Incomplete → ask for reformat, or treat gaps as review findings.
 - A reviewer killed mid-run may have already committed legitimate micro-fixes
   — the re-dispatched review must validate and list them.
 - Worker/reviewer never push and never amend. Push is yours, per Finalize.
+- Comment theater (glyph-in-header, restated XML, map-only "refactor") is a
+  process failure when the seed did not ask for it — free-close instead.

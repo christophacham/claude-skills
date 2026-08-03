@@ -88,5 +88,5 @@ would eliminate.
   injected, chained args, unguarded user-level scope):
   [references/injection-examples.md](references/injection-examples.md)
 - Full platform semantics (substitution variables, kill-switch, `shell:
-  powershell`): `~/.claude/skills/skill-creator/references/claude-code-skills.md`
+  powershell`): `../skill-creator/references/claude-code-skills.md` (or `~/.claude/skills/skill-creator/references/claude-code-skills.md`)
   — section "Dynamic context injection".

@@ -163,16 +163,12 @@ Before finalizing a skill:
 
 For Claude Code skills, the local [references/claude-code-skills.md](references/claude-code-skills.md)
 is the first stop — fetch fresh docs only when it seems stale or the user
-asks for the latest behavior. The Claude Code docs index:
+asks for the latest behavior.
 
-```bash
-curl -fsSL https://code.claude.com/docs/llms.txt
-```
+### Documentation indexes (injected at load)
 
-If the user asks for the latest standard or cross-client compatibility, fetch the Agent Skills index first:
+!`curl -fsSL --connect-timeout 2 https://code.claude.com/docs/llms.txt 2>/dev/null || echo "(Claude Code docs index unavailable offline — using local references)"`
 
-```bash
-curl -fsSL https://agentskills.io/llms.txt
-```
+!`curl -fsSL --connect-timeout 2 https://agentskills.io/llms.txt 2>/dev/null || echo "(Agent Skills spec index unavailable offline — using local references)"`
 
 Then read the relevant pages from that index before editing.

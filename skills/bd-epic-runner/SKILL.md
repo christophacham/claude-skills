@@ -46,8 +46,11 @@ mid-walk is a bug.
      follow the repo's rule if it differs).
 2. Load the loop skill: repo-local `.claude/skills/*loop*` if present, else
    the global `work-loop`. Its per-unit cycle (design gate → claim →
-   Phase A → review → fix loop → Finalize → Cleanup sibling) replaces any
+   Phase A → review → fix loop → Finalize → **seed Cleanup** → Cleanup
+   sibling with triage: free-close / comment-nit / full Phase B) replaces any
    simplified inner loop — you supply only iteration order and epic doctrine.
+   Do not invent a parallel Cleanup path; seeded nothingToTidy free-close is
+   a successful pair finish.
 3. The epic contract is injected above. Read the **design field in full**.
    It is the authoritative doctrine for this body of work: invariants,
    removal shapes, non-negotiables. Treat every constraint there as a hard
@@ -66,7 +69,9 @@ mid-walk is a bug.
   touching the next. Never batch multiple units into one commit.
 - **Pair affinity.** After finalizing an implement unit, its `Cleanup:`
   sibling is next — it is guaranteed to exist (the loop's precondition files
-  it) and is now unblocked. Finish the pair before any new implement unit.
+  it), is seeded at Phase A finalize, and is now unblocked. Finish the pair
+  before any new implement unit — including free-close when the seed is
+  `nothingToTidy: true` (no coder/reviewer). Never claim `cleanup-unseeded`.
 - **Read before claim:** `bd show <id>` in full before every claim.
 - **Green gate before push.** Red means fix or stop — never push on a red
   gate.
