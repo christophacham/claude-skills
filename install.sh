@@ -1,9 +1,25 @@
 #!/bin/sh
 # Install claude-skills: skills -> ~/.claude/skills, agents -> ~/.claude/agents
-# Usage: ./install.sh [--project]   (--project installs into ./.claude/ instead)
+# Usage (local):  ./install.sh [--project]
+# Usage (remote): curl -fsSL https://raw.githubusercontent.com/christophacham/claude-skills/main/install.sh | sh
 set -e
 
-ROOT="$(cd "$(dirname "$0")" && pwd)"
+SCRIPT_DIR=""
+if [ -n "$0" ] && [ -f "$0" ]; then
+  SCRIPT_DIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd || echo "")"
+fi
+
+CLEANUP_TMP=""
+if [ -n "$SCRIPT_DIR" ] && [ -d "$SCRIPT_DIR/skills" ]; then
+  ROOT="$SCRIPT_DIR"
+else
+  echo "Downloading latest claude-skills from GitHub..."
+  TMP_DIR="$(mktemp -d 2>/dev/null || mktemp -d -t 'claude-skills')"
+  CLEANUP_TMP="$TMP_DIR"
+  curl -fsSL https://github.com/christophacham/claude-skills/archive/refs/heads/main.tar.gz | tar -xz -C "$TMP_DIR"
+  ROOT="$TMP_DIR/claude-skills-main"
+fi
+
 if [ "$1" = "--project" ]; then
   DEST="./.claude"
 else
@@ -37,9 +53,18 @@ if [ -d "$ROOT/agents/panelists" ]; then
     count=$((count + 1))
   done
 fi
+
 # default model pool -> $DEST/pool.md (repo-local .claude/pool.md wins at load)
-cp "$ROOT/pool.md" "$DEST/pool.md"
-echo "installed pool:   pool.md -> $DEST/pool.md"
+if [ -f "$ROOT/pool.md" ]; then
+  cp "$ROOT/pool.md" "$DEST/pool.md"
+  echo "installed pool:   pool.md -> $DEST/pool.md"
+fi
+
 # stale cleanup: pool used to live inside the skill dir
 rm -f "$DEST/skills/work-loop/pool.md"
+
+if [ -n "$CLEANUP_TMP" ]; then
+  rm -rf "$CLEANUP_TMP"
+fi
+
 echo "done: $count items installed into $DEST"

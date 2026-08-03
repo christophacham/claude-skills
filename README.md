@@ -6,28 +6,28 @@ The universal software engineering doctrine and skills suite for Claude Code: `w
 
 ## Quick Start & Installation
 
-Run the installer from inside this repository:
-
-### Global Install (All Projects)
-Installs skills to `~/.claude/skills/`, subagent profiles to `~/.claude/agents/`, and default pool config to `~/.claude/pool.md`:
+### Remote One-Liner Install (No clone needed)
+Installs directly from GitHub into `~/.claude/`:
 
 ```sh
 # macOS / Linux (POSIX)
-./install.sh
+curl -fsSL https://raw.githubusercontent.com/christophacham/claude-skills/main/install.sh | sh
 
 # Windows (PowerShell)
-.\install.ps1
+iwr -useb https://raw.githubusercontent.com/christophacham/claude-skills/main/install.ps1 | iex
 ```
 
-### Project-Local Install (Current Directory Only)
-Installs into `./.claude/` for the current project:
+### Local Repo Install
+Run from inside a cloned copy of this repository:
 
 ```sh
 # macOS / Linux (POSIX)
-./install.sh --project
+./install.sh             # Global (~/.claude/)
+./install.sh --project   # Project-local (./.claude/)
 
 # Windows (PowerShell)
-.\install.ps1 -Project
+.\install.ps1            # Global (~/.claude/)
+.\install.ps1 -Project   # Project-local (./.claude/)
 ```
 
 ---
