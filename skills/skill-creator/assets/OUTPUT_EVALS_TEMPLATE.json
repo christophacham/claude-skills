@@ -1,0 +1,17 @@
+{
+  "skill_name": "<skill-name>",
+  "evals": [
+    {
+      "id": "<short-id>",
+      "prompt": "<realistic user message>",
+      "expected_output": "<human-readable description of successful output>",
+      "files": [
+        "evals/files/<optional-input-file>"
+      ],
+      "assertions": [
+        "<specific observable requirement with concrete pass/fail evidence>",
+        "<another requirement; prefer mechanical checks when possible>"
+      ]
+    }
+  ]
+}
