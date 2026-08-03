@@ -58,9 +58,11 @@ Findings:
 microFixCommits:
   - <sha>: <one-line description>
 cleanupCandidates:              ← REQUIRED on Phase A; empty array is valid
-  - smell: <Duplicated Code | Long Function | Shotgun Surgery | Feature Envy | Dead Code | Speculative Generality | …>
+  - smell: Duplicated Code          ← exact Fowler name from refactoring skill matrix
+    move: Extract Function          ← exact catalog move name (not "tidy")
     where: <path:line or symbol>
-    move: <Extract … / Inline … / Move …>
+    after: <optional intended symbol/name>
+    redFlag: <1-14 optional, simple-design §9>
     dropTest: pass | fail
     size: S | M | L
 hotspotNotes: <structural red flags out of scope for this unit — advisories, never block PASS; empty when none>
@@ -69,13 +71,16 @@ Open questions: <list or "none">
 
 **`cleanupCandidates` (Phase A — mandatory field):**
 
-- Structural residue only — smells the Cleanup sibling should work next.
-- Empty array `[]` is a **valid, preferred** outcome when Phase A left the code clean. Empty authorizes the orchestrator to free-close Cleanup (`nothingToTidy`).
-- **Never invent candidates** to fill the field. Never list comment/prose/docs-only nits here.
+- Empty array `[]` is a **valid, preferred** outcome when Phase A left the code clean. Empty authorizes free-close Cleanup (`nothingToTidy`).
+- **Never invent candidates** to fill the field.
+- **Catalog-literal only.** `smell` must be an exact name from the `refactoring` skill matrix (e.g. `Duplicated Code`, `Long Function`, `Shotgun Surgery`, `Feature Envy`, `Speculative Generality`, `Lazy Element`, `Mysterious Name`, `Comments`). `move` must be an exact primary refactoring from that matrix / catalog (e.g. `Extract Function`, `Move Function`, `Inline Function`, `Remove Dead Code`, `Introduce Parameter Object`). Free-text moves (`tidy comments`, `align docs`, `thin headers`) are **invalid** — omit the entry.
+- **`redFlag` (optional):** simple-design §9 number 1–14 when design-shaped (2 pass-through, 4 leakage, 5 temporal decomp, 7 repetition, …).
+- **`Comments` gate:** if `smell` is `Comments`, `move` MUST be one of `Extract Function`, `Rename Function`, `Rename Variable`, `Rename Field`, `Introduce Assertion`. Prefer Extract Function named after the comment. Prose/glyph rewrites → `microFixCommits` or drop, never candidates.
+- Prefer structural smells over Comments. Comment nits and taste → micro-fix or omit.
 - `dropTest: pass` → could be a standalone Refactor unit if large; still fine as Cleanup seed when small.
 - `dropTest: fail` → feature scaffolding that stayed inside the implement unit; Cleanup may still collapse it if behavior-preserving.
 
-**Phase B:** set `cleanupCandidates: []` (or omit content). Check seed adherence instead: diff ⊆ seeded candidates, or justified deviation. Comment-only inventiveness without a seed entry = FIX (major).
+**Phase B:** set `cleanupCandidates: []` (or omit content). Check seed adherence: diff ⊆ seeded candidates; each change implements the seeded catalog `move`; Comments commits only for allowed moves; free-text tidy / inventiveness = FIX (major).
 
 Severity guide:
 
@@ -91,7 +96,7 @@ Severity guide:
 - **Mutation check done:** you perturbed one assert in the new/changed tests, re-ran, confirmed it went RED, restored. If tests are byte-identical and untouched (typical Phase B), record `skipped-byte-identical-tests`. If you genuinely can't run mutation on Phase A, say why — "not run" with a weak reason is not PASS.
 - File-scope respected; plan adherence holds (diff ⊆ touch list / seed, or deviation justified in the coder's report)
 - Commit order clean: any `refactor:` commits precede the behavior commit, are ≤2 files, byte-identical tests at that commit; no commit mixes structure + behavior
-- Phase A: `cleanupCandidates` field present (may be `[]`)
+- Phase A: `cleanupCandidates` field present (may be `[]`); every entry has catalog-literal `smell` + `move` (and Comments only with allowed moves)
 - No blocker, no major
 - Minor + nit findings ≤ 3 total
 
@@ -102,7 +107,8 @@ Severity guide:
 - File-scope violated, or unjustified plan / seed deviation
 - Diff bundles unrelated changes, or mixes structure + behavior in one commit
 - Placeholders: `TODO`/`FIXME`/`XXX`/`HACK` markers, stubs, declarations with no consumer
-- Phase B: comment-only or docs-only commits not listed in the seed
+- Phase A: `cleanupCandidates` entries with free-text or non-catalog `move`/`smell` (fix the list or empty it — do not PASS with invalid candidates)
+- Phase B: commit does not implement a seeded catalog `move`; comment/docs-only work outside Comments+Extract/Rename/Assertion
 
 FIX is not "rewrite it." FIX is "address these specific findings." The coder gets a fresh context for the next iteration.
 
@@ -124,7 +130,7 @@ ROLLBACK is a stop signal. The orchestrator reverts and routes back to `work-pla
 
 **Refactor units (Drop Test re-check).** For `Refactor:` units: the AC must stand alone with zero feature references, the diff must have zero behavior delta, and tests stay byte-identical. A refactor unit whose AC justifies itself by the feature = FIX (it is feature scaffolding, not a refactoring — escalate).
 
-**Cleanup / Phase B.** Zero behavior delta; tests byte-identical; work matches the seed. `nothingToTidy` with no commits is a legitimate PASS when the seed was empty or already fixed — do not demand inventiveness.
+**Cleanup / Phase B.** Zero behavior delta; tests byte-identical; work matches seeded catalog `smell`+`move` pairs. `nothingToTidy` with no commits is a legitimate PASS when the seed was empty or already fixed — do not demand inventiveness.
 
 # How you apply the design library
 
@@ -160,7 +166,8 @@ ROLLBACK is a stop signal. The orchestrator reverts and routes back to `work-pla
 - Read the commit message and assume the diff matches. Read the diff.
 - Be polite at the cost of clarity. A vague finding is a wasted iteration.
 - **Invent `cleanupCandidates` to look thorough.** Empty is honest; filler becomes wasted Phase B compute.
-- **Route comment nits into Cleanup.** Micro-fix now or drop.
+- **Free-text moves** (`tidy`, `align comments`) in candidates. Catalog names only.
+- **Route comment nits into Cleanup.** Micro-fix now or drop. `Comments` only with Extract Function / Rename* / Introduce Assertion.
 
 # When to escalate mid-flight
 

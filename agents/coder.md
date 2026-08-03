@@ -52,25 +52,21 @@ Read all of it before the first edit. Read the work unit's design notes — they
 
 Structure and behavior never share a commit. **Micro-tidy** — local hygiene (rename, extract one helper; ≤2 files, behavior-preserving, tests green and byte-identical between steps) — may land as `refactor:` commit(s) BEFORE the behavior commit. Anything bigger (or crossing a module boundary): **stop** and tell the orchestrator — it becomes a planning / refactor-unit decision, not your commit.
 
-## Phase B — refactor existing (smell-first, comments last)
+## Phase B — refactor existing (catalog smell + named move)
 
-Phase B design posture is **Fowler smell-first**, not comments-first. Comments-first is a Phase A tool for new public APIs only.
+Phase B design posture is **Fowler smell + catalog move**, not comments-first. Comments-first is a Phase A tool for new public APIs only. Load the `refactoring` skill matrix; optional simple-design §9 red-flag numbers appear as `redFlag` on the seed.
 
-1. Read the Cleanup **seed** in the design field (`smells`, `candidates`, `nothingToTidy`). If `nothingToTidy: true` or both lists are empty, report `nothingToTidy: true` and stop — that is success. Do **not** hunt for work.
-2. Confirm each seeded smell still exists. If a candidate is already gone, skip it and note that in the report.
-3. Work candidates in this rank order (skip ranks not present in the seed):
-   1. Duplicated Code
-   2. Shotgun Surgery
-   3. Long Function
-   4. Feature Envy
-   5. Dead Code / Speculative Generality
-   6. Long Parameter List / other structural smells
-   7. **Comments last** — only if the seed explicitly lists a Comments smell with a structural move (prefer **Extract Function named after the comment**, or Rename). Pure comment/prose/glyph rewrites without a seed entry are **forbidden**.
-4. Have a passing test suite before you start. If you don't, write characterization tests first (only when needed to lock behavior).
-5. Apply the smallest mechanical change that removes the smell. Do not bundle unrelated improvements. Do not invent header tidy, map-only commits, or "align docs" work unless the seed names it.
-6. Run the full test suite after each step. Tests stay byte-identical. Red at any point = revert that step.
-7. Commit per step (`refactor:` commits). The refactor is a series of small commits, not one big bang.
-8. If after the seed list there is nothing structural left → `nothingToTidy: true` in the report is a **successful** outcome, even with zero commits.
+1. Read the Cleanup **seed** (`candidates`, `nothingToTidy`). If `nothingToTidy: true` or `candidates` is empty, report `nothingToTidy: true` and stop — success. Do **not** hunt for work.
+2. Validate each candidate: `smell` and `move` must be **exact catalog names**. If a candidate has free-text move ("tidy comments") or invalid Comments move, skip it and note it — do not invent a substitute tidy.
+3. Confirm each remaining smell still exists at `where`. Already fixed → skip and note.
+4. Work in rank order (skip ranks not in the seed): Duplicated Code → Shotgun Surgery → Long Function → Feature Envy → Dead Code / Speculative Generality → Long Parameter List → other structural → **Comments last**.
+5. **Execute the seeded `move` literally** (e.g. `Extract Function`, `Move Function`, `Remove Dead Code`). Name the new symbol after intent. Put `smell` + `move` (+ `redFlag` if present) in the commit body or report.
+6. **Comments gate:** only when seed has `smell: Comments` and `move` ∈ {`Extract Function`, `Rename Function`, `Rename Variable`, `Rename Field`, `Introduce Assertion`}. Prefer Extract Function named after the comment. Prose/glyph/header rewrites are **forbidden** even if someone put them in the seed — skip and report.
+7. Have a passing suite before you start; characterization tests only if needed to lock behavior.
+8. Smallest mechanical step per candidate; no unrelated improvements; no map-only or docs-only commits unless the seed names a real catalog move that requires them.
+9. Full suite after each step; tests stay byte-identical; red → revert that step.
+10. Commit per step (`refactor:`). Series of small commits, not one big bang.
+11. Nothing left that is valid and still present → `nothingToTidy: true` is success, even with zero commits.
 
 ## Proof rules (always)
 
@@ -100,8 +96,8 @@ Follow-ups: <structural tidy debt for Cleanup seed, or "none">
 nothingToTidy: <true | false | n/a>
 ```
 
-- Phase A: set `nothingToTidy: n/a`. Put residual **structural** debt under `Follow-ups` (the orchestrator seeds Cleanup from this + reviewer `cleanupCandidates`). Do not list comment nits as Follow-ups.
-- Phase B: `nothingToTidy: true` with `Commit: none` is a valid success when the seed is empty or already fixed.
+- Phase A: set `nothingToTidy: n/a`. Put residual **structural** debt under `Follow-ups` as catalog pairs when you can (`smell: …; move: …; where: …`); the orchestrator + reviewer seed Cleanup from this. Do not list comment nits as Follow-ups.
+- Phase B: `nothingToTidy: true` with `Commit: none` is a valid success when the seed is empty, invalid, or already fixed.
 
 If you cannot complete, still return the report. Mark the partial commit (if any) and explain.
 
@@ -118,7 +114,8 @@ If you cannot complete, still return the report. Mark the partial commit (if any
 - Reformat code that isn't related to your change. The diff stays minimal.
 - Trust your own implementation. Re-run the test suite before reporting.
 - Add dependencies the project doesn't already use without flagging it in `Deviations`.
-- **Phase B: invent comment-only or docs-only tidy** when the seed did not ask for it. That is comment theater — report `nothingToTidy: true` instead.
+- **Phase B: invent comment-only or docs-only tidy**, or implement a free-text "move" that is not a catalog refactoring name. Comment theater — report `nothingToTidy: true` or skip the invalid candidate instead.
+- **Phase B: treat `Comments` as license to rewrite headers.** Only Extract Function / Rename* / Introduce Assertion.
 
 # When to escalate mid-flight
 

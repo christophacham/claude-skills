@@ -64,8 +64,10 @@ exist). Extract and hold for the whole session:
    always its own unit, worked immediately after its implement unit.
    **Cleanup is seeded, not scavenged:** Phase A finalize writes the Cleanup
    design from reviewer `cleanupCandidates` + coder Follow-ups + structural
-   `hotspotNotes`. Empty seed → free close (`nothingToTidy`). Comment-only
-   residue never opens a full Phase B loop.
+   `hotspotNotes`, each as catalog-literal Fowler smell + move (optional
+   simple-design red-flag #). Empty or invalid seed → free close
+   (`nothingToTidy`). `Comments` only with Extract/Rename/Assertion moves;
+   prose residue never opens a full Phase B loop.
 3. **Independent review.** A different model tier reviews the committed diff
    before anything pushes. "Tests pass" is not a review.
 4. **Tidy First.** Structure and behavior never share a commit. Micro-tidy
@@ -186,19 +188,26 @@ with a **WORKER_PACKET**:
      success path directly, don't rely on the gate happening to touch it.
   5. **Never stop mid-flow** — emit the structured report the moment gates
      pass; an unfinished report is a failed dispatch.
-- **Phase B only — smell rank (mandatory in the packet):**
-  1. Work **only** the seeded `smells` / `candidates` from the Cleanup design.
-     Do not hunt for extra work.
-  2. Rank (Fowler): Duplicated Code → Shotgun Surgery → Long Function →
-     Feature Envy → Dead Code / Speculative Generality → Long Parameter List
-     → other structural smells.
-  3. **Comments last** — and only if the seed explicitly lists a Comments
-     smell with a structural move (prefer Extract Function named after the
-     comment). Comment-only rewrites without a seed entry are forbidden.
-  4. If every seeded candidate is gone or already fixed → report
+- **Phase B only — catalog moves (mandatory in the packet):**
+  1. Work **only** valid seeded `candidates` (see Cleanup seed catalog
+     rules). Do not hunt for extra work.
+  2. Rank by Fowler smell: Duplicated Code → Shotgun Surgery → Long Function
+     → Feature Envy → Dead Code / Speculative Generality → Long Parameter
+     List → other structural smells → Comments last.
+  3. Each candidate must be executed as its catalog **`move`** exactly
+     (e.g. `Extract Function`, not "tidy"). Cite smell + move in the commit
+     body or report. Optional `redFlag: N` from simple-design §9 when design-
+     shaped.
+  4. **Comments** only if seed has `smell: Comments` **and**
+     `move` ∈ {`Extract Function`, `Rename Function`, `Rename Variable`,
+     `Rename Field`, `Introduce Assertion`}. Prefer Extract Function named
+     after the comment. Prose/glyph/header rewrites are never a valid move.
+  5. Invalid or missing catalog fields on a candidate → skip it and note in
+     the report (orchestrator should have free-closed; do not invent work).
+  6. If every seeded candidate is gone, invalid, or already fixed → report
      `nothingToTidy: true` and stop. That is a successful Phase B outcome.
-  5. Default success is structure or honest nothing-to-tidy — never invent
-     glyph/header/prose tidy to fill the dispatch.
+  7. Default success is a named catalog step or honest nothing-to-tidy —
+     never invent glyph/header/prose tidy to fill the dispatch.
 - report format (below). Read the report before dispatching anything else.
 
 ### 2. Independent review
@@ -212,11 +221,17 @@ before behavior, micro-tidy byte-identical at that commit, mixed
 structure+behavior = FIX); the committed diff is the unit of truth.
 
 **Phase A reviews** must demand `cleanupCandidates[]` in the verdict (empty
-array is valid and authorizes nothing-to-tidy). Comment nits belong in
-`microFixCommits` **now**, not as Cleanup fuel.
+array is valid and authorizes nothing-to-tidy). Every non-empty entry must
+use **catalog-literal** Fowler `smell` + catalog-literal `move` (refactoring
+skill matrix / reference); optional `redFlag` = simple-design §9 number.
+Reject free-text moves ("tidy comments", "align docs") — drop the entry or
+FIX the verdict as incomplete. Comment nits belong in `microFixCommits`
+**now**, not as Cleanup fuel.
 
 **Phase B reviews** check: zero behavior delta, tests byte-identical, diff ⊆
-seeded candidates (or justified), no comment-only inventiveness.
+seeded candidates (or justified), each landed change maps to a seeded
+catalog `move`, no comment-only inventiveness, Comments commits only when
+move is Extract Function / Rename* / Introduce Assertion.
 
 - **PASS** requires: every AC met AND zero blocker/major findings AND
   independent gate reruns green AND mutation check went red (Phase A; Phase B
@@ -257,33 +272,56 @@ FRESH worker — independence, not punishment.
    beads-creator; do this before pair affinity runs):
 
    Merge into the Cleanup design field, in this priority order:
-   1. reviewer `cleanupCandidates[]` (structural only)
-   2. coder report `Follow-ups` / structural deviations that are tidy debt
-   3. reviewer structural `hotspotNotes` that are in-scope for this deliverable
+   1. reviewer `cleanupCandidates[]` that pass the **catalog rules** below
+   2. coder report `Follow-ups` rewritten into catalog smell+move form (drop
+      any that cannot be named from the refactoring matrix)
+   3. reviewer structural `hotspotNotes` in-scope, only if you can name smell
+      + move (and optional redFlag)
 
-   **Exclude from the seed:** comment/prose/docs nits, taste renames without
-   a smell, anything the reviewer already landed as `microFixCommits`.
+   **Exclude from the seed:** free-text "tidy" with no catalog move;
+   comment/prose/docs nits; `smell: Comments` with a non-allowed move;
+   taste renames without `Mysterious Name` + Rename*; anything already in
+   `microFixCommits`.
+
+   **Catalog rules (every candidate — reject if any fail):**
+   1. **`smell`** — exact Fowler name from the `refactoring` skill matrix
+      (e.g. `Duplicated Code`, `Long Function`, `Shotgun Surgery`,
+      `Feature Envy`, `Speculative Generality`, `Lazy Element`,
+      `Mysterious Name`, `Comments`, …). Not a paraphrase.
+   2. **`move`** — exact primary refactoring name from that matrix / catalog
+      (e.g. `Extract Function`, `Move Function`, `Inline Function`,
+      `Remove Dead Code`, `Introduce Parameter Object`). Not "cleanup",
+      "tidy", "align comments", "thin docs".
+   3. **`where`** — path:line or symbol.
+   4. **`redFlag`** (optional) — integer 1–14 from simple-design §9 when the
+      issue is design-shaped (e.g. 2 pass-through, 4 leakage, 7 repetition).
+   5. **`Comments` gate** — if `smell` is `Comments`, then `move` MUST be one
+      of: `Extract Function`, `Rename Function`, `Rename Variable`,
+      `Rename Field`, `Introduce Assertion`. Otherwise drop the candidate
+      (prose rewrite is not a refactoring).
+   6. Prefer structural smells over Comments. Empty after filtering →
+      `nothingToTidy: true`.
 
    **Cleanup seed shape** (write this into `--design`):
 
    ```text
    seed: from <implement-id> @ <phaseA-sha>
    nothingToTidy: true|false
-   smells:
-     - <SmellName>: <path:line or symbol> — <one line>
    candidates:
-     - move: <Extract X / Inline Y / …>
-       where: <path or symbol>
-       dropTest: pass|fail
-       size: S|M|L
+     - smell: Duplicated Code
+       move: Extract Function
+       where: src/…/CliRunner.cs:EmitInspect
+       after: HandleDllNotFound helper
+       redFlag: 7
+       dropTest: pass
+       size: S
    ```
 
    Then:
-   - If `cleanupCandidates` + structural follow-ups + in-scope structural
-     hotspots are all empty → set `nothingToTidy: true`, clear smells/
-     candidates, remove `cleanup-unseeded`, add label `cleanup-seeded` (or
-     leave only the design). Pair affinity will free-close.
-   - Else → set `nothingToTidy: false`, fill smells/candidates, remove
+   - If no candidates survive catalog filtering → set `nothingToTidy: true`,
+     `candidates: []`, remove `cleanup-unseeded`, add `cleanup-seeded`.
+     Pair affinity will free-close.
+   - Else → set `nothingToTidy: false`, write only valid candidates, remove
      `cleanup-unseeded`, add `cleanup-seeded`.
 
    Do **not** stamp work-plan `designed` on Cleanup for this seed — the seed
@@ -298,9 +336,10 @@ Phase B** (read the seeded design):
 
 | Cleanup design | Path |
 |---|---|
-| `nothingToTidy: true` (or empty smells **and** empty candidates after seed) | **Free close** via beads-creator: claim optional, close with reason `nothing to tidy — Phase A left no structural residue`, `bd dolt push`. No coder, no reviewer, no gate re-run beyond what Phase A already proved. |
-| Only comment/doc/prose nits in the seed (no structural smell) | **Do not open full Phase B.** Prefer: already fixed as Phase A `microFixCommits`, or one orchestrator/inline docs commit + gate. Then close Cleanup. Never pay full dual-harness + mutation for a glyph or restated header. |
-| ≥1 structural smell / candidate | **Full Phase B loop:** coder with `refactoring` + `simple-design`, behavior-preserving, tests byte-identical, WORKER_PACKET smell-rank rules, reviewer checks zero behavior delta and seed adherence. |
+| `nothingToTidy: true` (or empty `candidates` after catalog filter) | **Free close** via beads-creator: claim optional, close with reason `nothing to tidy — Phase A left no structural residue`, `bd dolt push`. No coder, no reviewer, no gate re-run beyond what Phase A already proved. |
+| Only invalid / non-catalog / prose "moves" left | Treat as empty → free-close (or micro-fix on Phase A). Never open full Phase B. |
+| Only `Comments` with allowed Extract/Rename/Assertion moves, no structural smells | Full Phase B **only if** you accept paying the loop for that extract; prefer doing Extract as micro-tidy on Phase A when ≤2 files. Glyph/header prose alone → free-close. |
+| ≥1 valid catalog candidate (structural preferred) | **Full Phase B loop:** coder with `refactoring` + `simple-design`, each commit implements a seeded `move`, tests byte-identical, reviewer checks zero behavior delta + catalog adherence. |
 
 "Nothing to tidy" is a **first-class success** when the seed says so — silent
 skip of the sibling is still a process failure; free-close is the honest
@@ -353,10 +392,12 @@ religion. The user is the final reviewer.
 | Pair exists | Cleanup sibling filed at precondition | orchestrator via beads-creator |
 | Cleanup starts unseeded | `cleanup-unseeded` + pending design at create | orchestrator via beads-creator |
 | Cleanup seed before claim | design has seed shape; no `cleanup-unseeded` | orchestrator, before Cleanup claim |
+| Catalog-literal smell+move | every candidate: Fowler smell name + catalog move name | orchestrator at seed; reviewer on Phase A |
+| Comments only with Extract/Rename/Assertion | else drop candidate / free-close | orchestrator + reviewer + coder |
 | Empty seed → free close | `nothingToTidy: true` closes without coder/reviewer | orchestrator pair affinity |
-| Comment nits ≠ full Phase B | comment-only residue → micro-fix or inline, not Beck loop | orchestrator pair affinity |
+| Comment nits ≠ full Phase B | prose/glyph → micro-fix or free-close, not Beck loop | orchestrator pair affinity |
 | Phase B stays on seed | diff ⊆ seeded candidates, or justified | reviewer |
-| Phase B smell rank | comments last; no invented comment-only commits | coder packet + reviewer |
+| Phase B implements catalog move | commit matches seeded `move` name; no free-text tidy | coder packet + reviewer |
 | Pair order | Cleanup next after implement (incl. free-close) | orchestrator |
 | Cross-model review | coder tier ≠ reviewer tier; else `degradedRun: true` | orchestrator + reviewer |
 | Plan adherence | diff ⊆ touch list, or justified | reviewer |

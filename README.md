@@ -3,7 +3,7 @@
 The universal work doctrine and engineering skills suite for Claude Code: `work-loop` + `work-plan` + foundational design, architecture, and testing skills, plus the subagent roster they dispatch. This is **how we work in every repo**, not a per-project overlay:
 
 - **Design before build** — no implementation without a plan-stamped design (cross-model 3-panelist round; only `work-plan` stamps provenance).
-- **Beck pairs** — every non-trivial unit is an implement unit + a Cleanup sibling (make it work → make it right), worked back-to-back.
+- **Beck pairs** — every non-trivial unit is an implement unit + a Cleanup sibling (make it work → make it right), worked back-to-back. Cleanup is **seeded** from Phase A `cleanupCandidates` as catalog-literal Fowler **smell + move** (optional simple-design red-flag #); empty/invalid seed free-closes (`nothingToTidy`). `Comments` only with Extract Function / Rename / Introduce Assertion — no prose theater, no full loop for glyphs/headers.
 - **TDD + Tidy First** — red→green for behavior; structure and behavior never share a commit.
 - **Independent cross-model review** — a different model tier audits the committed diff (PASS/FIX/ROLLBACK, mutation check) before anything pushes.
 - **Drop-Tested refactors** — a refactor earns its own unit only if it would merge with the feature cancelled.
@@ -15,7 +15,7 @@ Repo bindings — gate command, commit format, map generator, non-negotiables �
 ## Skills Roster
 
 ### Work Loop & Planning Core
-- **`skills/work-loop/`**: One unit cycle — design gate → claim → Phase A (TDD) → review → fix → Finalize → Cleanup pair.
+- **`skills/work-loop/`**: One unit cycle — design gate → claim → Phase A (TDD) → review → fix → Finalize → seed Cleanup → pair triage (free-close / comment-nit / full Phase B).
 - **`skills/work-plan/`**: Design before build — 3-panelist design rounds, decomposition, Drop-Test refactors, provenance stamping, flows A/B/C.
 - **`skills/bd-epic-runner/`**: Walk an epic's children to done through the loop (pair affinity, ready order).
 - **`skills/dynamic-context-injection/`**: Auditor + teacher for load-time state injection in skills.
@@ -57,7 +57,7 @@ The names are deliberately NOT `loop`/`plan`: a personal skill would shadow both
 
 ## The pool
 
-`pool.md` (repo root) is the global default model pool, installed to `~/.claude/pool.md`. A repo's own `.claude/pool.md` overrides it at load time — pools are per-repo cost decisions that travel with the repo. The skills inject the pool at load (repo first, then global, then loud failure) — the model reads state, it doesn't fetch it. Pin `coder:` / `reviewer:` / `beads:` or let class-based resolution pick. Rule in one sentence: coder and reviewer must be different models whenever the pool allows (same-tier is a valid degraded run, flagged `degradedRun: true`).
+`pool.md` (repo root) is the global default model pool, installed to `~/.claude/pool.md`. A repo's own `.claude/pool.md` overrides it at load time — pools are per-repo cost decisions that travel with the repo. The skills inject the pool at load (repo first, then global, then loud failure) — the model reads state, it doesn't fetch it. Pin `coder:` / `reviewer:` / `beads:` or let class-based resolution pick. **Pins must name `pool:` members** (out-of-pool pins fail loudly). Include a weak tier (e.g. `haiku`) if you want cheap trivial / dead-code-only Cleanup coding without leaving the pool. Rule in one sentence: coder and reviewer must be different models whenever the pool allows (same-tier is a valid degraded run, flagged `degradedRun: true`); free-close Cleanup skips agents entirely.
 
 ## Overlay + extension points
 
