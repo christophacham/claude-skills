@@ -1,333 +1,236 @@
 ---
 name: work-plan
-description: Design and decompose work before it ships — 3-panelist cross-model design round (deep-module / minimal-diff / seam) judged into one plan, Drop-Tested refactor units with catalog-literal Fowler smell+move from the refactoring skill, design-provenance stamping (only this skill stamps), flows for new features / mandatory epic checks / mid-loop replans. Beads (bd) is the canonical tracker; output adapts to gh/Linear/markdown. Use before any non-trivial change ("plan X", "decompose this"), when a new epic is created (mandatory design check before children are filed or claimed), or when a unit's design is empty/stale (called from work-loop). Not for implementation (use work-loop), one-line fixes, or architecture Q&A (use architecture-design).
+description: Design and decompose work before it ships — sized cross-model design panel (deep-module / minimal-diff / seam), Drop-Test prep refactors, AC proof lines, design provenance. Beads (bd) is the canonical tracker; output adapts to gh/Linear/markdown. Use before any non-trivial change ("plan X", "decompose this"), when a new epic needs a design check, or when work-loop finds empty/stale design (Flow C). Not for implementation (use work-loop), one-line fixes, or architecture Q&A (use architecture-design).
 argument-hint: [feature-or-unit]
 shell: bash
 ---
 
 # work-plan — design before build
 
-You are the planning orchestrator. Three independent read-only panelists
-propose; you judge and synthesize ONE plan, write designs onto units, and
-stamp provenance. Execution belongs to the `work-loop` skill — this skill
-ends at an approved graph.
+You are the planning orchestrator. Independent read-only panelists propose;
+you judge and synthesize ONE plan, write designs onto units, and stamp
+provenance. Execution belongs to `work-loop` — this skill ends at an
+approved graph (or Flow C design write).
 
 **Overlay rule:** if the repo ships its own plan skill (a
 `.claude/skills/*plan*/SKILL.md` whose name is NOT `work-plan`), stop here —
-load and follow that skill instead. Repo doctrine always wins over this core.
+load and follow that skill instead.
 
-## State at load (injected)
+## State at load (injected — read it, don't re-run it)
 
 !`cat "${CLAUDE_PROJECT_DIR}/.claude/pool.md" 2>/dev/null || cat ~/.claude/pool.md 2>/dev/null || echo "(no pool.md — panel tiers fall back to inherit)"`
 
 ### Tree state
 !`git status --short --branch 2>/dev/null || echo "(not a git repo)"`
 
+### Map trust (mechanical spot-check — not an agent)
+!`bash "${CLAUDE_PROJECT_DIR}/.claude/skills/work-plan/scripts/map-drift-check.sh" 2>/dev/null || bash ~/.claude/skills/work-plan/scripts/map-drift-check.sh 2>/dev/null || bash "$(dirname "$0")/scripts/map-drift-check.sh" 2>/dev/null || bash skills/work-plan/scripts/map-drift-check.sh 2>/dev/null || echo "MAP_TRUST
+mapPresent: false
+claimsChecked: []
+verdict: full-scan
+notes: map-drift script not found; panelists full-scan"`
+
+Paste the full `MAP_TRUST` block into every PANEL_PACKET. Fail open:
+uncertainty → `partial` or `full-scan`, never invent `trust-map`.
+
+| MAP_TRUST verdict | Panelist scan |
+|---|---|
+| `trust-map` | Map first, then deep-read only candidate touch modules; no global re-spot-check |
+| `partial` | Map + re-check implicated modules against the live tree |
+| `full-scan` / map missing | Live tree is the source of truth |
+
 ## Conventions discovery (every flow start)
 
 Read the repo's conventions file (`CLAUDE.md`). Extract:
 
 - **Non-negotiables** — product rules every design must respect.
-- **Map generator** (optional) — if the repo ships one (a script producing
-  `module-index.md` / `hot-spots.md`-style pages), refresh the map FIRST.
-  Commit the refresh as its own docs commit **if you own commits**
-  (main-session orchestrator); invoked without commit authority (dry run,
-  sub-orchestrator) → regenerate and report, the caller commits.
+- **Map generator** (optional) — if present, refresh the map FIRST. Commit the
+  refresh as its own docs commit when you own commits; otherwise regenerate
+  and report for the caller to commit.
 - **Design-provenance label** — default `designed`.
 - **Tracker** — bd (canonical), gh, Linear, or markdown files.
 
-## Fixed-tier mechanical roles (pool-independent)
-
-These jobs always dispatch `model=haiku`. They are **not** pool pins, do **not**
-need to appear in `pool:`, and must not be retargeted to coder/reviewer tiers
-for "quality." Cheap + bounded is the point.
-
-| Role | When | Output |
-|---|---|---|
-| **map-drift** | Repo has a codebase map (generator or checked-in map pages) | `MAP_TRUST` report (below) |
-| **beads-creator** / **beads-reviewer** | Any tracker write or hygiene sweep | tracker mutations only |
-
-If haiku is unavailable in the runtime, fail loudly once and ask — do not
-silently promote map-drift or beads to a pool design tier.
-
-### map-drift pre-pass (before every design round that has a map)
-
-When conventions discovery found a map (or map generator produced one), run
-**one** agent **before** the panel:
-
-```
-Agent(subagent_type="general-purpose", model=haiku, run_in_background: false)
-```
-
-Prompt: map page paths + implicated scope (feature/unit AC + any known paths);
-spot-check 2–5 concrete map claims against the live tree; no design proposals;
-no full-repo scan unless the map is missing. Demand this report shape:
-
-```text
-MAP_TRUST
-mapPresent: true|false
-claimsChecked:
-  - claim: <map assertion>
-    path: <path>
-    live: match|mismatch|missing
-verdict: trust-map | partial | full-scan
-notes: <one line; on uncertainty prefer partial/full-scan>
-```
-
-**Fail open:** uncertainty → `partial` or `full-scan`, never `trust-map`.
-Paste the full `MAP_TRUST` block into every PANEL_PACKET. Skip this pre-pass
-only when no map exists (then panelists full-scan as today).
-
 ## The panel
 
-Three named read-only agents (installed beside this skill under
-`agents/panelists/`; a repo's same-named project panelists shadow them; if
-absent everywhere, `general-purpose` with the lens pasted in), one per lens,
-dispatched in ONE parallel batch — pool members up to 3, distinct tiers:
+Named read-only agents (installed under `agents/panelists/`; repo shadows win;
+if absent, `general-purpose` with the lens pasted in). Dispatch in ONE
+parallel batch — pool members, distinct tiers when possible.
 
-- **deep-module** — one deep module with a clear owner; maximize information
-  hiding; minimize surface area. Lens skills: `simple-design` (+ `refactoring`
-  when proposing refactorCandidates).
-- **minimal-diff** — fewest honest touch points; no incidental cleanup, no
-  opportunistic refactors. Lens skill: `refactoring`.
-- **seam** — a behavior-preserving indirection that makes the change live in
-  one place without rippling. Lens skill: `refactoring` (+ `architecture-design`
-  when crossing layers).
+| Lens | Aim | Skills by name |
+|---|---|---|
+| **deep-module** | One deep module, clear owner, small surface | `simple-design` (+ `refactoring` if proposing prep) |
+| **minimal-diff** | Fewest honest touch points; no opportunistic refactors | `refactoring` |
+| **seam** | Behavior-preserving indirection so the change lives in one place | `refactoring` (+ `architecture-design` if crossing layers) |
 
-**There is no separate refactoring agent.** Live-tree scan for prep structure
-is the panelists' job. You (the judge) never invent refactor candidates that
-no panelist listed.
+**There is no separate refactoring agent.** Panelists scan the live tree;
+you never invent prep candidates they did not propose.
 
-The tension is the point. Each PANEL_PACKET includes: exact feature/unit
-scope + AC intent (verbatim) · implicated files/symbols (you infer; if
-unsure, say so) · sibling-ownership map (never re-file another unit's scope)
-· warning that hotspot churn is historical and deleted files may appear ·
-lens skill names by name (frontmatter may not auto-load) · catalog rules
-below · the scored question:
+### Panel size (default)
 
-> What behavior-preserving preparatory structure work collapses Shotgun
-> Surgery into one touch point before we switch hats to the feature?
+| Scope | Size |
+|---|---|
+| Flow C — unit mid-loop | **1** (strongest fit lens) |
+| Flow A — new feature | **2** (minimal-diff + deep-module, or seam if coupling is the issue) |
+| Flow B — epic / program | **3** (all lenses), unless every sub-epic already finished Flow B → then 2 |
+| Trivial single-unit scope | **1** |
 
-**PANEL_PACKET must also say (verbatim intent):**
+### PANEL_PACKET (every dispatch)
+
+Include: exact feature/unit scope + AC intent (verbatim) · implicated
+files/symbols (say when unsure) · sibling-ownership map · MAP_TRUST block ·
+lens skill names · this scored question:
+
+> What behavior-preserving preparatory structure collapses Shotgun Surgery
+> into one touch point before we switch hats to the feature?
+
+Also (verbatim intent):
 
 ```text
-Skills (load by name): refactoring (required for any refactorCandidates entry);
-  simple-design (red flags §9; deep-module lens always).
-Scan: you are the code scan — MAP_TRUST + map first (if present), then live
-  files/symbols under where. No candidates from titles alone. No global map
-  re-spot-check when MAP_TRUST verdict is trust-map. The judge will not invent
-  refactors.
-Each refactorCandidates entry MUST use catalog-literal smell + move from the
-  refactoring skill matrix; optional redFlag 1–14 from simple-design §9.
-Comments smell → move only Extract Function | Rename Function | Rename Variable
-  | Rename Field | Introduce Assertion.
-Drop Test every candidate: pass = standalone Refactor unit AC (zero feature
-  refs); fail = scaffolding or discard.
+Skills (load by name): refactoring (for any prep debt); simple-design (deep-module).
+Scan: MAP_TRUST + map first if present, then live files/symbols. No candidates
+  from titles alone. Judge will not invent prep work.
+Prep candidates: concrete where (path:symbol); structural change only
+  (extract/move/inline/remove dead/…). Prose/glyph/docs are not prep work.
+  Comments → only Extract or Rename that removes the comment's job.
+Drop Test each candidate: pass = standalone Refactor unit AC (zero feature
+  refs); fail = scaffolding inside implement, or discard.
 ```
-
-**Codebase map consumption** (when the repo has one): the haiku **map-drift**
-pre-pass already produced `MAP_TRUST`. Each panelist reads that report + the
-map pages first, then deep-reads only modules on the candidate touch list.
-Do **not** re-run the 2–5 claim spot-check unless `verdict` is `partial` (then
-re-check only implicated modules) or `full-scan` / map missing (then full
-scan). Never a blind full scan when `verdict: trust-map`.
-
-**Panel size:**
-- Panel of 1 (weakest sufficient tier) — trivial single-unit scope.
-- Panel of 2 — the two lenses most orthogonal to an existing design, when
-  units already carry substantive design FIELDS (rich descriptions do NOT
-  count; the rule keys on the design field).
-- **Program epics** (children are epics): full panel, unless every sub-epic
-  has completed its own Flow B — then panel of 2.
 
 ## Judge (you)
 
-1. **Convergence** — what did ≥2 lenses independently agree on? Strongest
-   signal.
-2. **Drop-Test discipline** — which proposal killed speculative work
-   correctly?
-3. **Fit** — which decomposition matches module boundaries, not symptom
-   lines?
-4. **Catalog filter** — drop free-text or non-catalog smell/move; require
-   `where` grounded in a panelist scan. Prefer structural smells over
-   Comments. You may map clear panelist intent to catalog names **once**;
-   if still free-text, re-dispatch that lens — do not invent candidates.
-5. **Tie-break** — prefer the smaller honest touch list unless a real
-   ownership leak overrides (minimal-diff wins by default; seam only if it
-   removes real coupling; deep-module only if ownership is currently
-   leaked).
+1. **Convergence** — what did ≥2 lenses independently agree on? (panel of 1:
+   take that lens; still apply Drop Test and fit.)
+2. **Drop Test** — killed speculative work correctly?
+3. **Fit** — module boundaries, not symptom lines.
+4. **Tie-break** — prefer the smaller honest touch list unless ownership is
+   leaked (minimal-diff default; seam only if it removes real coupling;
+   deep-module only if ownership is currently leaked).
 
-A failed lens arrives as null — judge with the other two; below 2 of 3,
-re-dispatch the missing lens once.
+A failed lens arrives as null — re-dispatch once if below the intended panel
+size.
 
-## Drop Test (every refactor candidate)
+## Drop Test (every prep candidate)
 
 Would we merge this refactor if the feature were cancelled tomorrow?
 
-- **Pass** → its own unit: `Refactor: <standalone outcome>`, AC in
-  standalone structural language ("X is the single writer of Y") with ZERO
-  feature references, sequencing only via dependency edges. No Cleanup pair
-  — a refactor unit IS the tidy hat. Design field must include the catalog
-  block (smell + move + where).
-- **Fail** → feature scaffolding: stays inside the implement unit as
-  optional `scaffoldingMoves` (catalog form), or is discarded as speculative
-  generality.
+- **Pass** → its own unit: `Refactor: <standalone outcome>`, AC in structural
+  language with ZERO feature references. No Cleanup pair — a refactor unit
+  IS the tidy hat. File only when size ≥ M; S-size may stay micro-tidy inside
+  implement (judge note).
+- **Fail** → optional scaffolding note on the implement unit, or discard.
 
-### Catalog refactoring (skill `refactoring` — required)
-
-Same vocabulary as work-loop Cleanup seeds. Load skill **`refactoring`**
-(matrix; deep lookup: its `references/reference.md`). Optional **`redFlag`**
-from skill **`simple-design`** §9.
-
-Every candidate that survives the judge:
+### Prep debt form (keep light)
 
 ```text
-smell: Duplicated Code              # exact Fowler name — refactoring matrix
-move: Extract Function              # exact catalog move — not "tidy"
-where: src/.../File.cs:Symbol       # from panelist live read
-after: <optional intended name>
-redFlag: 7                          # optional 1–14 — simple-design §9
-standaloneAC: <zero feature refs>
+where: src/.../File:Symbol
+change: Extract Function | Move Function | …   # structural; not "tidy"
+standaloneAC: <zero feature refs>              # only if dropTest: pass
 dropTest: pass|fail
 size: S|M|L
 ```
 
-**Rules (reject if any fail):**
-
-1. `smell` — exact name from the `refactoring` skill matrix.
-2. `move` — exact primary refactoring from that matrix / catalog.
-3. `where` — path:line or symbol from a panelist scan (not titles alone).
-4. Free-text moves (`tidy`, `align docs`, `thin headers`) → invalid; drop.
-5. **Comments gate:** if `smell` is `Comments`, `move` MUST be one of
-   `Extract Function`, `Rename Function`, `Rename Variable`, `Rename Field`,
-   `Introduce Assertion`. Prefer Extract Function named after the comment.
-6. Prefer structural smells (Duplicated Code, Shotgun Surgery, Long Function,
-   Feature Envy, Speculative Generality, Lazy Element, …) over Comments.
-7. S-size `Mysterious Name` + Rename may stay micro-tidy inside implement
-   (judge note) instead of its own bead when Drop Test is borderline.
-
-No dedicated refactoring agent — panelists scan; skill `refactoring` names
-the moves; you Drop-Test and file.
+Point at skill `refactoring` for move names when useful. Do **not** require
+full Fowler taxonomy blocks on every entry — `where` + structural `change`
+is the bar. Free-text "tidy comments / align docs" → invalid; drop.
 
 ## Decompose
 
-Each unit gets: one-sentence title · testable AC (no vague words — "improve
-X" is not AC) · file-scope hint (≤5 paths) · dependency edges (DAG) · phase
-(A = TDD new behavior / B = refactor) · design field · size S/M/L.
+Each unit gets:
+
+| Field | Required |
+|---|---|
+| One-sentence title | yes |
+| Testable AC (no vague "improve X") | yes |
+| **Proof** — how each AC is demonstrated (command, test id, or scenario) | yes |
+| File-scope hint (≤5 paths) | yes |
+| Dependency edges (DAG) | yes |
+| Phase (A = TDD new behavior / B = refactor) | yes |
+| Design field | yes |
+| Size S/M/L | yes |
 
 **Design field:**
 
-- **Implement units:** the one place + touch list + why; optional
-  `scaffoldingMoves:` (catalog smell+move+where for dropTest-fail prep only).
-  Do **not** pre-seed Beck Cleanup — that is work-loop Phase A residue.
-- **`Refactor:` units:** catalog block (smell, move, where, redFlag,
-  standalone AC) + touch list. Zero feature references in AC.
+- **Implement:** the one place + touch list + why; optional scaffolding notes
+  for dropTest-fail prep. Do **not** pre-seed Cleanup — loop files tidy only
+  when Phase A leaves real structural debt.
+- **`Refactor:`:** where + change + standalone AC. Zero feature refs in AC.
 
-Order: leaves before parents, Phase A before Phase B in the same area;
-Drop-Test-pass `Refactor:` leaves before the implement units they unblock.
+**Proof field (per AC):** one observable line each, e.g.
 
-## Provenance (only this skill stamps)
+```text
+proof:
+  - AC1: `dotnet test --filter QuotaPolicy` green on committed tree
+  - AC2: `cli inspect --json` exits 0 and prints schemaVersion
+```
 
-Every design you write or refresh gets BOTH the design field AND the
-provenance label (bd: `bd label add <id> designed`). The label is the
-loop's proof that the design came from a cross-model round — hand-written
-designs do not pass work-loop's design gate. No timestamps-in-fields, no
-hashes — tracker metadata only.
+Order: leaves before parents; Drop-Test-pass `Refactor:` (≥M) before the
+implement units they unblock; Phase A before Phase B in the same area.
 
-**Freshness rule (shared with work-loop):** a design is stale when the unit
-lacks the label, OR a dependency closed after the design was written
-(`bd history <id>` shows the design write), OR the design text names another
-unit's scope (a stamping bug — rewrite the design, don't just re-stamp).
-Stale → re-run the unit-scope round and re-stamp.
+## Provenance
+
+Every design you write or refresh gets the design field AND the provenance
+label (bd: `bd label add <id> designed`). Only this skill stamps that label.
+
+**Claimable design (shared with work-loop):** non-empty design with one place
++ touch list + proof, and scope that names this unit (not another). Missing
+or wrong-scope → re-run unit-scope (Flow C) and rewrite. Label is audit
+proof of a plan round; content is the claim gate.
 
 ## Flow A — new feature ("plan X")
 
-1. Design round at feature scope (panelist agents scan the code).
-2. Synthesize: epic shape (if the work is epic-sized), implement units,
-   catalog Drop-Test-pass refactor units.
-3. **Present the proposed graph first** — units, deps, designs, Drop-Test
-   verdicts with smell+move. Nothing filed yet.
-4. **approve / edit / abort** (user gate). Edit → revise, re-present. Abort
-   → file nothing; report the analysis for the record.
-5. On approve, file via beads-creator: `bd create` with `--description`,
-   `--acceptance`, `--design`, then dependency edges
-   (`bd dep add <unit> <blocker>`), then provenance labels on everything you
-   designed. Tracker adapters when bd is absent: gh issues (`phase:a`/
-   `epic:` labels), Linear tickets, or a markdown `work-units/<feature>.md`.
+1. Design round at feature scope (sized panel; agents scan).
+2. Synthesize: epic shape if needed, implement units, Drop-Test-pass prep
+   units (size ≥ M).
+3. **Present the proposed graph first** — units, deps, designs, proofs,
+   Drop-Test verdicts. Nothing filed yet.
+4. **approve / edit / abort** (user gate).
+5. On approve, file via beads-creator: create with description, acceptance,
+   design (include proof), deps, then provenance labels.
 
 ## Flow B — epic design check (mandatory)
 
-Runs whenever an epic exists that has not been through planning — INCLUDING
-late/in-flight epics whose children were filed or even closed before this
-discipline. Rules for the late case:
+Runs when an epic has not been through planning — including late/in-flight
+epics.
 
-- **Closed units never get retroactive designs** — note the provenance gap
-  in the presentation; do not repair history.
-- **Open children get designs as usual**, whenever filed.
-- **Recursion:** a child that is itself an epic gets its own Flow B first
-  (leaves before parents); the parent's presentation sequences those runs.
-- **Program epics** (children are epics): the check covers sub-epic
-  boundaries, sequencing, and cross-program prerequisites — not every leaf.
-  First read the sibling epics' scopes (`bd list --parent=<program>` + their
-  design fields) and put the sibling-ownership map in every panelist
-  prompt — panelists can't see the graph and will otherwise re-file another
-  epic's scope as candidates.
+- **Closed units** — never retroactive designs; note the gap.
+- **Open children** — designs as usual.
+- **Child epics** — their own Flow B first (leaves before parents).
+- **Program epics** — boundaries and sequencing, not every leaf; put sibling
+  ownership in every panelist prompt.
 
-Procedure:
-1. Design round at epic scope (panelist agents scan).
-2. Check: does the decomposition match module boundaries, or was it carved
-   along symptom lines? Are catalog Drop-Test-pass refactor units missing?
-3. Present findings + proposed children/designs → approve / edit / abort
-   (same gate as Flow A). On approve, file children/designs/refactors.
-4. Record the outcome on the epic: design field = decomposition rationale +
-   provenance label. Children filed here each get design + label too.
+Procedure: design round → check decomposition vs module boundaries → present
+→ approve/edit/abort → file. Record synthesis + provenance on the epic.
 
-**Cross-program shared prerequisites:** a prep unit stays with its filing
-epic (parentage is single). The consuming program names it as an external
-entry gate in its own epic design field and wires dep edges to it.
+## Flow C — unit scope (from work-loop, no approval gate)
 
-## Flow C — unit scope (called from work-loop, no approval gate)
+Empty/stale design, or structural gap too big for micro-tidy:
 
-The loop is mid-flight and found a unit with an empty/stale design — OR a
-structural gap too big for micro-tidy surfaced mid-implementation:
+1. Design round at unit scope (panel of 1 default).
+2. Write design + proof + stamp provenance.
+3. File any Drop-Test-pass prep units (≥M) + deps.
+4. Return — loop resumes.
 
-1. Design round at unit scope (panelist agent(s) scan; for a discovered gap:
-   scope is the gap).
-2. Write the design field (the one place + touch list + why; catalog form
-   for any Refactor units) AND stamp the provenance label.
-3. File any Drop-Test-passing catalog refactor units + deps.
-4. Return — the loop resumes. No approval pause (the epic-level gate already
-   happened, or the user invoked the loop directly).
-
-**Handshake:** the calling orchestrator re-reads the unit and proceeds only
-when the design field is non-empty and the label is present. If your new
-refactor units block the unit the loop had claimed, the orchestrator
-unclaims, works the blockers first, then re-claims.
+**Handshake:** caller re-reads the unit; proceeds when design + proof are
+present. New blockers → unclaim, work blockers, re-claim.
 
 ## Second pass
 
-Fundamental disagreement on the SHAPE of the change (not tactics) →
-re-dispatch the panel once with the disagreement as the question. Two rounds
-max, then escalate to the user with the conflict laid out plainly.
+Fundamental disagreement on the SHAPE of the change → re-dispatch once with
+the disagreement as the question. Two rounds max, then escalate to the user.
 
 ## What you never do
 
-- Never implement, never claim units, never push code, never close work
-  units. Execution is `work-loop`.
-- Never file a refactor unit that fails the Drop Test.
-- Never file a refactor unit without catalog-literal smell + move + where.
-- Never invent refactor candidates the panelists did not propose (catalog
-  rename of clear intent once is OK; new structure is not).
+- Never implement, claim, push, or close work units.
+- Never file a prep unit that fails the Drop Test.
+- Never invent prep candidates panelists did not propose (clear rename of
+  intent once is OK).
 - Never file before the approval gate (Flows A/B).
-- Never skip the parallel panel and design it yourself — independence is the
-  value (trivial panel-of-1 excepted). Panelists are the code scan.
-- Never run a 4th panelist. Three forces disagreement resolution.
+- Never skip the panel and design it yourself (panel-of-1 still dispatches
+  that one lens).
 
 ## Handoff to work-loop
 
-State the synthesis and unit order (Refactor leaves first), each refactor
-unit's **smell + move + where**, and that Cleanup siblings remain loop-owned
-(Phase A seed — plan does not invent Phase B comment work). Suggest the
-first unit (first leaf, smallest S). Proceed to `work-loop` only on an
-explicit or implicit go-ahead — the plan is a contract the user signs by
-not interrupting.
+State the synthesis and unit order (Refactor leaves first), each prep unit's
+where + change, each unit's proof lines, and that optional tidy after Phase A
+is loop-owned (only when structural debt is real). Suggest the first leaf
+(smallest S). Proceed to `work-loop` only on go-ahead.

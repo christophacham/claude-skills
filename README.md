@@ -34,12 +34,12 @@ Run from inside a cloned copy of this repository:
 
 ## Core Doctrine
 
-- **Design before build** — No implementation without a plan-stamped design (3-panelist cross-model round; `work-plan` stamps provenance).
-- **Beck pairs** — Every non-trivial unit is an implement unit (Phase A: make it work) + a Cleanup sibling (Phase B: make it right), worked back-to-back.
-- **TDD + Tidy First** — Red→green TDD for behavior; structure and behavior never share a commit.
-- **Independent cross-model review** — A different model tier audits the committed diff (PASS/FIX/ROLLBACK, mutation check) before anything pushes.
-- **Drop-Tested refactors** — Refactor candidates use catalog Fowler smell + move (`refactoring` skill) and earn standalone status only if they would merge with the feature cancelled.
-- **Committed-tree evidence** — Gates count on the committed tree; push only green.
+- **Design before build** — No implementation without design + AC proof (`work-plan` sized panel; stamps provenance).
+- **TDD + AC proof** — Red→green for behavior; each AC has an observable proof re-run at review.
+- **Tidy First** — Structure and behavior never share a commit; structural tidy only when debt is real (no always-on Cleanup pair).
+- **Independent cross-model review** — A different model tier audits the committed diff (PASS/FIX/ROLLBACK, gate + proof + mutation check) before anything pushes.
+- **Drop-Tested prep refactors** — Prep work earns a standalone unit only if it would merge with the feature cancelled.
+- **Committed-tree evidence** — Gates and proofs count on the committed tree; push only green.
 
 Beads (`bd`) is the canonical work tracker, with fallback support for GitHub, Linear, or markdown tracking.
 
@@ -48,8 +48,8 @@ Beads (`bd`) is the canonical work tracker, with fallback support for GitHub, Li
 ## Bundled Skills
 
 ### Work Loop & Planning Core
-- **`work-loop`**: One unit cycle — design gate → claim → Phase A (TDD) → review → fix → Finalize → seed Cleanup → pair triage.
-- **`work-plan`**: 3-panelist design rounds (`deep-module`, `minimal-diff`, `seam`), catalog Drop-Test refactors, and provenance stamping.
+- **`work-loop`**: One unit cycle — design gate → claim → implement (TDD + proof) → review → fix → Finalize; optional structural tidy when debt is real.
+- **`work-plan`**: Sized design panel (`deep-module`, `minimal-diff`, `seam`), Drop-Test prep, AC proof lines, map-drift load injection, provenance stamping.
 - **`bd-epic-runner`**: Walks all ready children of a beads epic to completion through `work-loop`.
 - **`dynamic-context-injection`**: Auditor + guide for load-time shell state injection in skills.
 
@@ -75,7 +75,7 @@ Beads (`bd`) is the canonical work tracker, with fallback support for GitHub, Li
 
 - **Cross-model rule**: Coder and reviewer should be different model tiers whenever possible (e.g. `coder: sonnet`, `reviewer: opus`).
 - **Pins**: Optional `coder:` / `reviewer:` pins (must be pool members). Unpinned tiers resolve by unit class.
-- **Fixed-tier mechanical roles** (skill doctrine, **always `haiku`**, pool-independent — not configured in `pool.md`): `map-drift` (map claim trust report before design panels), `beads-creator`, `beads-reviewer`.
+- **Fixed-tier mechanical roles** (skill doctrine, **always `haiku`**, pool-independent — not configured in `pool.md`): `beads-creator`, `beads-reviewer`. Map trust is load-time injection (`work-plan/scripts/map-drift-check.sh`), not a model role.
 
 ---
 
