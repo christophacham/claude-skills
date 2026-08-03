@@ -6,7 +6,7 @@ The universal work doctrine and engineering skills suite for Claude Code: `work-
 - **Beck pairs** — every non-trivial unit is an implement unit + a Cleanup sibling (make it work → make it right), worked back-to-back. Cleanup is **seeded** from Phase A `cleanupCandidates` as catalog-literal Fowler **smell + move** (optional simple-design red-flag #); empty/invalid seed free-closes (`nothingToTidy`). `Comments` only with Extract Function / Rename / Introduce Assertion — no prose theater, no full loop for glyphs/headers.
 - **TDD + Tidy First** — red→green for behavior; structure and behavior never share a commit.
 - **Independent cross-model review** — a different model tier audits the committed diff (PASS/FIX/ROLLBACK, mutation check) before anything pushes.
-- **Drop-Tested refactors** — a refactor earns its own unit only if it would merge with the feature cancelled.
+- **Drop-Tested refactors** — a refactor earns its own unit only if it would merge with the feature cancelled. Plan path: panelist agents scan live code; each candidate is catalog-literal Fowler **smell + move** from skill `refactoring` (optional simple-design red-flag #) — same vocabulary as Cleanup seeds. No separate refactoring agent.
 - **Committed-tree evidence** — gates count on the committed tree; push only green; close with the reason mapped to the AC.
 
 Beads (`bd`) is the canonical work tracker (gh/Linear/no-tracker fallbacks).
@@ -16,7 +16,7 @@ Repo bindings — gate command, commit format, map generator, non-negotiables �
 
 ### Work Loop & Planning Core
 - **`skills/work-loop/`**: One unit cycle — design gate → claim → Phase A (TDD) → review → fix → Finalize → seed Cleanup → pair triage (free-close / comment-nit / full Phase B).
-- **`skills/work-plan/`**: Design before build — 3-panelist design rounds, decomposition, Drop-Test refactors, provenance stamping, flows A/B/C.
+- **`skills/work-plan/`**: Design before build — 3-panelist design rounds (panelists = code scan), catalog Drop-Test refactors (skill `refactoring`), provenance stamping, flows A/B/C.
 - **`skills/bd-epic-runner/`**: Walk an epic's children to done through the loop (pair affinity, ready order).
 - **`skills/dynamic-context-injection/`**: Auditor + teacher for load-time state injection in skills.
 
