@@ -34,12 +34,14 @@ Run from inside a cloned copy of this repository:
 
 ## Core Doctrine
 
-- **Design before build** — No implementation without design + AC proof (`work-plan` sized panel; stamps provenance).
-- **TDD + AC proof** — Red→green for behavior; each AC has an observable proof re-run at review.
-- **Tidy First** — Structure and behavior never share a commit; structural tidy only when debt is real (no always-on Cleanup pair).
-- **Independent cross-model review** — A different model tier audits the committed diff (PASS/FIX/ROLLBACK, gate + proof + mutation check) before anything pushes.
+- **Short beads, clear seams** — A leaf unit should be readable in ~30 seconds: testable AC (how-you-know in the bullets), one place + touch list for non-trivial work. No dual-write of the same facts into description + design + AC.
+- **Design before build** — Non-trivial work needs a seam from `work-plan` (sized panel; judge compresses — panel essays do not become bead text). Content is the claim gate; `designed` is optional audit.
+- **TDD + how-you-know** — Red→green for behavior; review re-runs the gate and the checks named in AC (not a separate proof field).
+- **Tidy First** — Structure and behavior never share a commit; structural debt only when real — prefer `Refactor:` units over Cleanup shells; no always-on Cleanup pair.
+- **Independent cross-model review** — A different model tier audits the committed diff (PASS/FIX/ROLLBACK, gate + mutation check) before push.
 - **Drop-Tested prep refactors** — Prep work earns a standalone unit only if it would merge with the feature cancelled.
-- **Committed-tree evidence** — Gates and proofs count on the committed tree; push only green.
+- **Committed-tree evidence** — Gates and AC checks count on the committed tree; push only green.
+- **Epics stay short** — Intent, ownership, sequence, non-goals; long freezes live in repo docs, not bead novels. Work leaves, not epic titles as implement units.
 
 Beads (`bd`) is the canonical work tracker, with fallback support for GitHub, Linear, or markdown tracking.
 
@@ -48,8 +50,8 @@ Beads (`bd`) is the canonical work tracker, with fallback support for GitHub, Li
 ## Bundled Skills
 
 ### Work Loop & Planning Core
-- **`work-loop`**: One unit cycle — design gate → claim → implement (TDD + proof) → review → fix → Finalize; optional structural tidy when debt is real.
-- **`work-plan`**: Sized design panel (`deep-module`, `minimal-diff`, `seam`), Drop-Test prep, AC proof lines, map-drift load injection, provenance stamping.
+- **`work-loop`**: One unit cycle — claim gate (AC + seam) → implement (TDD) → review → fix → Finalize; optional `Refactor:` when structural debt is real.
+- **`work-plan`**: Sized design panel (`deep-module`, `minimal-diff`, `seam`), short tiered beads, Drop-Test prep, MAP_TRUST load injection, optional provenance stamp.
 - **`bd-epic-runner`**: Walks all ready children of a beads epic to completion through `work-loop`.
 - **`dynamic-context-injection`**: Auditor + guide for load-time shell state injection in skills.
 
