@@ -49,32 +49,31 @@ Read `CLAUDE.md`. Extract and hold:
 
 ## Doctrine
 
-1. **Design before build** — non-empty design (one place + touch list) and
-   **proof** lines per AC. Missing → `work-plan` Flow C, then re-check.
-2. **TDD for behavior** — Phase A is red→green; skill `testing-tdd`.
-3. **Independent review** — different model tier than coder. "Tests pass"
-   is not a review; **AC proof must be re-run**, not only the suite.
-4. **Tidy First** — structure and behavior never share a commit. Micro-tidy
-   (`refactor:`, ≤2 files, byte-identical tests) may precede the behavior
-   commit. Larger structure → `work-plan` or a follow-up tidy unit **only
-   when debt is real** (no always-on Cleanup sibling).
-5. **Committed-tree evidence** — gates and proofs count only on committed tree.
+1. **Know the seam** — claimable content: testable AC, and for non-trivial
+   work a one-place + touch list. Prefer short beads. Missing → `work-plan`
+   Flow C. Label `designed` is optional audit, not the gate.
+2. **TDD for behavior** — Phase A red→green; skill `testing-tdd`.
+3. **Independent review** — different model tier. Re-run gate + how-you-know
+   from AC (commands/tests named there). Mutation check on new tests.
+4. **Tidy First** — structure ≠ behavior commits. Micro-tidy OK (≤2 files).
+   Larger structure → prep unit or post-review tidy **only when debt is real**.
+   Prefer `Refactor:` units over Cleanup shells. No always-on Cleanup pair.
+5. **Committed-tree evidence** — gate and AC checks on committed tree only.
 6. **Honesty** — no placeholders, no dead declarations, no "while I was here."
 
 ## Preconditions (every unit)
 
-1. Read full unit spec — AC, design, **proof**, deps. (First unit: injected.)
-2. **Triviality:** one AC, one file, no semantic change → implement inline,
-   gate before push, no review pair.
-3. **Design gate (before claim):**
-   - **Implement / Refactor:** substantive design (one place + touch list +
-     proof). Empty, wrong-scope, or missing proof → `work-plan` Flow C.
-     Provenance label `designed` is preferred audit (only work-plan stamps
-     it); **content** is the claim gate, not the label alone.
-   - **Tidy / Phase B units** (filed only when structural debt exists): design
-     lists concrete `where` + structural change; no feature work. No plan
-     stamp required.
-4. Tree clean of unrelated edits; prior unit pushed. Never start red.
+1. Read AC, design (if any), deps. (First unit: injected.) Prefer leaves over
+   epics — epics are doctrine; do not claim an epic as implement work.
+2. **Triviality:** one AC, one file, no semantic change → inline, gate, no review.
+3. **Claim gate (content, not ceremony):**
+   - **Bug / trivial:** non-empty AC is enough.
+   - **Implement:** AC + design with one place + touch list (or justified
+     single-file scope in AC). Empty → Flow C.
+   - **Refactor / tidy:** AC or design names where + structural change.
+   - How-you-know lives in AC bullets when present; no separate proof field
+     required. Wrong-scope design → Flow C rewrite.
+4. Tree clean; prior unit pushed. Never start red.
 5. Claim via beads-creator. **One unit in progress at a time.**
 6. Resolve coder/reviewer tiers from the pool.
 
@@ -114,18 +113,17 @@ pasted in.
 `Agent(subagent_type="coder", model=<coder tier>, run_in_background: false)`
 with a **WORKER_PACKET**:
 
-- unit id + AC **verbatim** · **proof lines verbatim** · file-scope · phase
-- design one-place + touch list (deviations justified in report)
-- skills by name: Phase A → `testing-tdd`; Phase B → `refactoring` +
-  `simple-design`; FFI/library → add `third-party-integration`
+- unit id + AC **verbatim** · design one-place + touch (if any)
+- skills: Phase A → `testing-tdd`; Phase B → `refactoring` + `simple-design`;
+  FFI/library → `third-party-integration`
 - commit: repo format; commit, do NOT push/amend/close; report SHA
-- **Proof rules (always):**
-  1. Gate after commit — evidence only on committed tree.
-  2. Map rides the commit — if map generator exists and code was touched,
-     regen and include in the same commit.
-  3. Wired, not declared — every new symbol has a consumer in the same diff.
-  4. **Run every proof line** for this unit's AC (not only the suite gate).
-  5. Never stop mid-flow — emit structured report when done.
+- **Proof rules:**
+  1. Gate after commit on committed tree.
+  2. Map rides the commit when generator exists and code was touched.
+  3. Wired, not declared.
+  4. Exercise how-you-know from AC (named tests/commands/scenarios), not only
+     hoping the full suite touches the path.
+  5. Emit structured report when done.
 - **Phase B only:** work only seeded `where` + structural changes; no prose/
   glyph/docs as the work; Comments only as Extract/Rename that remove the
   comment's job; empty seed → report `nothingToTidy: true` and stop (success).
@@ -133,23 +131,21 @@ with a **WORKER_PACKET**:
 ### 2. Independent review
 
 `Agent(subagent_type="reviewer", model=<reviewer tier>, run_in_background: false)`
-with a **REVIEW_PACKET**: unit id + AC + **proof lines**, commit SHA(s),
-coder tier, phase. Reminders:
+with a **REVIEW_PACKET**: unit id + AC + design, commit SHA(s), coder tier.
+Reminders:
 
-- Re-run the **gate** independently (paste command output).
-- Re-run each **AC proof** independently (paste evidence).
-- **Mutation check** (Phase A): perturb one assert in new/changed tests →
-  confirm red → restore. Phase B with untouched tests:
-  `mutationCheck: skipped-byte-identical-tests`.
-- Plan adherence: diff ⊆ touch list (or justified); commit order
-  (`refactor:` before behavior; no mixed structure+behavior).
-- Phase A: optional `structuralDebt[]` (may be empty) — each entry needs
-  `where` + structural change only. Empty is preferred when clean. Never
-  invent debt. Comment nits → micro-fix now, not tidy fuel.
-- Phase B: zero behavior delta; tests byte-identical; diff ⊆ seed.
+- Re-run the **gate** independently (paste output).
+- Re-check AC how-you-know (paste evidence when AC names a command/test).
+- **Mutation check** (Phase A): perturb one new/changed assert → red → restore.
+  Phase B tests untouched → `skipped-byte-identical-tests`.
+- Plan adherence: diff ⊆ touch list (or justified); no mixed structure+behavior.
+- Phase A: optional `structuralDebt[]` (empty preferred). `where` + structural
+  change only. Never invent debt. Prefer recommending a **Refactor:** unit over
+  Cleanup shells when debt is large.
+- Phase B: zero behavior delta; tests byte-identical; stays on seed.
 
-**PASS requires:** every AC met **and** every proof observed **and** zero
-blocker/major **and** independent gate green **and** mutation check (Phase A).
+**PASS:** AC met · how-you-know checked · gate green · mutation (Phase A) ·
+no blocker/major.
 
 - **FIX** → step 3.
 - **ROLLBACK** (AC unmet and approach wrong) → `git revert`, document,
@@ -194,7 +190,7 @@ Then:
 |---|---|
 | None | Done — no Cleanup unit |
 | Structural, ≤2 files | Prefer micro-tidy on Phase A if still open; else small tidy commits now only if review already passed and you re-review |
-| Structural, larger | File **one** follow-up unit (`Cleanup:` or `Refactor:`) with the debt list as design, dep on the implement unit, work it **next** through Phase B + review |
+| Structural, larger | File **one** `Refactor:` unit (preferred title) with where+change, dep on implement, work next |
 
 Finish any filed tidy unit before opening a new implement unit. Empty debt
 is success — do not invent comment theater.
