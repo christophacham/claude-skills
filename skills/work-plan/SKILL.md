@@ -25,11 +25,7 @@ not help the coder change the right code and know it works, **omit it**.
 !`git status --short --branch 2>/dev/null || echo "(not a git repo)"`
 
 ### Map trust
-!`bash "${CLAUDE_PROJECT_DIR}/.claude/skills/work-plan/scripts/map-drift-check.sh" 2>/dev/null || bash ~/.claude/skills/work-plan/scripts/map-drift-check.sh 2>/dev/null || bash skills/work-plan/scripts/map-drift-check.sh 2>/dev/null || echo "MAP_TRUST
-mapPresent: false
-claimsChecked: []
-verdict: full-scan
-notes: map-drift script not found; panelists full-scan"`
+!`bash "${CLAUDE_SKILL_DIR}/scripts/map-drift-check.sh" 2>/dev/null || printf '%s\n' 'MAP_TRUST' 'mapPresent: false' 'claimsChecked: []' 'verdict: full-scan' 'notes: bundled map-drift script unavailable; panelists full-scan'`
 
 Honor `MAP_TRUST` in panel packets (fail open: never invent `trust-map`).
 `trust-map` → map then deep-read touch modules only; `partial` → re-check

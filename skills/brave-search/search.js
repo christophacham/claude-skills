@@ -1,9 +1,17 @@
 #!/usr/bin/env node
 
-import { Readability } from "@mozilla/readability";
-import { JSDOM } from "jsdom";
-import TurndownService from "turndown";
-import { gfm } from "turndown-plugin-gfm";
+const nodeMajor = Number(process.versions.node.split(".")[0]);
+if (nodeMajor !== 20 && nodeMajor < 22) {
+	console.error(`Error: Node 20 or >=22 is required; found ${process.version}.`);
+	process.exit(1);
+}
+
+const [{ Readability }, { JSDOM }, { default: TurndownService }, { gfm }] = await Promise.all([
+	import("@mozilla/readability"),
+	import("jsdom"),
+	import("turndown"),
+	import("turndown-plugin-gfm"),
+]);
 
 const args = process.argv.slice(2);
 

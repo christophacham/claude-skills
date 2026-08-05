@@ -106,6 +106,37 @@ function Test-IsInteractive {
   }
 }
 
+function Get-UsablePython {
+  if (Get-Command py -ErrorAction SilentlyContinue) {
+    try {
+      $candidate = & py -3 -c "import sys; print(sys.executable)" 2>$null
+      if ($LASTEXITCODE -eq 0 -and $candidate -and (Test-Path -LiteralPath $candidate.Trim())) {
+        return $candidate.Trim()
+      }
+    } catch {}
+  }
+  if (Get-Command python -ErrorAction SilentlyContinue) {
+    try {
+      $command = (Get-Command python).Source
+      $candidate = & $command -c "import sys; print(sys.executable)" 2>$null
+      if ($LASTEXITCODE -eq 0 -and $candidate -and (Test-Path -LiteralPath $candidate.Trim())) {
+        return $candidate.Trim()
+      }
+    } catch {}
+  }
+  return $null
+}
+
+function Test-SupportedNode {
+  if (-not (Get-Command node -ErrorAction SilentlyContinue)) { return $false }
+  try {
+    $major = & node -p "Number(process.versions.node.split('.')[0])" 2>$null
+    return ($LASTEXITCODE -eq 0 -and ([int]$major -eq 20 -or [int]$major -ge 22))
+  } catch {
+    return $false
+  }
+}
+
 function Get-SettingsBraveKey {
   param([string] $Path)
   if (-not (Test-Path -LiteralPath $Path)) { return $null }
@@ -128,17 +159,8 @@ function Set-SettingsBraveKey {
     [string] $Path,
     [string] $Key
   )
-  # Prefer Python for merge fidelity (ConvertTo-Json mangles nested hooks/arrays).
-  $py = $null
-  if (Get-Command py -ErrorAction SilentlyContinue) {
-    try {
-      $cand = & py -3 -c "import sys; print(sys.executable)" 2>$null
-      if ($LASTEXITCODE -eq 0 -and $cand) { $py = $cand.Trim() }
-    } catch {}
-  }
-  if (-not $py -and (Get-Command python -ErrorAction SilentlyContinue)) {
-    $py = (Get-Command python).Source
-  }
+  # Prefer a verified Python for merge fidelity (ConvertTo-Json mangles nested hooks/arrays).
+  $py = Get-UsablePython
   if ($py) {
     $env:SETTINGS_PATH = $Path
     $env:BRAVE_KEY_VAL = $Key
@@ -212,7 +234,12 @@ function Install-SkillNodeDeps {
     return
   }
   if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
-    Write-Output "deps skip:        node not on PATH (brave-search needs Node.js)"
+    Write-Output "deps skip:        node not on PATH (brave-search needs Node 20 or >=22)"
+    return
+  }
+  if (-not (Test-SupportedNode)) {
+    $version = (& node --version 2>$null)
+    Write-Output "deps skip:        unsupported $version (brave-search needs Node 20 or >=22)"
     return
   }
   Write-Output "deps install:     npm install -> $SkillDir"

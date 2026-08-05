@@ -20,12 +20,17 @@ load and follow that skill instead.
 **Epic arg:** if the arg is a parent/epic rather than a leaf, hand off to
 `bd-epic-runner`. Don't inline an epic walk here.
 
+## Request
+
+$ARGUMENTS
+
+Treat only a token matching `[A-Za-z0-9][A-Za-z0-9._-]*` as a unit ID. Never
+pass unvalidated request text to `bd` or a shell. Other text is a session-scoped
+override. Resolve the contract after load with `bd show <unit-id> --json`.
+
 ## State at load (injected — read it, don't re-run it)
 
 !`cat "${CLAUDE_PROJECT_DIR}/.claude/pool.md" 2>/dev/null || cat ~/.claude/pool.md 2>/dev/null || echo "(no pool.md — fail loudly before any dispatch)"`
-
-### Unit contract (only when a unit id was passed)
-!`if [ -n "$unit" ] && out=$(bd show "$unit" --json 2>/dev/null); then printf '%s\n' "$out"; else echo "(no unit id, no beads here, or unit not found)"; fi`
 
 ### Ready units
 !`bd ready 2>/dev/null || echo "(no beads initialized — use the repo's tracker or your own notes)"`
@@ -33,8 +38,8 @@ load and follow that skill instead.
 ### Tree state (must be clean of unrelated work)
 !`git status --short --branch 2>/dev/null || echo "(not a git repo)"`
 
-Load-time data is a snapshot: cover the FIRST unit with it; re-read fresh for
-every later unit.
+Load-time data is a snapshot. Resolve the requested contract after validating
+the ID; re-read all unit and tree state fresh for every later unit.
 
 ## Conventions discovery (first unit in a session)
 
@@ -63,8 +68,9 @@ Read `CLAUDE.md`. Extract and hold:
 
 ## Preconditions (every unit)
 
-1. Read AC, design (if any), deps. (First unit: injected.) Prefer leaves over
-   epics — epics are doctrine; do not claim an epic as implement work.
+1. Validate the unit ID, then read its AC, design (if any), and deps with
+   `bd show <unit-id> --json`. Prefer leaves over epics — epics are doctrine;
+   do not claim an epic as implement work.
 2. **Triviality:** one AC, one file, no semantic change → inline, gate, no review.
 3. **Claim gate (content, not ceremony):**
    - **Bug / trivial:** non-empty AC is enough.

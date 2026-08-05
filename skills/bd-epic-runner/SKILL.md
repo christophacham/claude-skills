@@ -16,18 +16,18 @@ supplies epic iteration and doctrine enforcement only.
 Args: an epic id (required). Other invocation text is session-scoped override
 (e.g. "don't push") — overrides win.
 
+## Request
+
+$ARGUMENTS
+
+Treat only a token matching `[A-Za-z0-9][A-Za-z0-9._-]*` as the epic ID. Never
+pass unvalidated request text to `bd` or a shell. After validation, read the
+contract and child state with `bd show <epic-id> --json`,
+`bd list --parent <epic-id> --json`, and `bd ready --parent <epic-id>`.
+
 ## State at load (injected — read it, don't re-run it)
 
 !`cat "${CLAUDE_PROJECT_DIR}/.claude/pool.md" 2>/dev/null || cat ~/.claude/pool.md 2>/dev/null || echo "(no pool.md — default model tiers active)"`
-
-### Epic contract
-!`if [ -n "$epic" ] && out=$(bd show "$epic" --json 2>/dev/null); then printf '%s\n' "$out"; else echo "(no epic arg, no beads here, or epic not found)"; fi`
-
-### Child graph
-!`if [ -n "$epic" ]; then bd list --parent "$epic" --json 2>/dev/null || echo "(no child graph)"; else echo "(no epic arg)"; fi`
-
-### Ready children
-!`if [ -n "$epic" ]; then bd ready --parent "$epic" 2>/dev/null || bd ready 2>/dev/null || echo "(bd unavailable)"; else echo "(no epic arg)"; fi`
 
 ### Repo conventions (if present)
 !`cat CLAUDE.md 2>/dev/null || echo "(no CLAUDE.md)"`
@@ -35,8 +35,9 @@ Args: an epic id (required). Other invocation text is session-scoped override
 ### Tree state
 !`git status --short --branch 2>/dev/null || echo "(not a git repo)"`
 
-Load-time data covers walk start. Every unit after the first needs fresh
-reads (`bd show`, `bd ready`, `git status`).
+Load-time data covers only static repo state. Read the epic and child graph
+after ID validation, then refresh `bd show`, `bd ready`, and `git status` for
+every unit.
 
 ## 1. Setup (once)
 

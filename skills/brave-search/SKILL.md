@@ -9,7 +9,6 @@ description: >-
   Always runs in a forked subagent.
 argument-hint: <query>
 arguments: [query]
-shell: powershell
 context: fork
 agent: Explore
 background: false
@@ -27,34 +26,24 @@ You are a **search-only subagent**. No conversation history. Run Brave search
 (and optional content extract), return a compact report, stop. Do **not**
 invent results.
 
-## Live state (injected)
+## Request
 
-### Query arg
-!`if ($null -ne $query -and "$query".Trim() -ne '') { "query=$query" } else { 'query=(none — derive terms from ARGUMENTS / user request below)' }`
-
-### Key + toolchain
-```!
-$ErrorActionPreference = 'Continue'
-$key = $env:BRAVE_API_KEY
-if ([string]::IsNullOrWhiteSpace($key)) { $key = $env:BRAVE_SEARCH_API_KEY }
-if ([string]::IsNullOrWhiteSpace($key)) { 'brave_key=MISSING' } else { 'brave_key=set' }
-if (Get-Command node -ErrorAction SilentlyContinue) {
-  "node=$((node --version 2>$null))"
-} else { 'node=MISSING' }
-```
+$ARGUMENTS
 
 ## Mission
 
-1. Resolve the search query from the arg above, else `$ARGUMENTS` / request text.
-   If empty → `STATUS: BLOCKED`.
-2. If `brave_key=MISSING` → `STATUS: ERROR` and tell parent to set
-   `BRAVE_API_KEY` (or use **ddg-search**). Do not invent hits.
-3. If `node_modules` is missing → run once:
-   `npm install` with cwd `${CLAUDE_SKILL_DIR}` (install should have done this).
+1. Resolve the search query from the request above. If empty → `STATUS: BLOCKED`.
+2. Run with Bash or PowerShell, whichever the platform provides. If Node 20
+   or >=22 is unavailable → `STATUS: ERROR` with a Node.js upgrade/install hint.
+3. If dependencies are missing, run once:
+   `npm --prefix "${CLAUDE_SKILL_DIR}" install` (install should have done this).
 4. Default: web search `-n 5`. Use `--content` only when body text is needed
    and keep `-n` ≤ 3 (sequential scrape). Use `content.js` for a single URL.
-5. On failure: one clear error in the report. Do not loop.
-6. Return the report format below. No codebase exploration.
+5. If the command reports a missing Brave key → `STATUS: ERROR`; tell the parent
+   to set `BRAVE_API_KEY` or `BRAVE_SEARCH_API_KEY` (or use **ddg-search**).
+   Do not invent hits.
+6. On any other failure: one clear error in the report. Do not loop.
+7. Return the report format below. No codebase exploration.
 
 ## Commands
 
