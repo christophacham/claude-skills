@@ -4,11 +4,12 @@
   Idempotently clone a GitHub repo into $env:USERPROFILE\code\tmp\<name>.
 
 .DESCRIPTION
-  Accepts owner/repo or a github.com URL. Creates the tmp root if needed.
-  Skips clone when the dest already has a .git. Default is shallow (--depth 1).
+  Accepts owner/repo or a github.com URL (including /tree /blob /issues paths,
+  .git suffix, query/hash). Creates the tmp root if needed. Skips clone when
+  the dest already has a .git. Default is shallow (--depth 1).
 
 .PARAMETER Repo
-  owner/repo or https://github.com/owner/repo[.git]
+  owner/repo or https://github.com/owner/repo[.git][/...]
 
 .PARAMETER Full
   Clone full history instead of --depth 1.
@@ -17,7 +18,7 @@
   ./ensure-clone.ps1 -Repo oraios/serena
 
 .EXAMPLE
-  ./ensure-clone.ps1 -Repo https://github.com/oraios/serena
+  ./ensure-clone.ps1 -Repo https://github.com/oraios/serena/tree/main
 #>
 [CmdletBinding()]
 param(
@@ -31,23 +32,42 @@ $ErrorActionPreference = 'Stop'
 
 function Get-RepoSlug {
     param([string] $Raw)
-    $r = $Raw.Trim().TrimEnd('/')
-    if ($r -match '(?i)(?:https?://|git@)([^/:]+)[:/]([^/]+)/([^/]+?)(?:\.git)?$') {
-        $n = $Matches[3] -replace '\.git$', ''
-        return [pscustomobject]@{
-            Host = $Matches[1]
-            Slug = "$($Matches[2])/$n"
-            Name = $n
-        }
+
+    if ([string]::IsNullOrWhiteSpace($Raw)) {
+        throw 'Need owner/repo or a GitHub URL. Got empty input.'
     }
-    if ($r -match '^([^/]+)/([^/]+?)(?:\.git)?$') {
-        $n = $Matches[2] -replace '\.git$', ''
+
+    $r = $Raw.Trim().TrimEnd('/')
+
+    # git@github.com:owner/repo.git or https://github.com/owner/repo[/tree/...]
+    if ($r -match '(?i)(?:https?://|git@)(?:www\.)?([^/:]+)[:/]+([^/\s]+)/([^/\s#?]+)') {
+        $hostName = $Matches[1] -replace '^www\.', ''
+        $owner = $Matches[2]
+        $name = $Matches[3] -replace '\.git$', ''
+        if ($hostName -notmatch '(?i)github\.com$') {
+            throw "Only github.com is supported. Host: $hostName"
+        }
+        if ($owner -match '^(?i)https?$' -or [string]::IsNullOrWhiteSpace($name)) {
+            throw "Need owner/repo or a GitHub URL. Got: $Raw"
+        }
         return [pscustomobject]@{
             Host = 'github.com'
-            Slug = "$($Matches[1])/$n"
-            Name = $n
+            Slug = "$owner/$name"
+            Name = $name
         }
     }
+
+    # bare owner/repo
+    if ($r -match '^(?i)([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+?)(?:\.git)?$') {
+        $owner = $Matches[1]
+        $name = $Matches[2] -replace '\.git$', ''
+        return [pscustomobject]@{
+            Host = 'github.com'
+            Slug = "$owner/$name"
+            Name = $name
+        }
+    }
+
     throw "Need owner/repo or a GitHub URL. Got: $Raw"
 }
 
