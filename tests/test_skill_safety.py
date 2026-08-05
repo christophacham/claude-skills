@@ -91,6 +91,7 @@ class SkillValidationTests(unittest.TestCase):
         self.assertEqual(expected, actual)
 
 
+@unittest.skipIf(os.name == "nt", "POSIX installer tests require a POSIX host")
 class InstallerTests(unittest.TestCase):
     def test_posix_installer_persists_key_without_printing_it(self) -> None:
         sentinel = "test-secret-must-not-be-printed"
@@ -180,6 +181,7 @@ class InstallerTests(unittest.TestCase):
             self.assertNotIn("-m pip", calls)
 
 
+@unittest.skipIf(os.name == "nt", "POSIX helper tests require a POSIX host")
 class PeekRepoHelperTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
