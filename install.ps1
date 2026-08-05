@@ -1,10 +1,12 @@
 # Install claude-skills: skills -> ~/.claude/skills, agents -> ~/.claude/agents
-# Usage (local):  .\install.ps1 [-Project] [-BraveApiKey <key>] [-SkipBraveKey] [-SkipDeps]
+# Usage (local):  .\install.ps1 [-Project] [-BraveApiKey <key>] [-TavilyApiKey <key>] [-SkipBraveKey] [-SkipTavilyKey] [-SkipDeps]
 # Usage (remote): iwr -useb https://raw.githubusercontent.com/christophacham/claude-skills/main/install.ps1 | iex
 param(
   [switch] $Project,
   [string] $BraveApiKey,
+  [string] $TavilyApiKey,
   [switch] $SkipBraveKey,
+  [switch] $SkipTavilyKey,
   [switch] $SkipDeps
 )
 
@@ -137,37 +139,46 @@ function Test-SupportedNode {
   }
 }
 
-function Get-SettingsBraveKey {
-  param([string] $Path)
+function Get-SettingsEnvKey {
+  param(
+    [string] $Path,
+    [string[]] $Names
+  )
   if (-not (Test-Path -LiteralPath $Path)) { return $null }
   try {
     $raw = Get-Content -LiteralPath $Path -Raw -ErrorAction Stop
     if ([string]::IsNullOrWhiteSpace($raw)) { return $null }
     $obj = $raw | ConvertFrom-Json
     if ($null -eq $obj.env) { return $null }
-    $k = $obj.env.BRAVE_API_KEY
-    if ([string]::IsNullOrWhiteSpace($k)) { $k = $obj.env.BRAVE_SEARCH_API_KEY }
-    if ([string]::IsNullOrWhiteSpace($k)) { return $null }
-    return [string]$k
+    foreach ($n in $Names) {
+      $prop = $obj.env.PSObject.Properties[$n]
+      if ($null -ne $prop -and -not [string]::IsNullOrWhiteSpace([string]$prop.Value)) {
+        return [string]$prop.Value
+      }
+    }
+    return $null
   } catch {
     return $null
   }
 }
 
-function Set-SettingsBraveKey {
+function Set-SettingsEnvKey {
   param(
     [string] $Path,
-    [string] $Key
+    [string] $Name,
+    [string] $Value
   )
   # Prefer a verified Python for merge fidelity (ConvertTo-Json mangles nested hooks/arrays).
   $py = Get-UsablePython
   if ($py) {
     $env:SETTINGS_PATH = $Path
-    $env:BRAVE_KEY_VAL = $Key
+    $env:SETTINGS_ENV_NAME = $Name
+    $env:SETTINGS_ENV_VAL = $Value
     $code = @'
 import json, os, sys
 path = os.environ["SETTINGS_PATH"]
-key = os.environ["BRAVE_KEY_VAL"]
+name = os.environ["SETTINGS_ENV_NAME"]
+key = os.environ["SETTINGS_ENV_VAL"]
 data = {}
 if os.path.isfile(path):
     try:
@@ -181,7 +192,7 @@ if not isinstance(data, dict):
 env = data.get("env")
 if not isinstance(env, dict):
     env = {}
-env["BRAVE_API_KEY"] = key
+env[name] = key
 data["env"] = env
 os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
 with open(path, "w", encoding="utf-8") as f:
@@ -194,7 +205,8 @@ with open(path, "w", encoding="utf-8") as f:
       return
     } finally {
       Remove-Item Env:SETTINGS_PATH -ErrorAction SilentlyContinue
-      Remove-Item Env:BRAVE_KEY_VAL -ErrorAction SilentlyContinue
+      Remove-Item Env:SETTINGS_ENV_NAME -ErrorAction SilentlyContinue
+      Remove-Item Env:SETTINGS_ENV_VAL -ErrorAction SilentlyContinue
     }
   }
 
@@ -206,7 +218,7 @@ with open(path, "w", encoding="utf-8") as f:
         $obj = $raw | ConvertFrom-Json
       }
     } catch {
-      throw "Could not parse existing settings at $Path — fix JSON manually, then re-run with -BraveApiKey."
+      throw "Could not parse existing settings at $Path — fix JSON manually, then re-run with the API key flag."
     }
   }
   if ($null -eq $obj) {
@@ -216,13 +228,33 @@ with open(path, "w", encoding="utf-8") as f:
     $obj | Add-Member -NotePropertyName env -NotePropertyValue ([pscustomobject]@{}) -Force
   }
   $envObj = $obj.env
-  if ($envObj.PSObject.Properties.Name -contains 'BRAVE_API_KEY') {
-    $envObj.BRAVE_API_KEY = $Key
+  if ($envObj.PSObject.Properties.Name -contains $Name) {
+    $envObj.$Name = $Value
   } else {
-    $envObj | Add-Member -NotePropertyName BRAVE_API_KEY -NotePropertyValue $Key -Force
+    $envObj | Add-Member -NotePropertyName $Name -NotePropertyValue $Value -Force
   }
   $json = $obj | ConvertTo-Json -Depth 100
   [System.IO.File]::WriteAllText($Path, $json + [Environment]::NewLine)
+}
+
+function Get-SettingsBraveKey {
+  param([string] $Path)
+  return Get-SettingsEnvKey -Path $Path -Names @('BRAVE_API_KEY', 'BRAVE_SEARCH_API_KEY')
+}
+
+function Set-SettingsBraveKey {
+  param([string] $Path, [string] $Key)
+  Set-SettingsEnvKey -Path $Path -Name 'BRAVE_API_KEY' -Value $Key
+}
+
+function Get-SettingsTavilyKey {
+  param([string] $Path)
+  return Get-SettingsEnvKey -Path $Path -Names @('TAVILY_API_KEY')
+}
+
+function Set-SettingsTavilyKey {
+  param([string] $Path, [string] $Key)
+  Set-SettingsEnvKey -Path $Path -Name 'TAVILY_API_KEY' -Value $Key
 }
 
 function Install-SkillNodeDeps {
@@ -268,6 +300,18 @@ function Install-DdgsIfPossible {
   }
 }
 
+function Install-TvlyIfPossible {
+  param([string] $SkillDir)
+  $ensure = Join-Path $SkillDir 'scripts\ensure-tvly.ps1'
+  if (-not (Test-Path -LiteralPath $ensure)) { return }
+  Write-Output "deps install:     ensure tvly (Tavily CLI) ..."
+  try {
+    & $ensure
+  } catch {
+    Write-Output "deps warn:        tvly ensure failed — first tavily-search will retry: $_"
+  }
+}
+
 # --- skill runtime deps ---
 if (-not $SkipDeps) {
   $braveDir = Join-Path $dest 'skills\brave-search'
@@ -278,6 +322,10 @@ if (-not $SkipDeps) {
   if (Test-Path $ddgDir) {
     Install-DdgsIfPossible -SkillDir $ddgDir
   }
+  $tavilyDir = Join-Path $dest 'skills\tavily-search'
+  if (Test-Path $tavilyDir) {
+    Install-TvlyIfPossible -SkillDir $tavilyDir
+  }
 } else {
   Write-Output "deps skip:        -SkipDeps"
 }
@@ -285,6 +333,7 @@ if (-not $SkipDeps) {
 # --- Brave API key ---
 if (-not $SkipBraveKey) {
   $existing = $null
+  $existingSource = $null
   if (-not [string]::IsNullOrWhiteSpace($env:BRAVE_API_KEY)) {
     $existing = $env:BRAVE_API_KEY
     $existingSource = 'process env BRAVE_API_KEY'
@@ -331,6 +380,54 @@ if (-not $SkipBraveKey) {
   }
 } else {
   Write-Output "brave key:        -SkipBraveKey"
+}
+
+# --- Tavily API key ---
+if (-not $SkipTavilyKey) {
+  $existing = $null
+  $existingSource = $null
+  if (-not [string]::IsNullOrWhiteSpace($env:TAVILY_API_KEY)) {
+    $existing = $env:TAVILY_API_KEY
+    $existingSource = 'process env TAVILY_API_KEY'
+  } else {
+    $fromSettings = Get-SettingsTavilyKey -Path $userSettingsPath
+    if ($fromSettings) {
+      $existing = $fromSettings
+      $existingSource = "settings.json ($userSettingsPath)"
+    }
+  }
+
+  $keyToWrite = $null
+  if (-not [string]::IsNullOrWhiteSpace($TavilyApiKey)) {
+    $keyToWrite = $TavilyApiKey.Trim()
+  } elseif ($existing) {
+    Write-Output "tavily key:       already set via $existingSource (not printed)"
+    $inSettings = Get-SettingsTavilyKey -Path $userSettingsPath
+    if (-not $inSettings) {
+      $keyToWrite = $existing
+      Write-Output "tavily key:       mirroring into $userSettingsPath"
+    }
+  } elseif (Test-IsInteractive) {
+    Write-Host ""
+    Write-Host "Tavily Search (optional — LLM-optimized search/extract; skip if unused)"
+    Write-Host "  Get a key: https://tavily.com"
+    Write-Host "  Stored in: $userSettingsPath  under env.TAVILY_API_KEY"
+    $entered = Read-Host "Paste TAVILY_API_KEY (Enter to skip)"
+    if (-not [string]::IsNullOrWhiteSpace($entered)) {
+      $keyToWrite = $entered.Trim()
+    } else {
+      Write-Output "tavily key:       skipped (ddg-search / brave-search still available)"
+    }
+  } else {
+    Write-Output "tavily key:       not set (non-interactive). Re-run with -TavilyApiKey <key> or set env.TAVILY_API_KEY in $userSettingsPath"
+  }
+
+  if ($keyToWrite) {
+    Set-SettingsTavilyKey -Path $userSettingsPath -Key $keyToWrite
+    Write-Output "tavily key:       saved to $userSettingsPath (env.TAVILY_API_KEY) — restart Claude Code to pick up"
+  }
+} else {
+  Write-Output "tavily key:       -SkipTavilyKey"
 }
 
 if ($cleanupTmp -and (Test-Path $cleanupTmp)) {

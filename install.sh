@@ -1,18 +1,22 @@
 #!/bin/sh
 # Install claude-skills: skills -> ~/.claude/skills, agents -> ~/.claude/agents
-# Usage (local):  ./install.sh [--project] [--brave-api-key KEY] [--skip-brave-key] [--skip-deps]
+# Usage (local):  ./install.sh [--project] [--brave-api-key KEY] [--tavily-api-key KEY]
+#                               [--skip-brave-key] [--skip-tavily-key] [--skip-deps]
 # Usage (remote): curl -fsSL https://raw.githubusercontent.com/christophacham/claude-skills/main/install.sh | sh
 set -e
 
 PROJECT=0
 SKIP_BRAVE_KEY=0
+SKIP_TAVILY_KEY=0
 SKIP_DEPS=0
 BRAVE_API_KEY_ARG=""
+TAVILY_API_KEY_ARG=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --project) PROJECT=1; shift ;;
     --skip-brave-key) SKIP_BRAVE_KEY=1; shift ;;
+    --skip-tavily-key) SKIP_TAVILY_KEY=1; shift ;;
     --skip-deps) SKIP_DEPS=1; shift ;;
     --brave-api-key)
       if [ -z "${2-}" ]; then
@@ -26,8 +30,20 @@ while [ $# -gt 0 ]; do
       BRAVE_API_KEY_ARG="${1#--brave-api-key=}"
       shift
       ;;
+    --tavily-api-key)
+      if [ -z "${2-}" ]; then
+        echo "error: --tavily-api-key requires a value" >&2
+        exit 1
+      fi
+      TAVILY_API_KEY_ARG="$2"
+      shift 2
+      ;;
+    --tavily-api-key=*)
+      TAVILY_API_KEY_ARG="${1#--tavily-api-key=}"
+      shift
+      ;;
     -h|--help)
-      echo "Usage: $0 [--project] [--brave-api-key KEY] [--skip-brave-key] [--skip-deps]"
+      echo "Usage: $0 [--project] [--brave-api-key KEY] [--tavily-api-key KEY] [--skip-brave-key] [--skip-tavily-key] [--skip-deps]"
       exit 0
       ;;
     *)
@@ -117,7 +133,7 @@ for stale in tmp-clone web-ddgs; do
   fi
 done
 
-# --- helpers: read/write BRAVE key in settings.json without printing it ---
+# --- helpers: read/write env keys in settings.json without printing them ---
 find_python3() {
   min_minor="${1:-0}"
   for candidate in python3 python; do
@@ -133,12 +149,15 @@ find_python3() {
 PYTHON_BIN="$(find_python3 0 || true)"
 DDG_PYTHON_BIN="$(find_python3 10 || true)"
 
-settings_has_brave_key() {
+settings_has_env_key() {
+  # $1 = path, $2 = primary name, $3 optional alt name
   [ -n "$PYTHON_BIN" ] || return 1
-  SETTINGS_PATH="$1" "$PYTHON_BIN" - <<'PY' 2>/dev/null
+  SETTINGS_PATH="$1" KEY_NAME="$2" KEY_ALT="${3-}" "$PYTHON_BIN" - <<'PY' 2>/dev/null
 import json, os, sys
 p = os.environ.get("SETTINGS_PATH", "")
-if not p or not os.path.isfile(p):
+name = os.environ.get("KEY_NAME", "")
+alt = os.environ.get("KEY_ALT", "") or ""
+if not p or not os.path.isfile(p) or not name:
     sys.exit(1)
 try:
     with open(p, encoding="utf-8") as f:
@@ -146,21 +165,24 @@ try:
 except Exception:
     sys.exit(1)
 env = data.get("env") or {}
-k = (env.get("BRAVE_API_KEY") or env.get("BRAVE_SEARCH_API_KEY") or "").strip()
+k = (env.get(name) or (env.get(alt) if alt else "") or "").strip()
 sys.exit(0 if k else 1)
 PY
 }
 
-write_brave_key() {
+write_env_key() {
+  # $1 = env var name, $2 = value
   [ -n "$PYTHON_BIN" ] || {
     echo "error: Python 3 is required to update $USER_SETTINGS" >&2
     return 1
   }
-  KEY_VAL="$1"
-  SETTINGS_PATH="$USER_SETTINGS" BRAVE_KEY_VAL="$KEY_VAL" "$PYTHON_BIN" - <<'PY'
+  KEY_NAME="$1"
+  KEY_VAL="$2"
+  SETTINGS_PATH="$USER_SETTINGS" SETTINGS_ENV_NAME="$KEY_NAME" SETTINGS_ENV_VAL="$KEY_VAL" "$PYTHON_BIN" - <<'PY'
 import json, os, sys
 path = os.environ["SETTINGS_PATH"]
-key = os.environ["BRAVE_KEY_VAL"]
+name = os.environ["SETTINGS_ENV_NAME"]
+key = os.environ["SETTINGS_ENV_VAL"]
 data = {}
 if os.path.isfile(path):
     try:
@@ -174,7 +196,7 @@ if not isinstance(data, dict):
 env = data.get("env")
 if not isinstance(env, dict):
     env = {}
-env["BRAVE_API_KEY"] = key
+env[name] = key
 data["env"] = env
 os.makedirs(os.path.dirname(path), exist_ok=True)
 with open(path, "w", encoding="utf-8") as f:
@@ -217,6 +239,23 @@ if [ "$SKIP_DEPS" = "0" ]; then
   else
     echo "deps skip:        Python 3.10+ not on PATH (ddg-search requirement)"
   fi
+  # optional: tavily CLI
+  TAVILY_DIR="$DEST/skills/tavily-search"
+  if [ -f "$TAVILY_DIR/scripts/ensure-tvly.ps1" ] || [ -d "$TAVILY_DIR" ]; then
+    if command -v tvly >/dev/null 2>&1; then
+      echo "deps ready:       tvly"
+    elif command -v uv >/dev/null 2>&1; then
+      echo "deps install:     uv tool install tavily-cli"
+      uv tool install tavily-cli >/dev/null 2>&1 && echo "deps ready:       tvly" || echo "deps warn:        uv tool install tavily-cli failed"
+    elif [ -n "$DDG_PYTHON_BIN" ]; then
+      echo "deps install:     $DDG_PYTHON_BIN -m pip install -U tavily-cli"
+      "$DDG_PYTHON_BIN" -m pip install -U tavily-cli >/dev/null 2>&1 && echo "deps ready:       tvly" || echo "deps warn:        tavily-cli pip install failed"
+    elif [ -n "$PYTHON_BIN" ]; then
+      echo "deps skip:        available Python is older than 3.10 (tavily-cli baseline)"
+    else
+      echo "deps skip:        no uv/Python 3.10+ for tavily-cli (run: uv tool install tavily-cli)"
+    fi
+  fi
 else
   echo "deps skip:        --skip-deps"
 fi
@@ -231,7 +270,7 @@ if [ "$SKIP_BRAVE_KEY" = "0" ]; then
   elif [ -n "${BRAVE_SEARCH_API_KEY-}" ]; then
     EXISTING="$BRAVE_SEARCH_API_KEY"
     EXISTING_SRC="process env BRAVE_SEARCH_API_KEY"
-  elif settings_has_brave_key "$USER_SETTINGS"; then
+  elif settings_has_env_key "$USER_SETTINGS" BRAVE_API_KEY BRAVE_SEARCH_API_KEY; then
     EXISTING="__present__"
     EXISTING_SRC="settings.json ($USER_SETTINGS)"
   fi
@@ -241,7 +280,7 @@ if [ "$SKIP_BRAVE_KEY" = "0" ]; then
     KEY_TO_WRITE="$BRAVE_API_KEY_ARG"
   elif [ -n "$EXISTING" ]; then
     echo "brave key:        already set via $EXISTING_SRC (not printed)"
-    if [ "$EXISTING" != "__present__" ] && ! settings_has_brave_key "$USER_SETTINGS"; then
+    if [ "$EXISTING" != "__present__" ] && ! settings_has_env_key "$USER_SETTINGS" BRAVE_API_KEY BRAVE_SEARCH_API_KEY; then
       KEY_TO_WRITE="$EXISTING"
       echo "brave key:        mirroring into $USER_SETTINGS"
     fi
@@ -262,7 +301,7 @@ if [ "$SKIP_BRAVE_KEY" = "0" ]; then
   fi
 
   if [ -n "$KEY_TO_WRITE" ]; then
-    if write_brave_key "$KEY_TO_WRITE"; then
+    if write_env_key BRAVE_API_KEY "$KEY_TO_WRITE"; then
       echo "brave key:        saved to $USER_SETTINGS (env.BRAVE_API_KEY) — restart Claude Code to pick up"
     else
       echo "brave key:        ERROR writing $USER_SETTINGS" >&2
@@ -270,6 +309,54 @@ if [ "$SKIP_BRAVE_KEY" = "0" ]; then
   fi
 else
   echo "brave key:        --skip-brave-key"
+fi
+
+# --- Tavily API key ---
+if [ "$SKIP_TAVILY_KEY" = "0" ]; then
+  EXISTING=""
+  EXISTING_SRC=""
+  if [ -n "${TAVILY_API_KEY-}" ]; then
+    EXISTING="$TAVILY_API_KEY"
+    EXISTING_SRC="process env TAVILY_API_KEY"
+  elif settings_has_env_key "$USER_SETTINGS" TAVILY_API_KEY; then
+    EXISTING="__present__"
+    EXISTING_SRC="settings.json ($USER_SETTINGS)"
+  fi
+
+  KEY_TO_WRITE=""
+  if [ -n "$TAVILY_API_KEY_ARG" ]; then
+    KEY_TO_WRITE="$TAVILY_API_KEY_ARG"
+  elif [ -n "$EXISTING" ]; then
+    echo "tavily key:       already set via $EXISTING_SRC (not printed)"
+    if [ "$EXISTING" != "__present__" ] && ! settings_has_env_key "$USER_SETTINGS" TAVILY_API_KEY; then
+      KEY_TO_WRITE="$EXISTING"
+      echo "tavily key:       mirroring into $USER_SETTINGS"
+    fi
+  elif [ -t 0 ]; then
+    echo ""
+    echo "Tavily Search (optional — LLM-optimized search/extract; skip if unused)"
+    echo "  Get a key: https://tavily.com"
+    echo "  Stored in: $USER_SETTINGS  under env.TAVILY_API_KEY"
+    printf "Paste TAVILY_API_KEY (Enter to skip): "
+    read -r ENTERED || ENTERED=""
+    if [ -n "$ENTERED" ]; then
+      KEY_TO_WRITE="$ENTERED"
+    else
+      echo "tavily key:       skipped (ddg-search / brave-search still available)"
+    fi
+  else
+    echo "tavily key:       not set (non-interactive). Re-run with --tavily-api-key KEY or set env.TAVILY_API_KEY in $USER_SETTINGS"
+  fi
+
+  if [ -n "$KEY_TO_WRITE" ]; then
+    if write_env_key TAVILY_API_KEY "$KEY_TO_WRITE"; then
+      echo "tavily key:       saved to $USER_SETTINGS (env.TAVILY_API_KEY) — restart Claude Code to pick up"
+    else
+      echo "tavily key:       ERROR writing $USER_SETTINGS" >&2
+    fi
+  fi
+else
+  echo "tavily key:       --skip-tavily-key"
 fi
 
 if [ -n "$CLEANUP_TMP" ]; then
