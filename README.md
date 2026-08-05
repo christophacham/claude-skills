@@ -54,6 +54,9 @@ Beads (`bd`) is the canonical work tracker, with fallback support for GitHub, Li
 - **`work-plan`**: Sized design panel (`deep-module`, `minimal-diff`, `seam`), short tiered beads, Drop-Test prep, MAP_TRUST load injection, optional provenance stamp.
 - **`bd-epic-runner`**: Walks all ready children of a beads epic to completion through `work-loop`.
 - **`dynamic-context-injection`**: Auditor + guide for load-time shell state injection in skills.
+- **`peek-repo`**: Clone a GitHub repo into `%USERPROFILE%\code\tmp\<name>` (or `~/code/tmp/<name>`) for local inspection via `gh repo clone`. Heavy load-time `!` injection for dest/auth state; idempotent shallow clone. Use for “have a look at”, pasted github URLs, or “how does X work” without polluting the current project.
+- **`ddg-search`**: Free web/news search + URL extract via the `ddgs` Python package (no API key). Auto-installs `ddgs` if missing; load-time readiness injection. Prefer `find-docs` for library APIs; use this for general web facts or as a no-key alternative to Brave Search.
+- **`brave-search`**: Web search and page content extraction via the Brave Search API (`search.js` / `content.js`). Requires `BRAVE_API_KEY`. Prefer for key-backed search; use `ddg-search` when no Brave key.
 
 ### Tracker Integration
 - **`beads`**: Issue creation, claiming, status updates, dependency graphing, and Dolt sync via `bd`.
