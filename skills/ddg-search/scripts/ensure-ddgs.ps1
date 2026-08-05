@@ -23,7 +23,7 @@ function Find-Python {
     # Prefer the py launcher's 3.x, then first real python.exe on PATH.
     if (Get-Command py -ErrorAction SilentlyContinue) {
         try {
-            $p = & py -3 -c "import sys; print(sys.executable)" 2>$null
+            $p = & py -3 -c "import sys; print(sys.executable) if sys.version_info >= (3, 10) else sys.exit(1)" 2>$null
             if ($LASTEXITCODE -eq 0 -and $p -and (Test-Path -LiteralPath $p.Trim())) {
                 return $p.Trim()
             }
@@ -40,7 +40,7 @@ function Find-Python {
 
     foreach ($c in $candidates) {
         try {
-            $out = & $c -c "import sys; print(sys.executable)" 2>$null
+            $out = & $c -c "import sys; print(sys.executable) if sys.version_info >= (3, 10) else sys.exit(1)" 2>$null
             if ($LASTEXITCODE -eq 0 -and $out) { return $out.Trim() }
         } catch {}
     }

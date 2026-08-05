@@ -118,8 +118,24 @@ for stale in tmp-clone web-ddgs; do
 done
 
 # --- helpers: read/write BRAVE key in settings.json without printing it ---
+find_python3() {
+  min_minor="${1:-0}"
+  for candidate in python3 python; do
+    if command -v "$candidate" >/dev/null 2>&1 &&
+       "$candidate" -c "import sys; raise SystemExit(0 if sys.version_info >= (3, $min_minor) else 1)" >/dev/null 2>&1; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
+
+PYTHON_BIN="$(find_python3 0 || true)"
+DDG_PYTHON_BIN="$(find_python3 10 || true)"
+
 settings_has_brave_key() {
-  SETTINGS_PATH="$1" python3 - <<'PY' 2>/dev/null || SETTINGS_PATH="$1" python - <<'PY' 2>/dev/null || true
+  [ -n "$PYTHON_BIN" ] || return 1
+  SETTINGS_PATH="$1" "$PYTHON_BIN" - <<'PY' 2>/dev/null
 import json, os, sys
 p = os.environ.get("SETTINGS_PATH", "")
 if not p or not os.path.isfile(p):
@@ -136,8 +152,12 @@ PY
 }
 
 write_brave_key() {
+  [ -n "$PYTHON_BIN" ] || {
+    echo "error: Python 3 is required to update $USER_SETTINGS" >&2
+    return 1
+  }
   KEY_VAL="$1"
-  SETTINGS_PATH="$USER_SETTINGS" BRAVE_KEY_VAL="$KEY_VAL" python3 - <<'PY' 2>/dev/null || SETTINGS_PATH="$USER_SETTINGS" BRAVE_KEY_VAL="$KEY_VAL" python - <<'PY'
+  SETTINGS_PATH="$USER_SETTINGS" BRAVE_KEY_VAL="$KEY_VAL" "$PYTHON_BIN" - <<'PY'
 import json, os, sys
 path = os.environ["SETTINGS_PATH"]
 key = os.environ["BRAVE_KEY_VAL"]
@@ -163,36 +183,39 @@ with open(path, "w", encoding="utf-8") as f:
 PY
 }
 
+node_version_supported() {
+  node -e 'const m=Number(process.versions.node.split(".")[0]); process.exit(m === 20 || m >= 22 ? 0 : 1)' >/dev/null 2>&1
+}
+
 # --- skill runtime deps ---
 if [ "$SKIP_DEPS" = "0" ]; then
   BRAVE_DIR="$DEST/skills/brave-search"
   if [ -f "$BRAVE_DIR/package.json" ]; then
-    if command -v npm >/dev/null 2>&1 && command -v node >/dev/null 2>&1; then
+    if ! command -v npm >/dev/null 2>&1 || ! command -v node >/dev/null 2>&1; then
+      echo "deps skip:        node/npm not on PATH (brave-search needs Node 20 or >=22)"
+    elif ! node_version_supported; then
+      echo "deps skip:        unsupported $(node --version 2>/dev/null) (brave-search needs Node 20 or >=22)"
+    else
       echo "deps install:     npm install -> $BRAVE_DIR"
       if (cd "$BRAVE_DIR" && npm install --no-fund --no-audit); then
         echo "deps ready:       brave-search node_modules"
       else
         echo "deps warn:        npm install failed — run manually in $BRAVE_DIR"
       fi
-    else
-      echo "deps skip:        node/npm not on PATH (brave-search needs: npm install in $BRAVE_DIR)"
     fi
   fi
-  # optional: install ddgs if python available
-  if command -v python3 >/dev/null 2>&1; then
-    if python3 -c "import ddgs" 2>/dev/null; then
-      echo "deps ready:       ddgs (python3)"
+  # optional: install ddgs if supported Python is available
+  if [ -n "$DDG_PYTHON_BIN" ]; then
+    if "$DDG_PYTHON_BIN" -c "import ddgs" 2>/dev/null; then
+      echo "deps ready:       ddgs ($DDG_PYTHON_BIN)"
     else
-      echo "deps install:     python3 -m pip install -U ddgs"
-      python3 -m pip install -U ddgs >/dev/null 2>&1 && echo "deps ready:       ddgs" || echo "deps warn:        ddgs pip install failed — first search will retry"
+      echo "deps install:     $DDG_PYTHON_BIN -m pip install -U ddgs"
+      "$DDG_PYTHON_BIN" -m pip install -U ddgs >/dev/null 2>&1 && echo "deps ready:       ddgs" || echo "deps warn:        ddgs pip install failed — first search will retry"
     fi
-  elif command -v python >/dev/null 2>&1; then
-    if python -c "import ddgs" 2>/dev/null; then
-      echo "deps ready:       ddgs (python)"
-    else
-      echo "deps install:     python -m pip install -U ddgs"
-      python -m pip install -U ddgs >/dev/null 2>&1 && echo "deps ready:       ddgs" || echo "deps warn:        ddgs pip install failed — first search will retry"
-    fi
+  elif [ -n "$PYTHON_BIN" ]; then
+    echo "deps skip:        available Python is older than 3.10 (ddg-search requirement)"
+  else
+    echo "deps skip:        Python 3.10+ not on PATH (ddg-search requirement)"
   fi
 else
   echo "deps skip:        --skip-deps"

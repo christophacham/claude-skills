@@ -31,11 +31,11 @@ so it stays literal.
 2. **Single pass.** Substitution runs once over the original file; command
    output is NOT re-scanned. A command cannot emit a placeholder for a later
    pass — no chaining.
-3. **Args must be known at invocation.** Static commands, or parameterized
-   only via the skill's invocation arguments (indexed `$N` or named via the
-   `arguments:` frontmatter). A command whose input
-   comes from a *previous* command's output (e.g. `bd show <bead>` where the
-   bead id came from `bd ready`) cannot be injected — it stays a tool call.
+3. **No invocation text in shell source.** Inject only trusted static commands
+   and trusted environment-provided paths such as the bundled skill directory. Invocation
+   arguments are preprocessor paste-text, not safely escaped argv; keep them in
+   ordinary prompt content, validate them, then use a normal tool call. Commands
+   depending on prior output likewise stay tool calls.
 4. **Syntax:** the `!` must be at line start or directly after whitespace.
    `KEY=!`cmd`` is literal and never runs. Multi-line commands use a fenced
    block opened with three backticks + `!`.
@@ -65,9 +65,9 @@ For each `SKILL.md`:
 2. **Conversion candidates** — find instructions telling the model to run a
    read-only command purely to consume its output before acting. Signals:
    imperative "run X", "check X", "read X via command", bash blocks whose
-   only purpose is to feed the next instruction. For each, judge: are the
-   args static or invocation-derived (rule 3)? Is it read-only (rule 1)? Is
-   it cwd-safe at this skill's scope (rule 5)? All three → candidate.
+   only purpose is to feed the next instruction. For each, judge: is every
+   input trusted static/environment state (rule 3)? Is it read-only (rule 1)?
+   Is it cwd-safe at this skill's scope (rule 5)? All three → candidate.
 3. **Leave-alone** — mutations, dependent-step commands, interactive or slow
    commands, and commands the model must decide *whether* to run.
 

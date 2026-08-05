@@ -5,6 +5,9 @@
 	"description": "Headless web search via Brave Search - no browser required",
 	"author": "Mario Zechner",
 	"license": "MIT",
+	"engines": {
+		"node": "20 || >=22"
+	},
 	"dependencies": {
 		"@mozilla/readability": "^0.6.0",
 		"jsdom": "^27.0.1",

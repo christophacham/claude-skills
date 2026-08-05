@@ -28,7 +28,7 @@ Agent Skills clients):
 In Pi, `.agents/skills` root `.md` files are ignored; use a directory containing `SKILL.md`.
 
 **Claude Code extends the base skill format** with invocation control,
-dynamic context injection (`` !`cmd` ``), forked subagent execution,
+dynamic context injection (a bang-prefixed backtick command), forked subagent execution,
 per-skill model/effort, `allowed-tools` permission grants, `paths`
 auto-activation, and `${CLAUDE_SKILL_DIR}`/`${CLAUDE_PROJECT_DIR}`
 substitutions. Read [references/claude-code-skills.md](references/claude-code-skills.md)
@@ -162,13 +162,9 @@ Before finalizing a skill:
 ## When more detail is needed
 
 For Claude Code skills, the local [references/claude-code-skills.md](references/claude-code-skills.md)
-is the first stop — fetch fresh docs only when it seems stale or the user
-asks for the latest behavior.
+is the first stop. When it seems stale or the user asks for the latest
+behavior, fetch the official documentation index on demand with `WebFetch`,
+then read only the relevant pages before editing:
 
-### Documentation indexes (injected at load)
-
-!`curl -fsSL --connect-timeout 2 https://code.claude.com/docs/llms.txt 2>/dev/null || echo "(Claude Code docs index unavailable offline — using local references)"`
-
-!`curl -fsSL --connect-timeout 2 https://agentskills.io/llms.txt 2>/dev/null || echo "(Agent Skills spec index unavailable offline — using local references)"`
-
-Then read the relevant pages from that index before editing.
+- https://code.claude.com/docs/llms.txt
+- https://agentskills.io/llms.txt

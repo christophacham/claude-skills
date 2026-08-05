@@ -37,8 +37,10 @@ bd show <id>                    # Issue details with dependencies
 ### Creating Issues
 
 ```bash
-bd create --title="Summary" --description="Why and what" --type=task|bug|feature --priority=2
+bd create --title="Summary" --description="Why and what" --type=task --priority=2
 ```
+
+Valid types include `task`, `bug`, and `feature`; choose one concrete value.
 
 - Priority: 0–4 (0=critical, 4=backlog). Use numbers, not words.
 - Optional flags: `--acceptance="criteria"`, `--design="decisions"`, `--notes="context"`
@@ -50,7 +52,9 @@ bd create --title="Summary" --description="Why and what" --type=task|bug|feature
 bd update <id> --claim                # Claim work
 bd update <id> --assignee=username    # Assign
 bd update <id> --title="..."          # Update fields inline
-bd update <id> --description/--notes/--design="..."
+bd update <id> --description="..."
+bd update <id> --notes="..."
+bd update <id> --design="..."
 ```
 
 ### Completing Work

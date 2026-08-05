@@ -33,8 +33,8 @@ Run from inside a cloned copy of this repository:
 ```
 
 Install also:
-- runs `npm install` in the installed `brave-search` skill (Node required)
-- ensures the `ddgs` Python package when Python is available (`ddg-search`)
+- runs `npm install` in the installed `brave-search` skill (Node 20 or >=22)
+- ensures the `ddgs` Python package when Python >=3.10 is available (`ddg-search`)
 - interactively prompts for a **Brave Search API key** (optional) and writes
   `env.BRAVE_API_KEY` into `~/.claude/settings.json` (never into the project tree).
   Skip with `--skip-brave-key` / `-SkipBraveKey`, or deps with `--skip-deps` / `-SkipDeps`.
@@ -64,9 +64,9 @@ Beads (`bd`) is the canonical work tracker, with fallback support for GitHub, Li
 - **`work-plan`**: Sized design panel (`deep-module`, `minimal-diff`, `seam`), short tiered beads, Drop-Test prep, MAP_TRUST load injection, optional provenance stamp.
 - **`bd-epic-runner`**: Walks all ready children of a beads epic to completion through `work-loop`.
 - **`dynamic-context-injection`**: Auditor + guide for load-time shell state injection in skills.
-- **`peek-repo`**: Get third-party GitHub source under `%USERPROFILE%\code\tmp\<name>` (or `~/code/tmp/<name>`) so answers can come from real code. Hardened load-time arg parsing (URL / `owner/repo` / prose); model resolves vague product names (search or ask — never guess org); idempotent shallow `gh repo clone`; inspect the clone when the question is “how does this work”.
-- **`ddg-search`**: Free web/news search + URL extract via the `ddgs` Python package (no API key). Auto-installs `ddgs` if missing; load-time readiness injection. **Always forks** into an Explore subagent (`context: fork`, `background: false`) so raw hits stay out of the main context. Prefer `find-docs` for library APIs; use this for general web facts or as a no-key alternative to Brave Search.
-- **`brave-search`**: Web search and page content extraction via the Brave Search API (`search.js` / `content.js`). Requires `BRAVE_API_KEY`. **Always forks** into an Explore subagent like `ddg-search`. Prefer for key-backed search; use `ddg-search` when no Brave key.
+- **`peek-repo`**: Get third-party GitHub source under `%USERPROFILE%\code\tmp\<name>` (or `~/code/tmp/<name>`) so answers can come from real code. Runtime helpers strictly validate `owner/repo`; the model resolves vague product names (search or ask — never guess org); idempotent shallow `gh repo clone`; inspect the clone when the question is “how does this work”.
+- **`ddg-search`**: Free web/news search + URL extract via the `ddgs` Python package (no API key; Python >=3.10). Auto-installs `ddgs` if missing. **Always forks** into an Explore subagent (`context: fork`, `background: false`) so raw hits stay out of the main context. Prefer `find-docs` for library APIs; use this for general web facts or as a no-key alternative to Brave Search.
+- **`brave-search`**: Web search and page content extraction via the Brave Search API (`search.js` / `content.js`; Node 20 or >=22). Requires `BRAVE_API_KEY`. **Always forks** into an Explore subagent like `ddg-search`. Prefer for key-backed search; use `ddg-search` when no Brave key.
 
 ### Tracker Integration
 - **`beads`**: Issue creation, claiming, status updates, dependency graphing, and Dolt sync via `bd`.

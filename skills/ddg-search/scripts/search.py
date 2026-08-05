@@ -15,6 +15,23 @@ import sys
 from typing import Any
 
 
+MIN_PYTHON = (3, 10)
+
+
+def require_supported_python() -> None:
+    """Exit before dependency work when the interpreter is too old."""
+    if sys.version_info < MIN_PYTHON:
+        actual = ".".join(str(part) for part in sys.version_info[:3])
+        print(
+            f"Error: Python {MIN_PYTHON[0]}.{MIN_PYTHON[1]}+ is required; found {actual}.",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+
+
+require_supported_python()
+
+
 def ensure_ddgs() -> Any:
     """Import DDGS, installing the package if needed. Returns the DDGS class."""
     try:
