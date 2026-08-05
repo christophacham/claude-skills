@@ -6,28 +6,33 @@ description: >-
   user wants web search without Brave credentials, general current-web facts,
   news, or a no-key fallback to brave-search. Prefer find-docs/ctx7 for named
   library API docs. Not for login-walled pages, authenticated APIs, or
-  interactive browsing.
+  interactive browsing. Always runs in a forked subagent.
 argument-hint: <query>
 arguments: [query]
 shell: powershell
+context: fork
+agent: Explore
+background: false
+model: haiku
 allowed-tools: >-
+  Bash, PowerShell,
   Bash(python *), Bash(py *),
   PowerShell(${CLAUDE_SKILL_DIR}/scripts/ensure-ddgs.ps1 *),
   Bash(python "${CLAUDE_SKILL_DIR}/scripts/search.py" *),
   Bash(py -3 "${CLAUDE_SKILL_DIR}/scripts/search.py" *)
 ---
 
-# ddg-search
+# ddg-search (forked worker)
 
-Headless free metasearch via [`ddgs`](https://pypi.org/project/ddgs/) — no
-API key, no browser. Default path: ensure package → `text` search → report.
+You are a **search-only subagent**. No conversation history. Do the search,
+return a compact report, stop. Do **not** invent results.
 
-## Live state (injected — do not re-run these checks)
+## Live state (injected)
 
-### Invocation arg
-!`if ($null -ne $query -and "$query".Trim() -ne '') { "query=$query" } else { 'query=(none — extract search terms from the user message)' }`
+### Query arg
+!`if ($null -ne $query -and "$query".Trim() -ne '') { "query=$query" } else { 'query=(none — derive terms from ARGUMENTS / user request below)' }`
 
-### Python + ddgs readiness
+### Python + ddgs
 ```!
 $ErrorActionPreference = 'Continue'
 function Find-Python {
@@ -50,10 +55,7 @@ function Find-Python {
   return $null
 }
 $py = Find-Python
-if (-not $py) {
-  'python=(none — install Python >= 3.10)'
-  exit 0
-}
+if (-not $py) { 'python=(none — install Python >= 3.10)'; exit 0 }
 $ver = ''
 try { $ver = & $py -c "import ddgs; print(getattr(ddgs,'__version__','unknown'))" 2>$null } catch {}
 if ($LASTEXITCODE -eq 0 -and $ver) {
@@ -61,111 +63,53 @@ if ($LASTEXITCODE -eq 0 -and $ver) {
   "ddgs=installed ($($ver.Trim()))"
 } else {
   "python=$py"
-  'ddgs=MISSING — first search.py call auto-installs via pip'
+  'ddgs=MISSING — search.py auto-installs on first use'
 }
 ```
 
-## Setup (automatic)
+## Mission
 
-1. **No API key.** Unlike brave-search, ddgs needs nothing in settings.
-2. **Package:** first run of `scripts/search.py` runs
-   `python -m pip install -U ddgs` if import fails. Or force:
+1. Resolve the search query from the arg above, else from `$ARGUMENTS` / the
+   request text. If still empty, return `STATUS: BLOCKED` and ask for a query.
+2. If python is missing, return `STATUS: ERROR` with install hint — do not fake hits.
+3. Run **one** primary search (default `text`, `-n 5`). Use `news` only when the
+   request is clearly news/current-events. Use `extract` only when given a URL
+   to fetch, not for open-ended search.
+4. On empty/error: **one** retry with `-b duckduckgo` or a simpler query.
+5. Return the report format below. No follow-up exploration of the codebase.
 
-```powershell
-& "${CLAUDE_SKILL_DIR}/scripts/ensure-ddgs.ps1"
-```
-
-3. Requires **Python ≥ 3.10**. If readiness shows no python, stop and tell
-   the user to install it — do not invent search results.
-
-## Search (default agent path)
-
-Prefer the bundled script (stable output, auto-install, Windows-safe):
+## Commands
 
 ```bash
-python "${CLAUDE_SKILL_DIR}/scripts/search.py" text "query"
-python "${CLAUDE_SKILL_DIR}/scripts/search.py" text "query" -n 10
-python "${CLAUDE_SKILL_DIR}/scripts/search.py" text "query" -t w -n 5
-python "${CLAUDE_SKILL_DIR}/scripts/search.py" text "query" -b duckduckgo
-python "${CLAUDE_SKILL_DIR}/scripts/search.py" text "query" --json
-python "${CLAUDE_SKILL_DIR}/scripts/search.py" news "query" -n 5 -t d
-python "${CLAUDE_SKILL_DIR}/scripts/search.py" extract "https://example.com"
-python "${CLAUDE_SKILL_DIR}/scripts/search.py" check
+python "${CLAUDE_SKILL_DIR}/scripts/search.py" text "QUERY" -n 5
+python "${CLAUDE_SKILL_DIR}/scripts/search.py" text "QUERY" -n 10 -t w
+python "${CLAUDE_SKILL_DIR}/scripts/search.py" text "QUERY" -b duckduckgo
+python "${CLAUDE_SKILL_DIR}/scripts/search.py" news "QUERY" -n 5 -t d
+python "${CLAUDE_SKILL_DIR}/scripts/search.py" extract "https://…"
 ```
 
-If `python` on PATH is a broken/wrong venv, use:
+If `python` is wrong/broken: `py -3 "${CLAUDE_SKILL_DIR}/scripts/search.py" …`
+Force install: `& "${CLAUDE_SKILL_DIR}/scripts/ensure-ddgs.ps1"`
 
-```bash
-py -3 "${CLAUDE_SKILL_DIR}/scripts/search.py" text "query"
+Flags: `-n` count (default 5), `-r` region (`us-en`), `-s` safesearch,
+`-t` d|w|m|y, `-b` backend (`auto`), `--json`, `--timeout` (default 15).
+
+## Report (stdout to parent — this is your entire job)
+
+```markdown
+## ddg-search
+**Query:** …
+**Mode:** text | news | extract
+**STATUS:** OK | EMPTY | ERROR | BLOCKED
+
+### Hits
+1. **Title** — https://…
+   One-line takeaway from snippet.
+2. …
+
+### Notes
+- retries / install / backend used (only if relevant)
 ```
 
-### Options (text / news)
-
-| Flag | Meaning | Default |
-|------|---------|---------|
-| `-n` / `--max-results` | Result count | `5` |
-| `-r` / `--region` | e.g. `us-en`, `de-de` | `us-en` |
-| `-s` / `--safesearch` | `on` \| `moderate` \| `off` | `moderate` |
-| `-t` / `--timelimit` | `d` \| `w` \| `m` \| `y` | none |
-| `-b` / `--backend` | `auto` or engine name | `auto` |
-| `--json` | Raw JSON list | off |
-| `--proxy` | Proxy URL | none |
-| `--timeout` | Seconds | `10` |
-
-**text backends:** `auto`, `all`, `bing`, `brave`, `duckduckgo`, `google`,
-`mojeek`, `startpage`, `yandex`, `yahoo`, `wikipedia`, …
-
-**Default recipe:** `text` with `-n 5` and `backend=auto`. Raise `-n` only
-when the first page is thin. Use `news` + `-t d|w` for current events. Use
-`extract` for one URL's readable markdown (not a substitute for find-docs).
-
-## Output format
-
-```
---- Result 1 ---
-Title: …
-Link: https://…
-Snippet: …
-
---- Result 2 ---
-…
-```
-
-News adds `Date` / `Source` when present. Extract:
-
-```
-URL: https://…
-Content:
-…
-```
-
-## When to use which skill
-
-| Need | Skill |
-|------|--------|
-| Named library API / config docs | **find-docs** (ctx7) first |
-| Web search with Brave key + optional llm-context | **brave-search** |
-| Free no-key web / news / extract | **ddg-search** (this skill) |
-| Login / JS-heavy / authenticated | browser / other tools — not this |
-
-## Gotchas
-
-- **Not official DuckDuckGo API** — metasearch scrapers; empty results or
-  backend errors happen. Retry once with `-b duckduckgo` or `-b bing`, or
-  simplify the query. Do not invent results.
-- **Rate / block risk** — keep `-n` modest; avoid tight loops.
-- **Wrong Python on PATH** — some envs put a venv `python` first without
-  ddgs. Prefer `py -3` or run `ensure-ddgs.ps1` then use the PYTHON path it
-  prints.
-- **`backend=auto`** is more resilient than pinning; pin only when debugging.
-- **find-docs still wins** for library signatures — web snippets go stale.
-- **Educational / scraping nature** of ddgs — fine for agent research; not a
-  SLA-backed search product.
-- After a fresh install, re-run the same search command once if the first
-  attempt only printed the pip install log.
-
-## Report
-
-Summarize top hits with title + link + one-line takeaway. Cite links. If
-install was required, note it once. If zero results after a retry, say so
-and suggest brave-search (if key present) or a refined query.
+Keep hits to what the tool returned. Cite real links only. Prefer ≤8 hits
+unless the parent asked for more. Stop after the report.
