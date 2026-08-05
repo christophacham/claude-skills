@@ -57,7 +57,7 @@ class SkillValidationTests(unittest.TestCase):
         self.assertEqual({}, failures)
 
     def test_active_injections_are_static_and_trusted(self) -> None:
-        expected = {"bd-epic-runner", "work-loop", "work-plan"}
+        expected = {"bd-epic-runner", "reimpl-scout", "tavily-search", "work-loop", "work-plan"}
         actual = set()
         for skill_dir in sorted(SKILLS.iterdir()):
             skill_file = skill_dir / "SKILL.md"
@@ -68,7 +68,7 @@ class SkillValidationTests(unittest.TestCase):
             if not injections:
                 continue
             actual.add(skill_dir.name)
-            self.assertIn("shell: bash", text, skill_dir.name)
+            self.assertRegex(text, r"(?m)^shell: (bash|powershell)$", skill_dir.name)
 
             argument_names = []
             match = re.search(r"(?m)^arguments:\s*\[([^]]*)\]", text)
@@ -93,8 +93,9 @@ class SkillValidationTests(unittest.TestCase):
 
 @unittest.skipIf(os.name == "nt", "POSIX installer tests require a POSIX host")
 class InstallerTests(unittest.TestCase):
-    def test_posix_installer_persists_key_without_printing_it(self) -> None:
-        sentinel = "test-secret-must-not-be-printed"
+    def test_posix_installer_persists_keys_without_printing_them(self) -> None:
+        sentinel = "test-brave-secret-must-not-be-printed"
+        tavily_sentinel = "test-tavily-secret-must-not-be-printed"
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
             home = base / "home"
@@ -115,6 +116,8 @@ class InstallerTests(unittest.TestCase):
                     "--skip-deps",
                     "--brave-api-key",
                     sentinel,
+                    "--tavily-api-key",
+                    tavily_sentinel,
                 ],
                 cwd=project,
                 env=env,
@@ -123,9 +126,12 @@ class InstallerTests(unittest.TestCase):
                 check=False,
             )
             self.assertEqual(0, result.returncode, result.stderr)
-            self.assertNotIn(sentinel, result.stdout + result.stderr)
+            output = result.stdout + result.stderr
+            self.assertNotIn(sentinel, output)
+            self.assertNotIn(tavily_sentinel, output)
             data = json.loads(settings.read_text(encoding="utf-8"))
             self.assertEqual(sentinel, data["env"]["BRAVE_API_KEY"])
+            self.assertEqual(tavily_sentinel, data["env"]["TAVILY_API_KEY"])
             self.assertEqual("kept", data["env"]["OTHER"])
             self.assertEqual({"items": [1, 2]}, data["nested"])
             self.assertTrue((project / ".claude" / "skills" / "brave-search" / "SKILL.md").is_file())

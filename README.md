@@ -24,21 +24,23 @@ Run from inside a cloned copy of this repository:
 # macOS / Linux (POSIX)
 ./install.sh             # Global (~/.claude/)
 ./install.sh --project   # Project-local (./.claude/)
-./install.sh --brave-api-key "$BRAVE_API_KEY"   # non-interactive key
+./install.sh --brave-api-key "$BRAVE_API_KEY" --tavily-api-key "$TAVILY_API_KEY"
 
 # Windows (PowerShell)
 .\install.ps1            # Global (~/.claude/)
 .\install.ps1 -Project   # Project-local (./.claude/)
-.\install.ps1 -BraveApiKey $env:BRAVE_API_KEY   # non-interactive key
+.\install.ps1 -BraveApiKey $env:BRAVE_API_KEY -TavilyApiKey $env:TAVILY_API_KEY
 ```
 
 Install also:
 - runs `npm install` in the installed `brave-search` skill (Node 20 or >=22)
 - ensures the `ddgs` Python package when Python >=3.10 is available (`ddg-search`)
-- interactively prompts for a **Brave Search API key** (optional) and writes
-  `env.BRAVE_API_KEY` into `~/.claude/settings.json` (never into the project tree).
-  Skip with `--skip-brave-key` / `-SkipBraveKey`, or deps with `--skip-deps` / `-SkipDeps`.
-  Restart Claude Code after setting the key.
+- ensures the Tavily CLI (`tvly`) when possible (`tavily-search`)
+- interactively prompts for **Brave** and **Tavily** API keys (optional) and writes
+  `env.BRAVE_API_KEY` / `env.TAVILY_API_KEY` into `~/.claude/settings.json`
+  (never into the project tree). Skip with `--skip-brave-key` / `-SkipBraveKey`,
+  `--skip-tavily-key` / `-SkipTavilyKey`, or deps with `--skip-deps` / `-SkipDeps`.
+  Restart Claude Code after setting keys.
 
 ---
 
@@ -67,6 +69,7 @@ Beads (`bd`) is the canonical work tracker, with fallback support for GitHub, Li
 - **`peek-repo`**: Get third-party GitHub source under `%USERPROFILE%\code\tmp\<name>` (or `~/code/tmp/<name>`) so answers can come from real code. Runtime helpers strictly validate `owner/repo`; the model resolves vague product names (search or ask — never guess org); idempotent shallow `gh repo clone`; inspect the clone when the question is “how does this work”.
 - **`ddg-search`**: Free web/news search + URL extract via the `ddgs` Python package (no API key; Python >=3.10). Auto-installs `ddgs` if missing. **Always forks** into an Explore subagent (`context: fork`, `background: false`) so raw hits stay out of the main context. Prefer `find-docs` for library APIs; use this for general web facts or as a no-key alternative to Brave Search.
 - **`brave-search`**: Web search and page content extraction via the Brave Search API (`search.js` / `content.js`; Node 20 or >=22). Requires `BRAVE_API_KEY`. **Always forks** into an Explore subagent like `ddg-search`. Prefer for key-backed search; use `ddg-search` when no Brave key.
+- **`tavily-search`**: LLM-optimized web search + URL extract via Tavily CLI (`tvly`). Requires `TAVILY_API_KEY`. One skill (search default; extract when given URLs); forked Explore worker; load-time readiness injection. Not crawl/map/deep-research.
 
 ### Tracker Integration
 - **`beads`**: Issue creation, claiming, status updates, dependency graphing, and Dolt sync via `bd`.
@@ -80,6 +83,7 @@ Beads (`bd`) is the canonical work tracker, with fallback support for GitHub, Li
 - **`testing-tdd`**: Test-driven development cycles, test design, mocking strategies, and testability.
 - **`third-party-integration`**: Adapter patterns for wrapping 3rd-party dependencies.
 - **`mission-planning`**: OPORD artifacts, PACE fallbacks, and execution feedback loops for major initiatives.
+- **`reimpl-scout`**: Reimplementation-grade multi-agent codebase scouts (A–F layers, topic packs, adversary scorecards). Orchestrator skill with load-time repo/pack injection — **not** forked. Use for clean-room freeze docs; use `peek-repo` for light “how does X work” clones.
 - **`skill-creator`**: Creating, auditing, validating, and packaging Agent Skills.
 
 ---
