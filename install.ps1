@@ -1,4 +1,4 @@
-# Install claude-skills: skills -> ~/.claude/skills, agents -> ~/.claude/agents
+﻿# Install claude-skills: skills -> ~/.claude/skills, agents -> ~/.claude/agents
 # Usage (local):  .\install.ps1 [-Project] [-BraveApiKey <key>] [-TavilyApiKey <key>] [-SkipBraveKey] [-SkipTavilyKey] [-SkipDeps]
 # Usage (remote): iwr -useb https://raw.githubusercontent.com/christophacham/claude-skills/main/install.ps1 | iex
 param(

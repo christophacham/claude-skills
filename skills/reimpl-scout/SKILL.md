@@ -12,7 +12,7 @@ description: >-
   source inspection).
 argument-hint: "[full|topic|audit|prompt-series] [scope-or-slug]"
 arguments: [mode, scope]
-shell: powershell
+shell: bash
 ---
 
 # Reimpl scout
@@ -31,54 +31,48 @@ static repository state only.
 
 ### Repo identity
 ```!
-$ErrorActionPreference = 'Continue'
-$cwd = (Get-Location).Path
-"cwd=$cwd"
-"folder=$((Split-Path -Leaf $cwd))"
-if (Get-Command git -ErrorAction SilentlyContinue) {
-  $inside = ''
-  try { $inside = (& git rev-parse --is-inside-work-tree 2>$null | Out-String).Trim() } catch {}
-  if ($inside -eq 'true') {
-    $sha = ''
-    $remote = ''
-    $root = ''
-    try { $sha = (& git rev-parse --short HEAD 2>$null | Out-String).Trim() } catch {}
-    try { $remote = (& git remote get-url origin 2>$null | Out-String).Trim() } catch {}
-    try { $root = (& git rev-parse --show-toplevel 2>$null | Out-String).Trim() } catch {}
-    "git=yes"
-    if ($sha) { "sha=$sha" }
-    if ($root) { "git_root=$root" }
-    if ($remote) { "origin=$remote" }
-  } else {
-    'git=no'
-  }
-} else {
-  'git=(git not on PATH)'
-}
+cwd=$(pwd)
+echo "cwd=$cwd"
+echo "folder=$(basename "$cwd")"
+if command -v git >/dev/null 2>&1; then
+  inside=$(git rev-parse --is-inside-work-tree 2>/dev/null) || inside=''
+  if [ "$inside" = "true" ]; then
+    echo "git=yes"
+    sha=$(git rev-parse --short HEAD 2>/dev/null) || sha=''
+    root=$(git rev-parse --show-toplevel 2>/dev/null) || root=''
+    remote=$(git remote get-url origin 2>/dev/null) || remote=''
+    [ -n "$sha" ] && echo "sha=$sha"
+    [ -n "$root" ] && echo "git_root=$root"
+    [ -n "$remote" ] && echo "origin=$remote"
+  else
+    echo "git=no"
+  fi
+else
+  echo "git=(git not on PATH)"
+fi
 ```
 
 ### Existing scout packs (docs/)
 ```!
-$ErrorActionPreference = 'Continue'
-$docs = Join-Path (Get-Location).Path 'docs'
-if (-not (Test-Path -LiteralPath $docs)) {
-  'packs=none (no docs/ under cwd)'
+docs="$(pwd)/docs"
+if [ ! -d "$docs" ]; then
+  echo "packs=none (no docs/ under cwd)"
   exit 0
-}
-$dirs = @(Get-ChildItem -LiteralPath $docs -Directory -ErrorAction SilentlyContinue |
-  Where-Object { $_.Name -match '^(2_|4_)' } |
-  Select-Object -ExpandProperty Name |
-  Sort-Object)
-$files = @(Get-ChildItem -LiteralPath $docs -File -ErrorAction SilentlyContinue |
-  Where-Object { $_.Name -match '^(1_|3_)' } |
-  Select-Object -ExpandProperty Name |
-  Sort-Object)
-if ($dirs.Count -eq 0 -and $files.Count -eq 0) {
-  'packs=none under docs/ (no 1_/2_/3_/4_ scout artifacts)'
-} else {
-  if ($dirs.Count -gt 0) { "pack_dirs=`n$($dirs -join "`n")" }
-  if ($files.Count -gt 0) { "pack_files=`n$($files -join "`n")" }
-}
+fi
+pack_dirs=$(find "$docs" -maxdepth 1 -mindepth 1 -type d \( -name '2_*' -o -name '4_*' \) 2>/dev/null | sed 's|.*/||' | sort)
+pack_files=$(find "$docs" -maxdepth 1 -mindepth 1 -type f \( -name '1_*' -o -name '3_*' \) 2>/dev/null | sed 's|.*/||' | sort)
+if [ -z "$pack_dirs" ] && [ -z "$pack_files" ]; then
+  echo "packs=none under docs/ (no 1_/2_/3_/4_ scout artifacts)"
+else
+  if [ -n "$pack_dirs" ]; then
+    echo "pack_dirs="
+    echo "$pack_dirs"
+  fi
+  if [ -n "$pack_files" ]; then
+    echo "pack_files="
+    echo "$pack_files"
+  fi
+fi
 ```
 
 ## Modes (pick one)

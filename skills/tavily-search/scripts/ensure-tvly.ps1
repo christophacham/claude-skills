@@ -19,14 +19,14 @@ $ErrorActionPreference = 'Stop'
 function Find-Python {
     if (Get-Command py -ErrorAction SilentlyContinue) {
         try {
-            $p = & py -3 -c "import sys; print(sys.executable)" 2>$null
+            $p = & py -3 -c "import sys; print(sys.executable) if sys.version_info >= (3, 10) else sys.exit(1)" 2>$null
             if ($LASTEXITCODE -eq 0 -and $p) { return $p.Trim() }
         } catch {}
     }
     foreach ($name in @('python', 'python3')) {
         if (Get-Command $name -ErrorAction SilentlyContinue) {
             try {
-                $p = & $name -c "import sys; print(sys.executable)" 2>$null
+                $p = & $name -c "import sys; print(sys.executable) if sys.version_info >= (3, 10) else sys.exit(1)" 2>$null
                 if ($LASTEXITCODE -eq 0 -and $p) { return $p.Trim() }
             } catch {}
         }
@@ -97,7 +97,7 @@ if (Get-Command uv -ErrorAction SilentlyContinue) {
     $py = Find-Python
     if (-not $py) {
         Write-Output 'STATUS: ERROR'
-        Write-Output 'REASON: no uv and no Python — install from https://docs.tavily.com or: pip install tavily-cli'
+        Write-Output 'REASON: no uv and no Python 3.10+ — install from https://docs.tavily.com or: pip install tavily-cli'
         exit 1
     }
     Write-Output "PYTHON: $py"

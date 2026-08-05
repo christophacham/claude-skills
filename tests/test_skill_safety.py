@@ -45,6 +45,20 @@ def active_injections(text: str) -> list[tuple[int, str]]:
     return found
 
 
+def _resolve_powershell() -> str | None:
+    """Return a usable PowerShell executable (pwsh preferred), or None."""
+    path = shutil.which("pwsh")
+    if path:
+        return path
+    if os.name == "nt":
+        return shutil.which("powershell")
+    return None
+
+
+_POWERSHELL = _resolve_powershell()
+_BASH = shutil.which("bash")
+
+
 class SkillValidationTests(unittest.TestCase):
     def test_all_skills_validate(self) -> None:
         failures = {}
@@ -187,7 +201,59 @@ class InstallerTests(unittest.TestCase):
             self.assertNotIn("-m pip", calls)
 
 
-@unittest.skipIf(os.name == "nt", "POSIX helper tests require a POSIX host")
+@unittest.skipIf(_POWERSHELL is None, "PowerShell is not installed")
+class PowerShellInstallerTests(unittest.TestCase):
+    def test_windows_installer_persists_keys_without_printing_them(self) -> None:
+        sentinel = "test-brave-secret-must-not-be-printed"
+        tavily_sentinel = "test-tavily-secret-must-not-be-printed"
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            home = base / "home"
+            project = base / "project"
+            settings = home / ".claude" / "settings.json"
+            settings.parent.mkdir(parents=True)
+            project.mkdir()
+            settings.write_text(
+                json.dumps({"theme": "dark", "env": {"OTHER": "kept"}, "nested": {"items": [1, 2]}}),
+                encoding="utf-8",
+            )
+            env = os.environ.copy()
+            env["HOME"] = str(home)
+            env["USERPROFILE"] = str(home)
+            command = [_POWERSHELL, "-NoProfile"]
+            if os.name == "nt":
+                command += ["-ExecutionPolicy", "Bypass"]
+            command += [
+                "-File",
+                str(ROOT / "install.ps1"),
+                "-Project",
+                "-SkipDeps",
+                "-BraveApiKey",
+                sentinel,
+                "-TavilyApiKey",
+                tavily_sentinel,
+            ]
+            result = subprocess.run(
+                command,
+                cwd=project,
+                env=env,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(0, result.returncode, result.stderr)
+            output = result.stdout + result.stderr
+            self.assertNotIn(sentinel, output)
+            self.assertNotIn(tavily_sentinel, output)
+            data = json.loads(settings.read_text(encoding="utf-8"))
+            self.assertEqual(sentinel, data["env"]["BRAVE_API_KEY"])
+            self.assertEqual(tavily_sentinel, data["env"]["TAVILY_API_KEY"])
+            self.assertEqual("kept", data["env"]["OTHER"])
+            self.assertEqual({"items": [1, 2]}, data["nested"])
+            self.assertTrue((project / ".claude" / "skills" / "brave-search" / "SKILL.md").is_file())
+
+
+@unittest.skipIf(os.name == "nt" or _BASH is None, "POSIX helper tests require bash on a POSIX host")
 class PeekRepoHelperTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
@@ -221,8 +287,10 @@ class PeekRepoHelperTests(unittest.TestCase):
             assert mkdir
             (isolated / "mkdir").symlink_to(mkdir)
             env["PATH"] = str(isolated)
+        bash = _BASH
+        assert bash
         return subprocess.run(
-            ["/bin/bash", str(self.helper), *args],
+            [bash, str(self.helper), *args],
             env=env,
             text=True,
             capture_output=True,
@@ -305,7 +373,7 @@ class PeekRepoHelperTests(unittest.TestCase):
         self.assertIn("gh CLI not found", result.stdout)
 
 
-@unittest.skipUnless(shutil.which("pwsh"), "pwsh is not installed")
+@unittest.skipIf(_POWERSHELL is None, "PowerShell is not installed")
 class PeekRepoPowerShellHelperTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
@@ -340,7 +408,7 @@ class PeekRepoPowerShellHelperTests(unittest.TestCase):
         env["GH_LOG"] = str(self.log)
         env["PATH"] = str(self.bin) + os.pathsep + env.get("PATH", "")
         return subprocess.run(
-            ["pwsh", "-NoProfile", "-File", str(self.helper), "-Repo", repo],
+            [_POWERSHELL, "-NoProfile", "-File", str(self.helper), "-Repo", repo],
             env=env,
             text=True,
             capture_output=True,

@@ -30,7 +30,7 @@ contract and child state with `bd show <epic-id> --json`,
 !`cat "${CLAUDE_PROJECT_DIR}/.claude/pool.md" 2>/dev/null || cat ~/.claude/pool.md 2>/dev/null || echo "(no pool.md — default model tiers active)"`
 
 ### Repo conventions (if present)
-!`cat CLAUDE.md 2>/dev/null || echo "(no CLAUDE.md)"`
+!`cat "${CLAUDE_PROJECT_DIR}/CLAUDE.md" 2>/dev/null || echo "(no CLAUDE.md)"`
 
 ### Tree state
 !`git status --short --branch 2>/dev/null || echo "(not a git repo)"`

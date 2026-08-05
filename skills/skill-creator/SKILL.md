@@ -45,7 +45,10 @@ patterns section there lists the features most worth using.
    - `references/` for detailed docs loaded on demand.
    - `scripts/` for repeated, fragile, or mechanically verifiable operations.
    - `assets/` for templates and static resources.
-6. **Validate.** Run `python3 scripts/validate_skill.py <target-skill-dir> --format text` from this skill directory when possible. Also check scripts for non-interactive behavior and useful `--help` output.
+6. **Validate.** Run the validator from this skill directory when possible:
+   - POSIX: `python3 scripts/validate_skill.py <target-skill-dir> --format text`
+   - Windows: `py -3 scripts/validate_skill.py <target-skill-dir> --format text` (fallback: `python ...`)
+   Also check scripts for non-interactive behavior and useful `--help` output.
 7. **Iterate from real use.** Add corrections to gotchas, remove vague/general instructions, and evaluate triggering/output quality for important skills.
 
 ## Bundled files

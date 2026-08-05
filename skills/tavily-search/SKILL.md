@@ -9,7 +9,7 @@ description: >-
   multi-minute deep research. Always runs in a forked subagent.
 argument-hint: <query-or-url>
 arguments: [query]
-shell: powershell
+shell: bash
 context: fork
 agent: Explore
 background: false
@@ -17,6 +17,7 @@ model: haiku
 allowed-tools: >-
   Bash, PowerShell,
   Bash(tvly *), Bash(uv *), Bash(pip *), Bash(python *), Bash(py *),
+  Bash(${CLAUDE_SKILL_DIR}/scripts/ensure-tvly.sh *),
   PowerShell(${CLAUDE_SKILL_DIR}/scripts/ensure-tvly.ps1 *)
 ---
 
@@ -32,28 +33,29 @@ load-time shell commands. The injection is static readiness state only.
 
 ### tvly + key
 ```!
-$ErrorActionPreference = 'Continue'
-if (Get-Command tvly -ErrorAction SilentlyContinue) {
-  $v = ''
-  try { $v = (& tvly --version 2>$null | Out-String).Trim() } catch {}
-  if (-not $v) { try { $v = ((& tvly --status 2>$null | Out-String) -split "`n")[0].Trim() } catch {} }
-  "tvly=$(if ($v) { $v } else { 'present' })"
-} else {
-  'tvly=MISSING — run ensure-tvly.ps1 or: uv tool install tavily-cli'
-}
-if (-not [string]::IsNullOrWhiteSpace($env:TAVILY_API_KEY)) {
-  'tavily_key=env'
-} else {
-  $sp = Join-Path $env:USERPROFILE '.claude\settings.json'
-  $fromSettings = $false
-  if (Test-Path -LiteralPath $sp) {
-    try {
-      $o = Get-Content -LiteralPath $sp -Raw | ConvertFrom-Json
-      if ($o.env -and -not [string]::IsNullOrWhiteSpace([string]$o.env.TAVILY_API_KEY)) { $fromSettings = $true }
-    } catch {}
-  }
-  if ($fromSettings) { 'tavily_key=settings (may need restart to export)' } else { 'tavily_key=MISSING' }
-}
+if command -v tvly >/dev/null 2>&1; then
+  tvly_ver=$(tvly --version 2>/dev/null | head -n1)
+  [ -z "$tvly_ver" ] && tvly_ver=$(tvly --status 2>/dev/null | head -n1)
+  echo "tvly=${tvly_ver:-present}"
+else
+  echo 'tvly=MISSING (run ensure-tvly.sh or: uv tool install tavily-cli)'
+fi
+tkey='MISSING'
+if [ -n "${TAVILY_API_KEY:-}" ]; then
+  tkey='env'
+else
+  settings_file="$HOME/.claude/settings.json"
+  if [ -n "${HOME:-}" ] && [ -f "$settings_file" ]; then
+    py=''
+    command -v python3 >/dev/null 2>&1 && py=python3
+    [ -z "$py" ] && command -v python >/dev/null 2>&1 && py=python
+    if [ -n "$py" ]; then
+      hit=$("$py" -c 'import json,sys; d=json.load(open(sys.argv[1])); e=d.get("env") or {}; print("1" if e.get("TAVILY_API_KEY") else "0")' "$settings_file" 2>/dev/null)
+      [ "$hit" = "1" ] && tkey='settings'
+    fi
+  fi
+fi
+echo "tavily_key=$tkey"
 ```
 
 ## Mission
@@ -62,8 +64,11 @@ if (-not [string]::IsNullOrWhiteSpace($env:TAVILY_API_KEY)) {
    - Looks like URL(s) → **extract**
    - Otherwise → **search**
    - Empty → `STATUS: BLOCKED`
-2. If `tvly=MISSING` → run once:
-   `& "${CLAUDE_SKILL_DIR}/scripts/ensure-tvly.ps1"`
+2. If `tvly=MISSING` → install once (pick your platform):
+   - POSIX: `bash "${CLAUDE_SKILL_DIR}/scripts/ensure-tvly.sh"`, or directly
+     `uv tool install tavily-cli` (fallback `python3 -m pip install -U tavily-cli`,
+     then `python -m pip install -U tavily-cli`).
+   - Windows: `& "${CLAUDE_SKILL_DIR}/scripts/ensure-tvly.ps1"` (needs pwsh).
    If still missing → `STATUS: ERROR` (install hint). No fake results.
 3. If `tavily_key=MISSING` and commands fail with auth → `STATUS: ERROR`:
    install writes the key when prompted (`install.ps1` / `install.sh`), or set
@@ -93,8 +98,15 @@ tvly extract "https://app.example.com" --extract-depth advanced --json
 
 Always quote URLs. Prefer `--json`. Force CLI install:
 
+```bash
+bash "${CLAUDE_SKILL_DIR}/scripts/ensure-tvly.sh"
+# or directly:
+uv tool install tavily-cli
+python3 -m pip install -U tavily-cli
+```
+
 ```powershell
-& "${CLAUDE_SKILL_DIR}/scripts/ensure-tvly.ps1"
+& "${CLAUDE_SKILL_DIR}/scripts/ensure-tvly.ps1"   # Windows (needs pwsh)
 ```
 
 ### Search flags (essentials)
