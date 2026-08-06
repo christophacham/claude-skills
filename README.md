@@ -124,8 +124,6 @@ Optional: Beads (`bd`) for issue tracking; design panelists for multi-lens desig
 - **`distributed-architecture`**: Trade-offs across deployables — granularity, monolith decomposition, data, sagas, contracts.
 - **`simple-design`**: Ousterhout deep modules, information hiding, red flags.
 - **`refactoring`**: Fowler smells and safe structural steps.
-- **`testing-tdd`**: Red→green, test design, mocking, testability.
-- **`third-party-integration`**: Adapter layer; only mock types you own.
 - **`geometric-robustness`**: Float/geometry robustness for slicers and CAD/CAM (Rust).
 
 ---

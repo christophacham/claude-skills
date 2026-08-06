@@ -74,7 +74,7 @@ class AgentContractTests(unittest.TestCase):
             configured_tools(text),
         )
         self.assertEqual(
-            ["simple-design", "refactoring", "testing-tdd"],
+            ["simple-design", "refactoring"],
             configured_skills(text),
         )
         for phrase in (
@@ -95,7 +95,7 @@ class AgentContractTests(unittest.TestCase):
 
         self.assertEqual({"Read", "Grep", "Glob"}, configured_tools(text))
         self.assertEqual(
-            ["simple-design", "refactoring", "testing-tdd"],
+            ["simple-design", "refactoring"],
             configured_skills(text),
         )
         for forbidden_tool in ("Write", "Edit", "Bash"):
@@ -197,7 +197,7 @@ class CoordinationDocumentationTests(unittest.TestCase):
             "distributed-architecture",
             "geometric-robustness", "peek-repo",
             "refactoring", "simple-design", "skill-creator",
-            "tavily-search", "testing-tdd", "third-party-integration",
+            "tavily-search",
         }
         expected_agents = {
             "beads-creator.md", "beads-reviewer.md", "coder.md", "reviewer.md",

@@ -101,8 +101,6 @@ class DesignDoctrineTests(unittest.TestCase):
         cls.distributed = (SKILLS / "distributed-architecture" / "SKILL.md").read_text(encoding="utf-8")
         cls.distributed_ref = (SKILLS / "distributed-architecture" / "references" / "reference.md").read_text(encoding="utf-8")
         cls.refactoring = (SKILLS / "refactoring" / "SKILL.md").read_text(encoding="utf-8")
-        cls.testing = (SKILLS / "testing-tdd" / "SKILL.md").read_text(encoding="utf-8")
-        cls.third_party = (SKILLS / "third-party-integration" / "SKILL.md").read_text(encoding="utf-8")
 
     def test_architecture_design_has_no_ddd_pedagogy(self) -> None:
         combined = f"{self.architecture_skill}\n{self.architecture}".lower()
@@ -141,9 +139,6 @@ class DesignDoctrineTests(unittest.TestCase):
 
     def test_abstraction_and_double_guidance_share_ownership(self) -> None:
         self.assertIn("not an automatic threshold", self.refactoring)
-        self.assertNotIn("| Testing | **Create** instances, assert results | **Mock** peers", self.testing)
-        self.assertIn("Application policy tests", self.third_party)
-        self.assertNotIn("Domain Code Tests", self.third_party)
 
 
 class DynamicInjectionDoctrineTests(unittest.TestCase):
@@ -249,7 +244,7 @@ class SkillCreatorContractTests(unittest.TestCase):
             "architecture-design", "beads", "distributed-architecture",
             "geometric-robustness",
             "peek-repo", "refactoring", "simple-design",
-            "skill-creator", "testing-tdd", "third-party-integration",
+            "skill-creator",
         }
         claude_code_only = {"peek-repo"}
         for name in names:

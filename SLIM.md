@@ -1,7 +1,7 @@
 # Slim plan — 30-year maintainable core
 
 Branch: `slim/30y-maintainable-core`  
-Status: **in progress** (injection → skill-creator merge done; third-party fold may remain).  
+Status: **in progress** — injection folded into skill-creator; `testing-tdd` and `third-party-integration` **deleted** (not merged).  
 Revised after full multi-agent audit + adversarial pass (workflow `skill-suite-slim-audit`).
 
 ## Mission (one sentence)
@@ -43,7 +43,7 @@ All inventory rows below that said “MERGE → web-search” are **void**. Sear
 | Group | IDs | Install default |
 |-------|-----|-----------------|
 | **SEARCH** | `ddg-search`, `brave-search`, `tavily-search` | multiselect as today; **do not change skill bodies/IDs** |
-| **CORE** | `peek-repo`, `simple-design`, `refactoring`, `testing-tdd` | yes |
+| **CORE** | `peek-repo`, `simple-design`, `refactoring` | yes |
 | **AUTHOR** | `skill-creator` | project/author path |
 | **PROFILE · BEADS** | `beads` (+ agents + `pool.md`) | only when beads chosen |
 | **OPT_IN** | `architecture-design`, `distributed-architecture`, `geometric-robustness` | no — offer, never default-yes |
@@ -59,12 +59,12 @@ Newcomer placement: rare domain → archive or external project skill; agent-pul
 | `brave-search` | **NOGO — leave untouched** | same |
 | `tavily-search` | **NOGO — leave untouched** | same |
 | `web-search` (proposed merge) | **CANCELLED** | Conflicts with search no-go |
-| `third-party-integration` | **MERGE → `testing-tdd`** (≤~40-line body § + thin ref) | GOOS vendor-boundary is test design |
+| `third-party-integration` | **DELETE** | Removed with testing-tdd; no merge |
 | `dynamic-context-injection` | **MERGE → `skill-creator`** (Audit H2 **in body** + thin ref) | Same audience; safety entry-visible |
 | `peek-repo` | **KEEP · CORE** | Unique clone-hardening contract |
 | `simple-design` | **KEEP · CORE** | Kernel doctrine; agent preload |
 | `refactoring` | **KEEP · CORE** | Edit mechanics; panelist lens |
-| `testing-tdd` | **KEEP · CORE** | Absorbs third-party thinly |
+| `testing-tdd` | **DELETE** | Generic TDD literature; not suite-specific |
 | `architecture-design` | **KEEP · OPT_IN** | Episodic layering / ports — not lean default |
 | `distributed-architecture` | **KEEP · OPT_IN** | Multi-deployable; never content-merge with above |
 | `skill-creator` | **KEEP · AUTHOR** | Absorbs injection; eject repo-only installer essay → `docs/` |
@@ -73,7 +73,7 @@ Newcomer placement: rare domain → archive or external project skill; agent-pul
 | `reimpl-scout` | **DELETE** | Removed from suite; stale cleanup on install |
 | `geometric-robustness` | **KEEP** | Domain skill retained |
 | `find-docs` + personal archive | **ARCHIVE stay** | Do not restore; do not edit search skills to fix citations — if search descriptions mention find-docs, **leave them** (search no-go) |
-| Agents `coder`, `reviewer` | **KEEP** | Permanent roles; preloads: simple-design + refactoring + testing-tdd only |
+| Agents `coder`, `reviewer` | **KEEP** | Permanent roles; preloads: simple-design + refactoring only |
 | `beads-creator`, `beads-reviewer` | **KEEP · BEADS-only** | Install only with beads |
 | `panelists/*` ×3 | **KEEP** | Lenses stay separate |
 | `pool.md` | **KEEP advisory** | Prefer exclude from npm `files` if trivial |
@@ -81,7 +81,7 @@ Newcomer placement: rare domain → archive or external project skill; agent-pul
 | Evals | **git / `dev/` only** where easy without touching search | Never npm install surface for non-search |
 | Skill-linked `references/` | **SHIP with skill** | Progressive disclosure intact |
 
-**After mission/reimpl delete + injection merge:** 13 skill IDs (was 16). Search trio untouched. `geometric-robustness` kept. `dynamic-context-injection` folded into `skill-creator`. Further planned merge: third-party → testing-tdd.
+**After injection fold + testing/third-party delete:** 11 skill IDs (was 16). Search trio untouched. `geometric-robustness` kept. `dynamic-context-injection` in `skill-creator`. `testing-tdd` and `third-party-integration` removed.
 
 ## Merge specs
 
@@ -89,12 +89,10 @@ Newcomer placement: rare domain → archive or external project skill; agent-pul
 
 No merge spec. No `web-search`. Do not open these directories for edit.
 
-### B. `testing-tdd` ← third-party
+### B. `testing-tdd` + `third-party-integration` — **DELETED**
 
-- Short body section (≤~40 lines) + optional thin `references/third-party-adapters.md`.
-- Do **not** paste the old skill wholesale.
-- Triggers: mock external libs, wrap vendor APIs, “should I mock this library?”
-- Delete `skills/third-party-integration/`.
+Both removed from the managed suite (not merged). Stale cleanup drops prior installs.
+Agent preloads no longer include `testing-tdd`.
 
 ### C. `skill-creator` ← injection
 
@@ -175,10 +173,10 @@ If a step would require editing search skills, skip that step and continue.
 
 ## Success criteria
 1. Search trio still present and **byte-stable** (or only untouched): ddg-search, brave-search, tavily-search.
-2. Product skill IDs: no `mission-planning`, `reimpl-scout`; `geometric-robustness` remains. Further slim may still drop `third-party-integration` / `dynamic-context-injection` via merge.
-3. Agents set unchanged; coder/reviewer preloads: simple-design + refactoring + testing-tdd only.
+2. Product skill IDs: no `mission-planning`, `reimpl-scout`, `testing-tdd`, `third-party-integration`, `dynamic-context-injection`; `geometric-robustness` remains.
+3. Agents set unchanged; coder/reviewer preloads: simple-design + refactoring only.
 4. Catalog groups: SEARCH (frozen list) + CORE + AUTHOR + BEADS + OPT_IN as in SLIM.md.
-5. third-party folded thinly into testing-tdd; injection audit in skill-creator body + thin ref.
+5. injection audit in skill-creator body + thin ref; testing-tdd and third-party deleted (not merged).
 6. Three niches archived under personal-skill-archive; never catalog.
 7. Tests green. Search-related tests remain green without rewriting search skill bodies.
 8. README matches reality for non-search changes; search section can stay as-is.
@@ -192,26 +190,26 @@ If a step would require editing search skills, skip that step and continue.
 - Drive-by renames.
 
 ## MERGE (non-search only)
-1. third-party-integration → testing-tdd (≤~40-line body § + optional thin ref). Delete old dir.
-2. dynamic-context-injection → skill-creator (Audit H2 in body + thin ref). Delete old dir.
+1. dynamic-context-injection → skill-creator (Audit H2 in body + thin ref). Delete old dir. (done)
 
 ## DELETE
-- mission-planning, reimpl-scout (skill dirs + catalog + README + tests + install stale list)
+- mission-planning, reimpl-scout (done)
+- testing-tdd, third-party-integration (done; not merged)
 
 ## KEEP
 - geometric-robustness
 
 ## KEEP
 - SEARCH: ddg-search, brave-search, tavily-search (untouched)
-- CORE: peek-repo, simple-design, refactoring, testing-tdd
+- CORE: peek-repo, simple-design, refactoring
 - AUTHOR: skill-creator
 - BEADS profile: beads (+ agents + pool when chosen)
 - OPT_IN: architecture-design, distributed-architecture, geometric-robustness
-- Agents: full current set
+- Agents: full current set (coder/reviewer preload simple-design + refactoring)
 
 ## Implementation order
 1. Read CLAUDE.md, SLIM.md, catalog, tests.
-2. Delete mission-planning + reimpl-scout (done); keep geometric-robustness; fold third-party; fold injection.
+2. Delete mission-planning + reimpl-scout (done); keep geometric-robustness; fold injection; delete testing-tdd + third-party.
 3. Update catalog groups for non-search only; leave SEARCH_SKILLS entries as the three existing IDs.
 4. README for non-search inventory; do not rewrite search skill docs.
 5. Fix tests for removed/merged non-search IDs; do not weaken search coverage.
@@ -226,7 +224,7 @@ If a step would require editing search skills, skip that step and continue.
 - Ceremony and drive-by refactors.
 
 ## Done definition
-Leaner non-search suite; search trio frozen; mission-planning + reimpl-scout deleted; geometric-robustness kept; thin folds done; tests green; CLAUDE.md no-go honored.
+Leaner non-search suite; search trio frozen; mission-planning + reimpl-scout + testing-tdd + third-party-integration deleted; geometric-robustness kept; injection folded; tests green; CLAUDE.md no-go honored.
 
 Begin. Prefer working code over discussion. Do not push unless asked.
 ```
