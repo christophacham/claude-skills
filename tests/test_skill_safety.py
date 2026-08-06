@@ -71,7 +71,7 @@ class SkillValidationTests(unittest.TestCase):
         self.assertEqual({}, failures)
 
     def test_active_injections_are_static_and_trusted(self) -> None:
-        expected = {"reimpl-scout", "tavily-search"}
+        expected = {"tavily-search"}
         actual = set()
         for skill_dir in sorted(SKILLS.iterdir()):
             skill_file = skill_dir / "SKILL.md"

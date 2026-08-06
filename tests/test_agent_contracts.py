@@ -195,8 +195,8 @@ class CoordinationDocumentationTests(unittest.TestCase):
         expected_skills = {
             "architecture-design", "beads", "brave-search", "ddg-search",
             "distributed-architecture", "dynamic-context-injection",
-            "geometric-robustness", "mission-planning", "peek-repo",
-            "refactoring", "reimpl-scout", "simple-design", "skill-creator",
+            "geometric-robustness", "peek-repo",
+            "refactoring", "simple-design", "skill-creator",
             "tavily-search", "testing-tdd", "third-party-integration",
         }
         expected_agents = {

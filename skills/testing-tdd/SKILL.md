@@ -265,7 +265,7 @@ An object has no built-in knowledge of the system it runs in — everything it n
 
 Hard tests are evidence, not an automatic architecture prescription. Hidden time/randomness/network access, branching controllers, and setup that crosses many concerns may suggest a purer decision core and a thinner effectful shell. Ports & adapters, Humble Object, and functional core/imperative shell are candidate structures—not the one architecture for testability.
 
-Use the smallest local seam that restores useful feedback. If the decision changes application layers, port ownership, aggregate boundaries, or composition roots, hand the evidence to `architecture-design`. If it changes module/API depth or knowledge ownership, use `simple-design`. Testing should describe the pressure (slow boundary, nondeterminism, awkward setup), not pre-decide a universal solution.
+Use the smallest local seam that restores useful feedback. If the decision changes application layers, port ownership, consistency/transaction boundaries, or composition roots, hand the evidence to `architecture-design`. If it changes module/API depth or knowledge ownership, use `simple-design`. Testing should describe the pressure (slow boundary, nondeterminism, awkward setup), not pre-decide a universal solution.
 
 ### Interface Discovery
 
@@ -277,7 +277,7 @@ Separate creation from use where control of a real dependency is necessary. Cons
 
 ### Domain Discovery
 
-When test examples reveal a rule and vocabulary, move that rule to the object/value/module that owns the knowledge. Do not create a value object or entity solely because a test would be easier to mock; use `architecture-design` for aggregate/domain modeling and `simple-design` for module ownership.
+When test examples reveal a rule and vocabulary, move that rule to the object/value/module that owns the knowledge. Do not invent types solely because a test would be easier to mock; use `architecture-design` for layer placement and where rules live, and `simple-design` for module ownership.
 
 ### Third-Party Integration
 

@@ -203,12 +203,12 @@ For every step record: idempotency key, attempt state, deadline, next action, co
 
 | Technique | How | Trade-offs |
 |-----------|-----|------------|
-| Table split | Split the table so each service owns its portion | Preserves bounded context and single ownership; requires restructuring, loses ACID between updates, synchronization is difficult |
-| Data domain (shared schema) | Put jointly-owned tables in a schema both services access | Good performance, no service dependency, consistent data; schema changes hit multiple services, needs write-governance, broadens the bounded context. **Always re-evaluate whether separate services are actually needed** |
+| Table split | Split the table so each service owns its portion | Preserves clear ownership boundaries and single ownership; requires restructuring, loses ACID between updates, synchronization is difficult |
+| Data domain (shared schema) | Put jointly-owned tables in a schema both services access | Good performance, no service dependency, consistent data; schema changes hit multiple services, needs write-governance, broadens the ownership boundary. **Always re-evaluate whether separate services are actually needed** |
 | Delegate | Assign one service as sole owner; the other calls it for writes | Single ownership, good change control; high coupling, slow non-owner writes, no atomic transaction for them. Pick the delegate by **primary domain priority** (most CRUD operations) or **operational characteristics priority** (needs highest performance/throughput) |
 | Service consolidation | Merge the services | Eliminates the problem; preserves ACID and performance; coarser scalability, less fault tolerance, more deployment risk |
 
-Selection hints: Table Split = best bounded context; Data Domain = best performance but weaker context; Delegate = single owner but coupling; Consolidation = nuclear option.
+Selection hints: Table Split = clearest single ownership; Data Domain = best performance but weaker context; Delegate = single owner but coupling; Consolidation = nuclear option.
 
 Table-split mechanics:
 
@@ -226,7 +226,7 @@ ALTER TABLE Product DROP COLUMN inv_cnt;
 | Interservice communication | Simple; no volume issues | ~100–1000ms end-to-end; throughput limits; availability dependency; needs contracts | Small volumes, infrequent access, reliable owner |
 | Column schema replication | Good performance; no service dependency | Consistency issues; ownership governance; synchronization required | Reporting, aggregation, or when volume/throughput defeats other patterns |
 | Replicated caching | Best performance (in-memory); fault tolerant; consistent; ownership preserved | Hard cloud/container config; bad for >500MB volumes or high update rates; startup dependency on owner | Relatively static data, manageable volume, need performance + fault tolerance. Products: Hazelcast, Apache Ignite, Oracle Coherence |
-| Data domain (shared schema) | Good performance; consistent; foreign keys preserved | Broader bounded context; ownership governance; access security concerns | All other patterns fail and you accept the broader context |
+| Data domain (shared schema) | Good performance; consistent; foreign keys preserved | Broader ownership boundary; ownership governance; access security concerns | All other patterns fail and you accept the broader context |
 
 ### Five-Step Database Decomposition
 
@@ -275,7 +275,7 @@ Example: an orchestrator uses strict contracts with core domain services (ticket
 2. Integration uses **name-value pairs**.
 3. Fidelity is verified via **consumer-driven contracts**.
 
-This yields bounded contexts (each service evolves internally), implementation decoupling (tech stack can change without breaking integration), and platform independence.
+This yields clear ownership boundaries (each service evolves internally), implementation decoupling (tech stack can change without breaking integration), and platform independence.
 
 ### Consumer-Driven Contracts
 
@@ -345,7 +345,7 @@ Static, one-off    → Code replication                → Code replication
 
 ### Pattern 1: Code Replication
 
-Copy the code into each service's repository. Preserves bounded context with no sharing dependencies, but changes are hard to apply and there is no versioning — a bug in replicated code means time-consuming, error-prone updates across all services. Use for simple, static, one-off utilities (marker annotations), or during migration so each service can evolve its copy independently.
+Copy the code into each service's repository. Preserves ownership isolation with no sharing dependencies, but changes are hard to apply and there is no versioning — a bug in replicated code means time-consuming, error-prone updates across all services. Use for simple, static, one-off utilities (marker annotations), or during migration so each service can evolve its copy independently.
 
 ### Pattern 2: Shared Library
 
@@ -358,7 +358,7 @@ External artifact (JAR, DLL, GEM, npm package) bound at compile time: versioned 
 
 ### Pattern 3: Shared Service
 
-Shared functionality deployed as its own service, called at runtime. Good for high volatility and polyglot environments (no cross-platform duplication); preserves bounded context. But it adds network + security latency, fault-tolerance and scalability dependencies, and **runtime risk**: you can deploy a change without redeploying consumers — and break all of them simultaneously in production. API endpoint versioning (`/app/1.0/calc` vs `/app/1.1/calc`) only partially helps: consumers must update endpoint configs, versioning decisions are subjective, and it doesn't work cleanly across multiple protocols (REST + messaging + gRPC). Use in highly polyglot environments, or when change is frequent enough that redeploying consumers per change is impractical.
+Shared functionality deployed as its own service, called at runtime. Good for high volatility and polyglot environments (no cross-platform duplication); preserves ownership isolation. But it adds network + security latency, fault-tolerance and scalability dependencies, and **runtime risk**: you can deploy a change without redeploying consumers — and break all of them simultaneously in production. API endpoint versioning (`/app/1.0/calc` vs `/app/1.1/calc`) only partially helps: consumers must update endpoint configs, versioning decisions are subjective, and it doesn't work cleanly across multiple protocols (REST + messaging + gRPC). Use in highly polyglot environments, or when change is frequent enough that redeploying consumers per change is impractical.
 
 ### Pattern 4: Sidecar and Service Mesh
 

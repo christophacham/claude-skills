@@ -101,7 +101,7 @@ iwr -useb https://raw.githubusercontent.com/christophacham/claude-skills/main/un
 - **TDD + how-you-know** — Use red→green for changed behavior and run the checks relevant to the affected surface.
 - **Tidy First** — Separate structural and behavioral changes when doing so improves reviewability.
 - **Independent review** — Review from a fresh context and require evidence-based findings. Same-model review remains valid; a different model tier is an optional source of diversity.
-- **Ceremony follows irreversibility** — Ports, aggregates, ADRs, and sagas only when earned (`architecture-design`, `distributed-architecture`).
+- **Ceremony follows irreversibility** — Ports, ADRs, and sagas only when earned (`architecture-design`, `distributed-architecture`).
 
 Optional: Beads (`bd`) for issue tracking; design panelists for multi-lens design when the parent wants them. The general `coder` and `reviewer` do not mutate trackers.
 
@@ -121,14 +121,12 @@ Optional: Beads (`bd`) for issue tracking; design panelists for multi-lens desig
 - **`beads`**: Issue creation, claiming, status updates, dependency graphing, and Dolt sync via `bd`.
 
 ### Software engineering
-- **`architecture-design`**: Clean Architecture layering, ports & adapters, tactical DDD.
+- **`architecture-design`**: Clean Architecture layering, ports & adapters.
 - **`distributed-architecture`**: Trade-offs across deployables — granularity, monolith decomposition, data, sagas, contracts.
 - **`simple-design`**: Ousterhout deep modules, information hiding, red flags.
 - **`refactoring`**: Fowler smells and safe structural steps.
 - **`testing-tdd`**: Red→green, test design, mocking, testability.
 - **`third-party-integration`**: Adapter layer; only mock types you own.
-- **`mission-planning`**: OPORD, PACE, decision triggers for large initiatives.
-- **`reimpl-scout`**: Multi-agent reimplementation-grade codebase scouts.
 - **`geometric-robustness`**: Float/geometry robustness for slicers and CAD/CAM (Rust).
 
 ---

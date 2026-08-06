@@ -1,6 +1,6 @@
 ---
 name: simple-design
-description: Module and API design judgment — deep modules, information hiding, general-purpose interfaces, error handling, naming. Use when designing or reviewing any class/module/function interface, judging whether a module is too shallow, deciding how general an API should be, simplifying error handling, naming things, or scanning for design red flags (shallow module, information leakage, temporal decomposition, pass-through method, vague name). Applies to nearly all coding work. Not for application layering/ports/DDD (architecture-design), service or monolith splitting (distributed-architecture), or step-by-step refactor mechanics (refactoring).
+description: Module and API design judgment — deep modules, information hiding, general-purpose interfaces, error handling, naming. Use when designing or reviewing any class/module/function interface, judging whether a module is too shallow, deciding how general an API should be, simplifying error handling, naming things, or scanning for design red flags (shallow module, information leakage, temporal decomposition, pass-through method, vague name). Applies to nearly all coding work. Not for application layering/ports (architecture-design), service or monolith splitting (distributed-architecture), or step-by-step refactor mechanics (refactoring).
 ---
 
 # Simple Design

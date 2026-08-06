@@ -569,7 +569,7 @@ if let Err(e) = user.can_change_email() { return Err(e); }
 user.change_email(new_email, &mut company);
 ```
 
-**Domain events** — the core records what happened; the controller dispatches:
+**Recorded facts** — the core records what happened; the controller dispatches:
 
 ```rust
 // Domain

@@ -97,11 +97,29 @@ class DesignDoctrineTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.architecture = (SKILLS / "architecture-design" / "references" / "reference.md").read_text(encoding="utf-8")
+        cls.architecture_skill = (SKILLS / "architecture-design" / "SKILL.md").read_text(encoding="utf-8")
         cls.distributed = (SKILLS / "distributed-architecture" / "SKILL.md").read_text(encoding="utf-8")
         cls.distributed_ref = (SKILLS / "distributed-architecture" / "references" / "reference.md").read_text(encoding="utf-8")
         cls.refactoring = (SKILLS / "refactoring" / "SKILL.md").read_text(encoding="utf-8")
         cls.testing = (SKILLS / "testing-tdd" / "SKILL.md").read_text(encoding="utf-8")
         cls.third_party = (SKILLS / "third-party-integration" / "SKILL.md").read_text(encoding="utf-8")
+
+    def test_architecture_design_has_no_ddd_pedagogy(self) -> None:
+        combined = f"{self.architecture_skill}\n{self.architecture}".lower()
+        for forbidden in (
+            "ddd",
+            "domain-driven",
+            "tactical ddd",
+            "strategic ddd",
+            "ubiquitous language",
+            "bounded context",
+            "aggregate root",
+            "value object",
+            "domain event",
+            "anemic domain",
+        ):
+            self.assertNotIn(forbidden, combined, forbidden)
+        self.assertNotIn("bounded context", self.distributed_ref.lower())
 
     def test_atomic_persistence_example_includes_idempotent_result_and_outbox(self) -> None:
         self.assertIn("save_submission", self.architecture)
@@ -216,11 +234,11 @@ class SkillCreatorContractTests(unittest.TestCase):
     def test_all_corrected_eval_and_trigger_files_validate(self) -> None:
         names = {
             "architecture-design", "beads", "distributed-architecture",
-            "dynamic-context-injection", "geometric-robustness", "mission-planning",
-            "peek-repo", "refactoring", "reimpl-scout", "simple-design",
+            "dynamic-context-injection", "geometric-robustness",
+            "peek-repo", "refactoring", "simple-design",
             "skill-creator", "testing-tdd", "third-party-integration",
         }
-        claude_code_only = {"dynamic-context-injection", "peek-repo", "reimpl-scout"}
+        claude_code_only = {"dynamic-context-injection", "peek-repo"}
         for name in names:
             with self.subTest(skill=name):
                 mode = "claude-code" if name in claude_code_only else "portable"

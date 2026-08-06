@@ -151,7 +151,7 @@ if [ -f "$ROOT/pool.md" ]; then
 fi
 
 # stale cleanup
-for stale in tmp-clone web-ddgs work-loop work-plan bd-epic-runner architectural-decomposition; do
+for stale in tmp-clone web-ddgs work-loop work-plan bd-epic-runner architectural-decomposition mission-planning reimpl-scout; do
   if [ -d "$DEST/skills/$stale" ]; then
     rm -rf "$DEST/skills/$stale"
     echo "removed stale:    $stale"

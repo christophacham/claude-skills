@@ -31,7 +31,7 @@
         "Corrected behavior: says ports are earned and owned by the policy-side client, while Send/Sync/async bounds depend on the runtime.",
         "Allows application policy in use cases and describes the composition root as object-graph owner, not the only code that may know a concrete type.",
         "Explains outbox durability and maps errors at semantic boundaries instead of mechanically wrapping one enum per directory.",
-        "Distinguishes internal domain events from versioned integration contracts at a bounded-context boundary."
+        "Distinguishes internal committed facts from versioned integration contracts at a service or deployable boundary."
       ]
     }
   ]
