@@ -103,14 +103,14 @@ class PosixCloneProtocolTests(unittest.TestCase):
         self.assertEqual("gh", fields["CLONE_BACKEND"])
 
         destination = self.home / "code" / "tmp" / "Project"
-        self.assertEqual(str(destination), fields["PATH"])
+        self.assertEqual(str(destination.resolve()), fields["PATH"])
         args = self.gh_log.read_text(encoding="utf-8").splitlines()
         self.assertEqual(["repo", "clone", "https://github.com/Example/Project.git"], args[:3])
         self.assertRegex(args[3], r"/code/tmp/\.peek-repo-Project\.")
         self.assertTrue((destination / ".git").is_dir())
         self.assertRegex(
             self.mktemp_log.read_text(encoding="utf-8"),
-            re.escape(str(destination.parent / ".peek-repo-Project.")) + r"X{8}",
+            re.escape(str(destination.parent.resolve() / ".peek-repo-Project.")) + r"X{8}",
         )
         self.assertEqual([], list(destination.parent.glob(".peek-repo-*")))
 

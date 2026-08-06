@@ -297,10 +297,9 @@ function Invoke-Main {
     if (Test-ReparsePoint -Item $homeItem) {
         Stop-Helper -Code 4 -Status 'ERROR' -Kind 'HOME_INVALID' -Detail 'The user home is a symbolic link or reparse point; refusing to follow it.'
     }
-    $resolvedHome = (Resolve-Path -LiteralPath $homePath -ErrorAction Stop).ProviderPath
-    if (-not (Test-PathEqual -Left $resolvedHome -Right $homePath)) {
-        Stop-Helper -Code 4 -Status 'ERROR' -Kind 'HOME_INVALID' -Detail 'The user home does not resolve to its physical path.'
-    }
+    # Normalize parent-directory aliases such as macOS /var -> /private/var.
+    # The home item itself was already rejected if it is a reparse point.
+    $homePath = (Resolve-Path -LiteralPath $homePath -ErrorAction Stop).ProviderPath
 
     $codeRoot = [IO.Path]::GetFullPath((Join-Path $homePath 'code'))
     $script:DestRoot = [IO.Path]::GetFullPath((Join-Path $codeRoot 'tmp'))
@@ -402,8 +401,7 @@ function Invoke-Main {
         if (-not $Full) {
             $cloneArgs += @('--', '--depth', '1', '--single-branch')
         }
-        $ghExecutable = if (-not [string]::IsNullOrWhiteSpace($gh.Path)) { $gh.Path } else { $gh.Source }
-        $clone = Invoke-Captured -Executable $ghExecutable -Arguments $cloneArgs
+        $clone = Invoke-Captured -Executable 'gh' -Arguments $cloneArgs
     }
 
     # Public repositories remain inspectable when gh is absent or unauthenticated.
@@ -473,7 +471,9 @@ try {
     Invoke-Main
 } catch {
     $errorType = $_.Exception.GetType().Name
-    Stop-Helper -Code 4 -Status 'ERROR' -Kind 'UNEXPECTED_ERROR' -Detail "The helper stopped on a sanitized internal error ($errorType)."
+    $commandName = if ($_.Exception -is [System.Management.Automation.CommandNotFoundException]) { $_.Exception.CommandName } else { '' }
+    $suffix = if ([string]::IsNullOrWhiteSpace($commandName)) { $errorType } else { "${errorType}: $commandName" }
+    Stop-Helper -Code 4 -Status 'ERROR' -Kind 'UNEXPECTED_ERROR' -Detail "The helper stopped on a sanitized internal error ($suffix)."
 } finally {
     Remove-OwnedStage
 }
