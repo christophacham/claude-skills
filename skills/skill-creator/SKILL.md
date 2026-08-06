@@ -1,7 +1,7 @@
 ---
 name: skill-creator
-description: Create, improve, review, validate, evaluate, or package Agent Skills. Use when writing SKILL.md metadata/instructions, adding scripts/references/assets/evals, choosing portable versus Claude Code features, auditing dynamic injection, or working on this repository's Node installer. Not for general npm publishing or unrelated prompt/API design.
-compatibility: Agent Skills-compatible clients. Bundled validator requires Python 3.10+.
+description: Create, improve, review, validate, evaluate, or package Agent Skills; audit Claude Code dynamic context injection (load-time shell). Use when writing SKILL.md metadata/instructions, adding scripts/references/assets/evals, choosing portable versus Claude Code features, reviewing injected commands for argument safety/shell behavior/failure guards/context cost, converting avoidable read-only setup into load-time injection, or working on this repository's Node installer. Not for general npm publishing, runtime tool-call tuning unrelated to skills, or portable clients that lack injection.
+compatibility: Agent Skills-compatible clients. Bundled validator requires Python 3.10+. Dynamic context injection is Claude Code-only.
 ---
 
 # Skill creator
@@ -58,6 +58,120 @@ from extensions and documents substitution and injection hazards.
    suppressing them.
 6. Iterate from observed trigger misses and output failures. Preserve useful
    identities/files unless the user explicitly approves a rename or removal.
+
+## Dynamic context injection (audit mode)
+
+Dynamic context injection is a Claude Code extension, not part of portable Agent
+Skills. Claude Code renders a skill before the model sees it: each active
+placeholder runs in the configured shell and its stdout is inserted into the
+skill body. Use it only for small, trusted, read-only state that every invocation
+needs.
+
+Literal examples are dangerous in `SKILL.md`: Claude Code preprocesses fenced
+examples too. This file uses `KEY=!`…`` when naming the inline form so the `!`
+is not active. Exact examples live in
+[references/injection-examples.md](references/injection-examples.md), which is
+read on demand and is not skill-preprocessed.
+
+### Safety contract
+
+1. **Read-only and unconditional.** Rendering occurs before the model can decide
+   whether a command is appropriate. Do not inject claims, installs, writes,
+   commits, network requests, or other mutations. Keep those as normal tool
+   calls with ordinary permission and error handling.
+2. **Invocation text is data, never shell source.** Claude Code substitutes
+   all-arguments, indexed, and named argument placeholders before starting the
+   shell. Quoting a placeholder inside the command does not turn textual
+   substitution into safe argv passing. Do not put invocation arguments in an
+   injection. Show them in prompt content, validate them, then use a tool call.
+3. **Trusted platform paths are allowed.** The skill and project directory
+   substitutions are platform-provided paths, but quote them in shell source.
+   Session and effort substitutions are also trusted metadata; do not confuse
+   them with user arguments.
+4. **Do not expose secrets.** Inject only presence/status, never environment
+   variable values, tokens, settings contents, credentials, or unredacted
+   command output that may contain them. Inserted output becomes model context.
+5. **Bound cost.** Commands must be local, quick, non-interactive, and bounded
+   (`--limit`, a small file slice, or a concise summary). An injection is paid on
+   accidental triggers too.
+
+### Renderer and shell semantics
+
+- The inline marker is recognized when `!` starts a line or follows whitespace;
+  `KEY=!`cmd`` remains literal. A multi-line injection is one fenced shell
+  script opened by a fence whose info string is `!`.
+- Rendering scans the original skill once. Inserted stdout is plain text and is
+  not scanned for new injection markers.
+- Normal shell evaluation still happens *inside one injection*. Shell variables,
+  pipelines, conditionals, and command substitution such as `$(...)` work. This
+  is unrelated to the renderer's single pass.
+- Treat separate placeholders as independent and unordered: implementations may
+  execute them concurrently, and they do not share shell variables, working
+  directory changes, or exit status. Put dependent reads in one fenced block;
+  commands in that block run sequentially in one shell.
+- `shell: bash` is the default. `shell: powershell` selects PowerShell only where
+  Claude Code's PowerShell tool is enabled. Do not write a block that assumes
+  both syntaxes.
+- With `disableSkillShellExecution: true`, user/project/plugin injections are
+  replaced by a policy placeholder. Bundled and managed skills are exempt. The
+  surrounding instructions must remain useful when live state is unavailable.
+
+### Failure and guard semantics
+
+An injected failure is rendered before the model has a tool-result recovery
+path. Stderr and failure text can pollute the prompt, and a malformed block may
+leave the skill without useful state. Handle expected absence inside the same
+injection and emit one short status line.
+
+Guard the operation that can fail, not a later pipeline stage:
+
+- In Bash, `cmd 2>/dev/null | head ... || fallback` is not a reliable guard
+  without `pipefail`: `head` may succeed after `cmd` failed. Prefer an `if`
+  around command substitution, then bound the captured output.
+- An `|| fallback` at the end of a multi-line block guards only the immediately
+  preceding command. Handle each expected failure or use an explicit block-level
+  conditional.
+- In PowerShell, use `try`/`catch`, `Get-Command`, and `-ErrorAction Stop` where
+  absence is expected. Native command nonzero exits require checking
+  `$LASTEXITCODE`; they are not automatically PowerShell exceptions.
+- Redirect expected diagnostic stderr, but keep an informative stdout fallback.
+  Unexpected failures should say the state is unavailable, not fabricate it.
+
+### Audit procedure
+
+Target the first skill argument. With no argument, inspect project and personal
+Claude Code skill directories. For each `SKILL.md`:
+
+1. Parse frontmatter first. Portable mode has no injection. In Claude Code mode,
+   record `shell`, `arguments`, invocation control, and skill scope.
+2. Find every active inline marker and fenced injection, including markers in
+   Markdown examples. A marker may appear after prose whitespace, not only at
+   column zero.
+3. For each injection, verify: read-only; no invocation placeholders; no secret
+   output; local/bounded/non-interactive; independent of sibling injections; and
+   guarded where repository/tool/file absence is normal.
+4. Check multi-line logic as shell code. Distinguish valid shell `$(...)`
+   substitution within a block from invalid cross-placeholder dependency.
+5. Find conversion candidates: instructions that always run a trusted static
+   read solely to place bounded output in context. Leave mutations, user-derived
+   arguments, conditional/slow/network work, and dependent runtime decisions as
+   normal tool calls.
+6. Run `scripts/validate_skill.py <skill-dir> --mode claude-code --format text`
+   (or `${CLAUDE_SKILL_DIR}/scripts/validate_skill.py` when installed). Treat
+   validator output as a floor; manually review command meaning and possible
+   secret output.
+
+### Report
+
+| skill | line | verdict | detail |
+|-------|------|---------|--------|
+| … | … | VIOLATION / CONVERT / OK | rule, failure mode, exact replacement |
+
+Sort violations first. For each conversion, show a minimal before/after snippet
+using the patterns in
+[references/injection-examples.md](references/injection-examples.md). End with
+how many routine tool round-trips the conversions remove and note any state that
+remains a runtime tool call.
 
 ## Validation
 
@@ -123,9 +237,9 @@ mutate external state.
 
 For Claude Code bundled scripts, `${CLAUDE_SKILL_DIR}` locates the installed
 skill and can also appear in a matching `allowed-tools` Bash rule. Never paste
-user invocation arguments into load-time shell. Use
-[dynamic-context-injection](../dynamic-context-injection/SKILL.md) to audit that
-pattern.
+user invocation arguments into load-time shell. Use the audit mode above (and
+[references/injection-examples.md](references/injection-examples.md)) when adding
+or reviewing injections.
 
 ## Output eval schema
 
@@ -165,6 +279,10 @@ Templates:
 - `assets/OUTPUT_EVALS_TEMPLATE.json` — output eval schema above.
 - [references/spec-and-patterns.md](references/spec-and-patterns.md) — field
   types, scoping, and eval workflow.
+- [references/injection-examples.md](references/injection-examples.md) — literal
+  injection syntax, guards, and convert/violation pairs.
+- [references/claude-code-skills.md](references/claude-code-skills.md) — Claude
+  Code field and substitution table.
 
 ## This repository's package behavior
 
@@ -178,25 +296,25 @@ claude-skills uninstall [--yes]
 claude-skills --help
 ```
 
-With no command it starts `install`. It offers search skills globally, suggests
-`dynamic-context-injection` and `skill-creator` for the selected project, then
-offers remaining skills individually as global/project/skip. Global means
-`~/.claude`; project means `<project>/.claude`. It does not install to
-`.agents/`.
+With no command it starts `install`. It offers SEARCH skills globally (default-yes),
+suggests AUTHOR `skill-creator` for the selected project, offers CORE
+(`peek-repo`, `simple-design`, `refactoring`) default-yes, then OPT_IN/beads
+individually as skip-default/global/project. Global means `~/.claude`; project
+means `<project>/.claude`. It does not install to `.agents/`.
 
 The Node uninstaller removes only global items recorded in
 `~/.claude/claude-skills-manifest.json`; it leaves project installs, API keys,
 dependencies, and bulk-shell installs alone. `install.sh`/`install.ps1` and their
 matching uninstallers are separate bulk flows.
 
-When changing package behavior, read
-[references/node-native-installer-pattern.md](references/node-native-installer-pattern.md)
-and inspect `bin/cli.js`, `lib/catalog.js`, `lib/install-flow.js`,
-`lib/uninstall-flow.js`, and `lib/paths.js`. Do not document aspirational flags as
-implemented. `package.json.files` currently ships whole `bin/`, `lib/`,
-`skills/`, and `agents/` trees plus `pool.md` and README, so a new file under a
-shipped skill does not require a per-skill package entry. Catalog/README updates
-are still needed when adding a selectable skill.
+When changing this repository's package behavior, read
+`docs/node-native-installer-pattern.md` at the package root and inspect
+`bin/cli.js`, `lib/catalog.js`, `lib/install-flow.js`, `lib/uninstall-flow.js`,
+and `lib/paths.js`. Do not document aspirational flags as implemented.
+`package.json.files` currently ships whole `bin/`, `lib/`, `skills/`, and
+`agents/` trees plus `pool.md` and README, so a new file under a shipped skill
+does not require a per-skill package entry. Catalog/README updates are still
+needed when adding a selectable skill.
 
 ## Review checklist
 

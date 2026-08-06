@@ -1,11 +1,17 @@
 ---
 name: simple-design
-description: Module and API design judgment — deep modules, information hiding, general-purpose interfaces, error handling, naming. Use when designing or reviewing any class/module/function interface, judging whether a module is too shallow, deciding how general an API should be, simplifying error handling, naming things, or scanning for design red flags (shallow module, information leakage, temporal decomposition, pass-through method, vague name). Applies to nearly all coding work. Not for application layering/ports/DDD (architecture-design), service or monolith splitting (distributed-architecture), or step-by-step refactor mechanics (refactoring).
+description: Module and API design judgment — deep modules, information hiding, general-purpose interfaces, error handling, naming. Use when designing or reviewing any class/module/function interface, judging whether a module is too shallow, deciding how general an API should be, simplifying error handling, naming things, or scanning for design red flags (shallow module, information leakage, temporal decomposition, pass-through method, vague name). Applies to nearly all coding work. Not for application layering/ports (architecture-design), service or monolith splitting (distributed-architecture), or step-by-step refactor mechanics (refactoring).
 ---
 
 # Simple Design
 
 Module-level design judgment from John Ousterhout's *A Philosophy of Software Design*. One goal: **reduce complexity**. Section 9 is the triage index; sections 1–8 carry the detail.
+
+**Escalate (do not answer here):**
+
+- "Where does this code live?", dependency direction, ports/use cases, composition root → `architecture-design`
+- Split/merge deployables, sagas, multi-service data ownership, cross-service contracts → `distributed-architecture`
+- Behavior-preserving structural steps / smell mechanics → `refactoring`
 
 ## 1. Complexity Is the Only Budget
 

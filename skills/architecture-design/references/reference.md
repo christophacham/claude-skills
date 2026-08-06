@@ -1,20 +1,16 @@
 # Architecture Design — Deep Reference
 
-Load conditions are listed in `SKILL.md`. Everything here expands a pattern the summary already names; the canonical example throughout is the Order aggregate (`Email`, `Money`, `Sku`, `OrderLineItem`, `Order`).
+Load conditions are listed in `SKILL.md`. Everything here expands a pattern the summary already names; the canonical example throughout is the Order example (`Email`, `Money`, `Sku`, `OrderLineItem`, `Order`).
 
 ## Table of Contents
 
-1. [Layer Walkthrough](#layer-walkthrough) — ports, use cases, error mapping, repositories, controllers, UI adapters, composition root
+1. [Layer Walkthrough](#layer-walkthrough) — ports, use cases, error mapping, stores, controllers, UI adapters, composition root
 2. [Testing Strategy](#testing-strategy) — domain, application, integration, pyramid
-3. [Tactical DDD in Depth](#tactical-ddd-in-depth) — value objects, entities, aggregates, events, invariants, domain services, repositories
-4. [Strategic DDD](#strategic-ddd) — bounded contexts, anti-corruption layer
-5. [Rust Modeling Patterns](#rust-modeling-patterns) — newtype, builder, typestate, serde
-6. [Modeling Decisions](#modeling-decisions)
-7. [Anti-Patterns in Detail](#anti-patterns-in-detail)
-8. [Project Layout](#project-layout) — single crate vs workspace, file map, new-feature checklist
-9. [SOLID — Per-Principle Rust Patterns](#solid--per-principle-rust-patterns)
-10. [Component Principles in Depth](#component-principles-in-depth)
-11. [DDD vs Clean Architecture](#ddd-vs-clean-architecture)
+3. [Rust Modeling Patterns](#rust-modeling-patterns) — newtype, builder, typestate, serde
+4. [Anti-Patterns in Detail](#anti-patterns-in-detail)
+5. [Project Layout](#project-layout) — single crate vs workspace, file map, new-feature checklist
+6. [SOLID — Per-Principle Rust Patterns](#solid--per-principle-rust-patterns)
+7. [Component Principles in Depth](#component-principles-in-depth)
 
 ---
 
@@ -22,7 +18,7 @@ Load conditions are listed in `SKILL.md`. Everything here expands a pattern the 
 
 ### Port interfaces
 
-Ports invert a dependency when policy must call a detail without depending on it. The policy-side client owns the smallest capability it needs; the adapter depends inward and implements it. Most driven ports belong in `application/`, but a repository-like collection that is genuinely part of the domain language may belong with the domain model. A trait beside its only adapter, created solely to satisfy a layer diagram, inverts nothing.
+Ports invert a dependency when policy must call a detail without depending on it. The policy-side client owns the smallest capability it needs; the adapter depends inward and implements it. Most driven ports belong in `application/`, but a store-like collection that is genuinely part of the domain vocabulary may belong with the domain model. A trait beside its only adapter, created solely to satisfy a layer diagram, inverts nothing.
 
 **Driven port — what this application policy needs:**
 
@@ -39,13 +35,13 @@ pub trait OrderStore {
         command_id: CommandId,
         result: &SubmitOrderResult,
         order: &Order,
-        events: &[DomainEvent],
+        events: &[OrderFact],
     ) -> Result<(), StoreFailure>;
 }
 ```
 
 `save_submission` represents the atomic capability the use case requires: commit
-aggregate state, durable outbox records, and the idempotent command result in one
+order state, durable outbox records, and the idempotent command result in one
 transaction. It does not expose SQL, transactions, or a generic CRUD surface. A
 dispatcher port may be useful for the outbox worker, but direct broker publication
 is not part of the state transaction.
@@ -70,7 +66,7 @@ A public method is often sufficient; do not create an input trait until multiple
 
 ### Use cases
 
-Organize use cases around business actions when that makes the application contract clearer. They may contain **application policy**: authorization, idempotency, transaction selection, sequencing, cross-aggregate coordination, and deciding which external effects to request. They must not duplicate invariants intrinsic to the aggregate.
+Organize use cases around business actions when that makes the application contract clearer. They may contain **application policy**: authorization, idempotency, transaction selection, sequencing, coordination across separate domain objects / consistency units, and deciding which external effects to request. They must not duplicate invariants intrinsic to the domain type.
 
 A durable submit flow is:
 
@@ -81,8 +77,8 @@ pub struct SubmitOrder<S> {
 
 // execute(command):
 // 1. return store.recorded_result(command.id) when it exists
-// 2. load the aggregate
-// 3. call order.submit(command.occurred_at) so the aggregate enforces invariants
+// 2. load the order
+// 3. call order.submit(command.occurred_at) so the order enforces invariants
 // 4. inspect order.pending_events() without removing them
 // 5. derive the result, then atomically call store.save_submission(
 //        command.id, &result, &order, order.pending_events())
@@ -90,7 +86,7 @@ pub struct SubmitOrder<S> {
 // 7. return the same recorded result on every retry
 ```
 
-A separate worker claims outbox rows, maps internal domain events to public integration messages, publishes them, and marks them delivered. Publication is normally **at least once**: a crash after publish but before acknowledgement can duplicate a message, so message identity and consumer idempotency are part of the contract. If a notification is explicitly best-effort, direct post-commit delivery can be simpler—name the accepted loss instead of implying the database makes it reliable.
+A separate worker claims outbox rows, maps internal facts to public integration messages, publishes them, and marks them delivered. Publication is normally **at least once**: a crash after publish but before acknowledgement can duplicate a message, so message identity and consumer idempotency are part of the contract. If a notification is explicitly best-effort, direct post-commit delivery can be simpler—name the accepted loss instead of implying the database makes it reliable.
 
 ### Error mapping
 
@@ -103,7 +99,7 @@ Translate failure semantics where a caller crosses a boundary; do not mechanical
 
 Rust `#[from]` is appropriate only when the conversion is semantically lossless. A blanket `Repository(#[from] sqlx::Error)` in an application error leaks a vendor type and makes transient, conflict, and corruption failures indistinguishable. Prefer an explicit `map_err` at the adapter boundary when classification matters.
 
-### Repository implementations
+### Store implementations
 
 ```rust
 // infrastructure/persistence.rs
@@ -111,23 +107,23 @@ pub struct InMemoryOrderRepository {
     orders: RwLock<HashMap<Uuid, Order>>,
 }
 
-impl OrderRepository for InMemoryOrderRepository {
-    fn save(&self, order: &Order) -> Result<(), RepositoryError> {
+impl OrderStore for InMemoryOrderRepository {
+    fn save(&self, order: &Order) -> Result<(), StoreFailure> {
         let mut orders = self.orders.write()
-            .map_err(|_| RepositoryError::DatabaseError("Lock poisoned".into()))?;
+            .map_err(|_| StoreFailure::DatabaseError("Lock poisoned".into()))?;
         orders.insert(order.id(), order.clone());
         Ok(())
     }
 
-    fn find_by_id(&self, id: Uuid) -> Result<Option<Order>, RepositoryError> {
+    fn find_by_id(&self, id: Uuid) -> Result<Option<Order>, StoreFailure> {
         let orders = self.orders.read()
-            .map_err(|_| RepositoryError::DatabaseError("Lock poisoned".into()))?;
+            .map_err(|_| StoreFailure::DatabaseError("Lock poisoned".into()))?;
         Ok(orders.get(&id).cloned())
     }
 }
 ```
 
-Real infrastructure implements the same trait — `PostgresOrderRepository { pool: PgPool }`, SQLite, DynamoDB — with zero application-layer change.
+Real infrastructure implements the same trait — `PostgresOrderStore { pool: PgPool }`, SQLite, DynamoDB — with zero application-layer change.
 
 ### API controllers
 
@@ -307,7 +303,7 @@ fn test_submit_records_order_placed_event() {
     order.submit(test_time()).unwrap();
     let events = order.pending_events();
     assert_eq!(events.len(), 1);
-    assert!(matches!(events[0], DomainEvent::OrderPlaced(_)));
+    assert!(matches!(events[0], OrderFact::OrderPlaced(_)));
 }
 
 #[test]
@@ -337,12 +333,12 @@ fn submit_records_state_outbox_and_result_atomically() {
 
     assert_eq!(saved.command_id, command.id);
     assert_eq!(saved.result, result);
-    assert!(saved.events.iter().any(|event| matches!(event, DomainEvent::OrderPlaced(_))));
+    assert!(saved.events.iter().any(|event| matches!(event, OrderFact::OrderPlaced(_))));
     assert_eq!(store.recorded_result(command.id).unwrap(), Some(result));
 }
 ```
 
-A separate adapter/integration test runs the real transaction and proves aggregate
+A separate adapter/integration test runs the real transaction and proves order
 state, outbox rows, and command result commit or roll back together. The outbox
 worker's own tests cover at-least-once broker publication and idempotent delivery.
 
@@ -350,384 +346,14 @@ worker's own tests cover at-least-once broker publication and idempotent deliver
 
 ```rust
 #[tokio::test]
-async fn test_postgres_repository_roundtrip() {
+async fn test_postgres_store_roundtrip() {
     let pool = test_pool().await;
-    let repo = PostgresOrderRepository::new(pool);
+    let store = PostgresOrderStore::new(pool);
     let order = test_order();
-    repo.save(&order).unwrap();
-    assert!(repo.find_by_id(order.id()).unwrap().is_some());
+    store.save(&order).unwrap();
+    assert!(store.find_by_id(order.id()).unwrap().is_some());
 }
 ```
-
----
-
-## Tactical DDD in Depth
-
-### Value objects
-
-Full versions of `Money` and `Sku`; `Email`'s compact form is in SKILL.md §3 — the production constructor adds these branches:
-
-```rust
-// domain/value_objects.rs
-
-/// Email — beyond the SKILL.md compact version: reject empty input and missing domain
-if email.is_empty() { return Err(EmailError::Empty); }
-let parts: Vec<&str> = email.split('@').collect();
-if parts.len() != 2 || parts[1].is_empty() {
-    return Err(EmailError::MissingDomain);
-}
-// plus an accessor:
-pub fn as_str(&self) -> &str { &self.0 }
-
-/// Money — prevents cross-currency operations at the type level
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Money {
-    amount: Decimal,
-    currency: Currency,
-}
-
-impl Money {
-    pub fn new(amount: Decimal, currency: Currency) -> Self { Self { amount, currency } }
-    pub fn usd(amount: Decimal) -> Self { Self::new(amount, Currency::USD) }
-    pub fn amount(&self) -> Decimal { self.amount }
-
-    pub fn add(&self, other: &Money) -> Result<Money, MoneyError> {
-        if self.currency != other.currency {
-            return Err(MoneyError::CurrencyMismatch(self.currency, other.currency));
-        }
-        Ok(Money::new(self.amount + other.amount, self.currency))
-    }
-
-    pub fn multiply(&self, quantity: u32) -> Money {
-        Money::new(self.amount * Decimal::from(quantity), self.currency)
-    }
-}
-
-/// Sku — always uppercase, hashable
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Sku(String);
-
-impl Sku {
-    pub fn new(sku: impl Into<String>) -> Self { Self(sku.into().to_uppercase()) }
-    pub fn as_str(&self) -> &str { &self.0 }
-}
-```
-
-Common value objects:
-
-| Type | Wraps | Validates |
-|------|-------|-----------|
-| Email | String | Format, normalization |
-| Money | (Decimal, Currency) | Currency matching on operations |
-| Sku | String | Normalization (uppercase) |
-| PhoneNumber | String | Format, country code |
-| Address | (street, city, …) | Required fields |
-| DateRange | (start, end) | start < end |
-| Percentage | f64 | 0.0..=100.0 |
-
-### Entities
-
-Child entity within the Order aggregate:
-
-```rust
-#[derive(Debug, Clone)]
-pub struct OrderLineItem {
-    pub id: OrderLineItemId, // child-entity identity within the aggregate
-    pub sku: Sku,            // value object
-    pub product_name: String,
-    pub unit_price: Money,   // value object
-    pub quantity: u32,
-}
-
-impl OrderLineItem {
-    pub fn subtotal(&self) -> Money { self.unit_price.multiply(self.quantity) }
-}
-```
-
-Rules: unique identifier; equality is identity equality; mutable only within the aggregate root's control.
-
-### Aggregate root — complete Order
-
-```rust
-pub struct Order {
-    id: Uuid,
-    customer_email: Email,
-    status: OrderStatus,
-    items: Vec<OrderLineItem>,
-    pending_events: Vec<DomainEvent>,
-    created_at: DateTime<Utc>,
-    updated_at: DateTime<Utc>,
-}
-
-impl Order {
-    /// Factory — the only way to create an Order; always starts Draft.
-    /// The application supplies volatile identity/time inputs for deterministic replay.
-    pub fn create(id: Uuid, customer_email: Email, now: DateTime<Utc>) -> Self {
-        Self {
-            id,
-            customer_email,
-            status: OrderStatus::Draft,
-            items: Vec::new(),
-            pending_events: vec![],
-            created_at: now,
-            updated_at: now,
-        }
-    }
-
-    // Getters — controlled read access; fields stay private
-    pub fn id(&self) -> Uuid { self.id }
-    pub fn status(&self) -> OrderStatus { self.status }
-    pub fn items(&self) -> &[OrderLineItem] { &self.items }
-
-    /// Command: add item — INVARIANT: only to Draft orders
-    pub fn add_item(&mut self, item: OrderLineItem, occurred_at: DateTime<Utc>) -> Result<(), OrderError> {
-        if self.status != OrderStatus::Draft {
-            return Err(OrderError::InvalidStateTransition {
-                from: self.status,
-                action: "add_item".into(),
-            });
-        }
-        let sku = item.sku.as_str().to_string();
-        let quantity = item.quantity;
-        self.items.push(item);            // mutate first
-        self.updated_at = occurred_at;
-        self.pending_events.push(DomainEvent::ItemAddedToOrder(ItemAddedToOrder {
-            order_id: self.id,
-            sku,
-            quantity,
-            occurred_at,
-        }));                              // then record the event
-        Ok(())
-    }
-
-    /// Command: submit — INVARIANTS: not empty, valid transition
-    pub fn submit(&mut self, occurred_at: DateTime<Utc>) -> Result<(), OrderError> {
-        if self.items.is_empty() {
-            return Err(OrderError::EmptyOrder);
-        }
-        if !self.status.can_transition_to(OrderStatus::Pending) {
-            return Err(OrderError::InvalidStateTransition {
-                from: self.status,
-                action: "submit".into(),
-            });
-        }
-        self.status = OrderStatus::Pending;
-        self.updated_at = occurred_at;
-        self.pending_events.push(DomainEvent::OrderPlaced(OrderPlaced {
-            order_id: self.id,
-            customer_email: self.customer_email.as_str().to_string(),
-            total_amount: self.total().amount(),
-            occurred_at,
-        }));
-        Ok(())
-    }
-
-    /// Command: cancel — INVARIANT: only Draft or Pending
-    pub fn cancel(&mut self, reason: impl Into<String>, occurred_at: DateTime<Utc>) -> Result<(), OrderError> {
-        if !matches!(self.status, OrderStatus::Draft | OrderStatus::Pending) {
-            return Err(OrderError::InvalidStateTransition {
-                from: self.status,
-                action: "cancel".into(),
-            });
-        }
-        self.status = OrderStatus::Cancelled;
-        self.updated_at = occurred_at;
-        self.pending_events.push(DomainEvent::OrderCancelled(OrderCancelled {
-            order_id: self.id,
-            reason: reason.into(),
-            occurred_at,
-        }));
-        Ok(())
-    }
-
-    /// Query: total is computed, not stored — always consistent
-    pub fn total(&self) -> Money {
-        self.items.iter()
-            .map(|i| i.subtotal())
-            .fold(Money::usd(Decimal::ZERO), |acc, m| acc.add(&m).unwrap())
-    }
-
-    pub fn pending_events(&self) -> &[DomainEvent] {
-        &self.pending_events
-    }
-
-    /// Call only after state, outbox rows, and any idempotent result commit.
-    pub fn mark_events_committed(&mut self) {
-        self.pending_events.clear();
-    }
-}
-```
-
-**Aggregate root rules:**
-
-1. Only the root has global identity
-2. External objects reference ONLY the root
-3. The root enforces all invariants for the cluster
-4. Children are accessed through root methods only
-5. The root decides which events to publish
-6. One transaction = one aggregate
-
-**Sizing aggregates:** too large → performance problems and contention; too small → invariants can't be enforced. Right size: everything needed to enforce its invariants, nothing more.
-
-### Domain events
-
-```rust
-// domain/events.rs
-// The DomainEvent enum itself is in SKILL.md §3; here it additionally derives
-// Serialize/Deserialize and gains two accessors:
-
-impl DomainEvent {
-    pub fn event_type(&self) -> &'static str {
-        match self {
-            DomainEvent::OrderPlaced(_) => "OrderPlaced",
-            DomainEvent::OrderCancelled(_) => "OrderCancelled",
-            DomainEvent::ItemAddedToOrder(_) => "ItemAddedToOrder",
-        }
-    }
-
-    pub fn occurred_at(&self) -> DateTime<Utc> {
-        match self {
-            DomainEvent::OrderPlaced(e) => e.occurred_at,
-            DomainEvent::OrderCancelled(e) => e.occurred_at,
-            DomainEvent::ItemAddedToOrder(e) => e.occurred_at,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct OrderPlaced {
-    pub order_id: Uuid,
-    pub customer_email: String,
-    pub total_amount: Decimal,
-    pub occurred_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct OrderCancelled {
-    pub order_id: Uuid,
-    pub reason: String,
-    pub occurred_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ItemAddedToOrder {
-    pub order_id: Uuid,
-    pub sku: String,
-    pub quantity: u32,
-    pub occurred_at: DateTime<Utc>,
-}
-```
-
-Enum vs trait object:
-
-| Concern | Enum | `Box<dyn …>` |
-|---------|------|--------------|
-| Serialize | Derive | Not object-safe |
-| Send + Sync | Auto-derived only if every payload qualifies | Trait object must include/prove the required bounds |
-| Clone | Derive | Can't derive |
-| Exhaustive matching | Yes | No |
-| Heap allocation | None | Box per event |
-| New variant | Add variant + update matches | Implement trait |
-
-Use trait objects only when events cross bounded-context boundaries and the set must stay open; within one context, enums win in Rust.
-
-Naming: use past tense — `OrderPlaced`, not `PlaceOrder`. Events record what happened; commands request what should happen. Keep domain events inside the bounded context. Before crossing a process/context boundary, map them to an integration-event contract that contains only stable public facts, carries an event/message identity and schema version when needed, and is emitted through an outbox if delivery must survive a crash.
-
-### Business invariants
-
-| Invariant | Where enforced | How |
-|-----------|---------------|-----|
-| Cannot add items to non-Draft orders | `Order::add_item()` | Status check before mutation |
-| Cannot submit empty orders | `Order::submit()` | Emptiness check |
-| Cannot cancel shipped orders | `Order::cancel()` | State-machine check |
-| Order total = sum of line items | `Order::total()` | Computed, not stored |
-| Transitions follow rules | `OrderStatus::can_transition_to()` | Whitelist of valid transitions |
-| No cross-currency arithmetic | `Money::add()` | Currency equality check |
-| Valid email format | `Email::new()` | Validation at construction |
-
-Enforcement pattern for every command: check preconditions → mutate state → record event → `Ok(())`.
-
-### Domain services
-
-For operations that don't naturally belong to one entity or value object. Use sparingly — most logic belongs on aggregates.
-
-```rust
-pub struct PricingService;
-
-impl PricingService {
-    pub fn calculate_discount(order: &Order, customer_tier: CustomerTier) -> Money {
-        // cross-aggregate logic that doesn't belong on Order alone
-    }
-}
-```
-
-Use one when the operation spans multiple aggregates, belongs to no single entity, and expresses a domain (not infrastructure) concept. If it could be a method on an aggregate, put it there.
-
-### Repositories and aggregate persistence
-
-A repository is useful when policy needs collection-like access to aggregate roots and the domain language benefits from naming that collection. Its abstraction belongs with the client whose policy it serves—domain or application—not automatically in either layer.
-
-Prefer operations that load and save a consistency boundary or answer a use-case-specific query. Do not create one repository per entity, promise a repository for every aggregate, or expose generic CRUD merely for symmetry. Read models may return projections rather than reconstructing aggregates; command-side persistence should not return partially valid aggregate fragments.
-
-### State machines
-
-Full transition set for the canonical example:
-
-```rust
-// The enum behind the SKILL.md §3 state machine:
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum OrderStatus {
-    Draft, Pending, Confirmed, Shipped, Delivered, Cancelled,
-}
-// can_transition_to is identical to SKILL.md §3.
-```
-
-```
-Draft ──→ Pending ──→ Confirmed ──→ Shipped ──→ Delivered
-  │          │
-  └──────────┴──→ Cancelled
-```
-
----
-
-## Strategic DDD
-
-### Bounded contexts
-
-A bounded context is a boundary of language, rules, and model applicability. It is discovered from semantic differences and team/change ownership, not inferred from a directory or deployment diagram. The same real-world concept can have different representations:
-
-```
-┌─────────────────────┐    ┌─────────────────────┐
-│  Order Context      │    │  Shipping Context   │
-│  Customer:          │    │  Recipient:         │
-│  - email            │    │  - address          │
-│  - payment_method   │    │  - delivery_prefs   │
-│  Order:             │    │  Shipment:          │
-│  - items            │    │  - tracking_number  │
-│  - total            │    │  - carrier          │
-└─────────────────────┘    └─────────────────────┘
-```
-
-A context can live in one module, several packages, or its own deployable; choose physical enforcement according to team scale and recurring violations. Separate types when semantics differ. Sharing identity/value primitives or an explicitly published contract can be fine; sharing mutable domain entities or one canonical model across contexts erases the boundary.
-
-### Anti-corruption layer
-
-Translate at the boundary; never make one context compile against another context's internal model:
-
-```rust
-// Published integration contract at the boundary.
-pub struct OrderPlacedV1 { pub event_id: EventId, pub order_id: OrderId }
-
-// Shipping owns this translation into its own language.
-impl TryFrom<OrderPlacedV1> for CreateShipment {
-    type Error = ContractError;
-    fn try_from(message: OrderPlacedV1) -> Result<Self, Self::Error> {
-        Ok(CreateShipment { source_event: message.event_id, order: message.order_id })
-    }
-}
-```
-
-The anti-corruption layer may be a function, adapter, or module; it need not be a service. Validate compatibility and deduplicate at this boundary when messages can be redelivered.
 
 ---
 
@@ -805,7 +431,7 @@ impl Order<Pending> {
 }
 ```
 
-Trade-off: compile-time guarantees, but repositories must handle all states generically — runtime state machines are simpler to persist.
+Trade-off: compile-time guarantees, but stores must handle all states generically — runtime state machines are simpler to persist.
 
 ### Serde integration
 
@@ -816,8 +442,8 @@ pub struct Order {
     customer_email: Email,
     status: OrderStatus,
     items: Vec<OrderLineItem>,
-    #[serde(skip)]                 // event buffer is not persisted
-    pending_events: Vec<DomainEvent>,
+    #[serde(skip)]                 // fact buffer is not persisted
+    pending_events: Vec<OrderFact>,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
 }
@@ -829,50 +455,19 @@ Private fields + read-only getters + `Result`-returning commands mean `order.sta
 
 ---
 
-## Modeling Decisions
-
-### Entity vs value object
-
-| Scenario | Choice | Why |
-|----------|--------|-----|
-| Customer email address | Value Object | No identity; compare by value |
-| Customer account | Entity | Has identity; changes over time |
-| Order line item | Entity (child) | Meaningful within the aggregate |
-| Money amount | Value Object | $10 == $10 |
-| Product SKU | Value Object | Identifier, but no lifecycle |
-| Shipping address | Value Object | Replaced wholesale, never mutated |
-
-Decision questions: Does it have a lifecycle? Is it identified by attributes? Can you replace it with an equal copy? Does it change over time?
-
-### When to create a new aggregate
-
-Create one when a cluster has its own invariants, is referenced independently, has its own lifecycle, and is loaded/saved as a unit. Don't when the entity is always reached through a parent, has no independent invariants, or needs no repository.
-
-### Rich vs anemic model
-
-| Aspect | Anemic | Rich |
-|--------|--------|------|
-| Entity has | Data only | Data + behavior |
-| Logic lives in | External "services" | Entity methods |
-| Invariants enforced by | Hope / external checks | The entity itself |
-| Testing | Needs service + mocks | Pure, no dependencies |
-| DDD alignment | Anti-pattern | Core pattern |
-
----
-
 ## Anti-Patterns in Detail
 
-### 1. Anemic domain model
+### 1. Data bag with logic outside
 
 ```rust
-// WRONG: entity is a data bag, logic lives in "services"
+// WRONG: type is a data bag, logic lives in "services"
 pub struct Order {
     pub id: Uuid,
     pub status: OrderStatus,  // publicly settable!
     pub items: Vec<OrderLineItem>,
 }
 
-// RIGHT: logic lives on the entity
+// RIGHT: logic lives on the type that owns the data
 impl Order {
     pub fn submit(&mut self, occurred_at: DateTime<Utc>) -> Result<(), OrderError> { .. }
 }
@@ -894,7 +489,7 @@ pub struct Order { .. }
 ```rust
 // WRONG: use case checks business rules and mutates directly
 fn execute(&self, order_id: Uuid) -> Result<..> {
-    let mut order = self.repo.find_by_id(order_id)?;
+    let mut order = self.store.find_by_id(order_id)?;
     if order.items().is_empty() { return Err(..); }   // domain logic!
     order.status = OrderStatus::Pending;              // bypasses invariants!
 }
@@ -908,11 +503,11 @@ order.submit(now)?;
 ```rust
 // WRONG: controller orchestrates the business flow
 fn handle_request(&self, req: Request) -> Response {
-    let order = self.repo.find(req.id);
+    let order = self.store.find(req.id);
     order.validate();
     self.event_bus.publish(..);
     self.email.send(..);
-    self.repo.save(order);
+    self.store.save(order);
 }
 
 // RIGHT: controller delegates to the use case
@@ -933,8 +528,8 @@ pub struct SubmitOrderUseCase {
 }
 
 // RIGHT: use case holds a port trait
-pub struct SubmitOrderUseCase<R: OrderRepository> {
-    repository: Arc<R>,
+pub struct SubmitOrderUseCase<S: OrderStore> {
+    store: Arc<S>,
 }
 ```
 
@@ -943,7 +538,7 @@ pub struct SubmitOrderUseCase<R: OrderRepository> {
 ```rust
 // WRONG: either order leaves a crash gap
 order.submit(now)?;
-repo.save(&order)?;
+store.save(&order)?;
 event_bus.publish(events)?; // crash after save can lose the message
 
 // RIGHT when delivery and idempotent retry are required: one local transaction
@@ -954,48 +549,9 @@ order.mark_events_committed();
 // A dispatcher later publishes claimed outbox rows at least once.
 ```
 
-Direct post-commit publication is simpler only when message loss is explicitly acceptable. Otherwise persist event identity/payload in the same transaction, retain/mark aggregate events according to commit outcome, and make consumers idempotent.
+Direct post-commit publication is simpler only when message loss is explicitly acceptable. Otherwise persist fact identity/payload in the same transaction, retain/mark pending facts according to commit outcome, and make consumers idempotent. Name committed facts in past tense (`OrderPlaced`, not `PlaceOrder`); map them to versioned integration contracts before they leave the service/deployable boundary.
 
-### 7. Bypassing aggregates
-
-```rust
-// WRONG: external code modifying children directly
-let item = order.items_mut()[0];
-item.quantity = 0;               // bypasses invariants!
-repo.save_order_item(order_id, item);
-
-// RIGHT: go through the aggregate root
-order.update_item_quantity(sku, 0)?;
-repo.save(&order)?;
-```
-
-### 8. God aggregate
-
-```rust
-// WRONG: one aggregate owns everything
-pub struct Order {
-    customer: Customer,       // should be a separate aggregate
-    payment: PaymentDetails,  // should be a separate aggregate
-    shipment: Shipment,       // should be a separate aggregate
-}
-
-// RIGHT: separate aggregates referenced by ID
-pub struct Order {
-    customer_id: CustomerId,  // reference, not ownership
-}
-```
-
-### 9. Events named as commands
-
-```rust
-// WRONG: imperative names — these are commands
-pub enum DomainEvent { PlaceOrder(..), CancelOrder(..) }
-
-// RIGHT: past tense — records of what happened
-pub enum DomainEvent { OrderPlaced(..), OrderCancelled(..) }
-```
-
-### 10. Logic-stuffed constructors
+### 7. Logic-stuffed constructors
 
 ```rust
 // WRONG: constructor validates, creates, submits, publishes
@@ -1050,16 +606,16 @@ src/
 ├── main.rs                           # composition root + entry point
 ├── domain/
 │   ├── mod.rs
-│   ├── entities.rs                   # Order (aggregate root), OrderLineItem, OrderStatus
-│   ├── value_objects.rs              # Email, Money, Currency, Sku
-│   └── events.rs                     # DomainEvent enum + event structs
+│   ├── order.rs                      # Order, OrderLineItem, OrderStatus, rules
+│   ├── types.rs                      # Email, Money, Currency, Sku
+│   └── facts.rs                      # OrderFact enum + fact payloads
 ├── application/
 │   ├── mod.rs
 │   ├── ports.rs                      # OrderStore and other earned application capabilities
 │   └── use_cases.rs                  # one struct per business action
 └── infrastructure/
     ├── mod.rs
-    ├── persistence.rs                # repository implementations
+    ├── persistence.rs                # store implementations
     ├── api.rs                        # HTTP controllers
     └── ui.rs                         # GUI/CLI adapters (+ UI tests)
 tests/
@@ -1070,7 +626,7 @@ tests/
 
 ### Adding a new feature — checklist
 
-1. **Domain**: define/update entities, value objects, events
+1. **Domain**: define/update domain types and rules
 2. **Application ports**: add trait methods if new infrastructure is needed
 3. **Application use case**: one new struct
 4. **Infrastructure**: implement any new port traits
@@ -1176,16 +732,16 @@ fn get_user_total(db: &PgConnection, user_id: u64) -> f64 {
 
 // AFTER: the database depends on business logic's abstraction
 // In the core crate (knows nothing about postgres):
-trait OrderRepository {
+trait OrderStore {
     fn total_for_user(&self, user_id: u64) -> f64;
 }
-fn get_user_total(repo: &dyn OrderRepository, user_id: u64) -> f64 {
-    repo.total_for_user(user_id)
+fn get_user_total(store: &dyn OrderStore, user_id: u64) -> f64 {
+    store.total_for_user(user_id)
 }
 
 // In the postgres-adapter crate (depends on the core crate):
-struct PgOrderRepo { conn: PgConnection }
-impl OrderRepository for PgOrderRepo {
+struct PgOrderStore { conn: PgConnection }
+impl OrderStore for PgOrderStore {
     fn total_for_user(&self, user_id: u64) -> f64 { /* postgres-specific query */ }
 }
 ```
@@ -1319,18 +875,3 @@ cargo tree --edges normal 2>&1 | grep -E "(cycle|depends on itself)"
 # I = Ce / (Ca + Ce); A = abstract items / total items
 cargo deps --include-orphans | dot -Tpng > deps.png
 ```
-
----
-
-## DDD vs Clean Architecture
-
-| Aspect | Clean Architecture | DDD |
-|--------|-------------------|-----|
-| Core concern | Dependency direction | Domain language & boundaries |
-| Key concept | Layers + dependency inversion | Ubiquitous language + bounded contexts |
-| What it answers | "Where does this code go?" | "What do we call this?" |
-| Primary artifacts | Use cases, ports/adapters | Entities, aggregates, value objects |
-| Structures by | Dependency level | Bounded context |
-| Works best with | Rich domain models | Explicit layering rules |
-
-They compose: Clean Architecture draws the layers; DDD models what lives in the innermost one.

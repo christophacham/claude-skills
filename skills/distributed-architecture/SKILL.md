@@ -7,6 +7,10 @@ description: "Trade-off-driven design for decisions across deployable units. Use
 
 Covers the recurring hard decisions across deployables — granularity, monolith decomposition, data, workflow, contracts, and code reuse — plus the shared machinery: trade-off analysis, ADRs, and fitness functions.
 
+**Escalate:** single-app layering / ports / composition root → `architecture-design`; module interface depth → `simple-design`.
+
+**Scope:** Prefer the contested deployable boundary or hot path under change. State the least-worst choice and the trade-off you accept before expanding tables.
+
 ## Core Mental Model
 
 Everything is a trade-off. Don't look for the best design; look for the **least worst combination of trade-offs**. If you think you've found something that isn't a trade-off, you haven't found the trade-off yet. No best practices exist for most real architecture decisions.

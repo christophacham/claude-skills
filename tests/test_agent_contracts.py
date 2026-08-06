@@ -74,7 +74,7 @@ class AgentContractTests(unittest.TestCase):
             configured_tools(text),
         )
         self.assertEqual(
-            ["simple-design", "refactoring", "testing-tdd"],
+            ["simple-design", "refactoring"],
             configured_skills(text),
         )
         for phrase in (
@@ -95,7 +95,7 @@ class AgentContractTests(unittest.TestCase):
 
         self.assertEqual({"Read", "Grep", "Glob"}, configured_tools(text))
         self.assertEqual(
-            ["simple-design", "refactoring", "testing-tdd"],
+            ["simple-design", "refactoring"],
             configured_skills(text),
         )
         for forbidden_tool in ("Write", "Edit", "Bash"):
@@ -194,11 +194,31 @@ class CoordinationDocumentationTests(unittest.TestCase):
         package = json.loads(read_repo_file("package.json"))
         expected_skills = {
             "architecture-design", "beads", "brave-search", "ddg-search",
-            "distributed-architecture", "dynamic-context-injection",
-            "geometric-robustness", "mission-planning", "peek-repo",
-            "refactoring", "reimpl-scout", "simple-design", "skill-creator",
-            "tavily-search", "testing-tdd", "third-party-integration",
+            "distributed-architecture",
+            "geometric-robustness", "peek-repo",
+            "refactoring", "simple-design", "skill-creator",
+            "tavily-search",
         }
+        # Catalog group law (SLIM): CORE default-yes craft; OPT_IN never default-yes
+        catalog = read_repo_file("lib/catalog.js")
+        self.assertIn("export const CORE_SKILLS", catalog)
+        self.assertIn("export const OPT_IN_SKILLS", catalog)
+        self.assertIn("export const BEADS_SKILLS", catalog)
+        for core_id in ("peek-repo", "simple-design", "refactoring"):
+            self.assertIn(f"id: '{core_id}'", catalog)
+        for opt_id in (
+            "architecture-design",
+            "distributed-architecture",
+            "geometric-robustness",
+        ):
+            self.assertIn(f"id: '{opt_id}'", catalog)
+        # CORE and OPT_IN are separate exports (not a flat OTHER-only list for craft)
+        self.assertIn("...CORE_SKILLS.map", catalog)
+        self.assertIn("...OPT_IN_SKILLS.map", catalog)
+        install_flow = read_repo_file("lib/install-flow.js")
+        self.assertIn("CORE_SKILLS", install_flow)
+        self.assertIn("Install CORE skills?", install_flow)
+        self.assertIn("OPT_IN / beads", install_flow)
         expected_agents = {
             "beads-creator.md", "beads-reviewer.md", "coder.md", "reviewer.md",
             "panelists/deep-module.md", "panelists/minimal-diff.md", "panelists/seam.md",

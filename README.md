@@ -56,10 +56,11 @@ node bin/cli.js install
 
 Guided flow (Clack UI):
 
-1. **Search skills globally?** → multiselect `ddg-search` / `brave-search` / `tavily-search`
+1. **Search skills globally?** → multiselect `ddg-search` / `brave-search` / `tavily-search` (default-yes)
 2. **API keys** only if a key-backed skill was chosen and the key is not already set
-3. **Project tools?** → `dynamic-context-injection` + `skill-creator` into the project `.claude/`
-4. **Remaining skills one-by-one** → Global · Project · Skip · **Done** (stop early)
+3. **AUTHOR (project tools)?** → `skill-creator` into the project `.claude/` (authoring + injection audit)
+4. **CORE skills?** → `peek-repo`, `simple-design`, `refactoring` (default-yes; global or project)
+5. **OPT_IN / beads one-by-one?** → architecture, distributed, geometric, beads — **Skip default** · Global · Project · Done
 
 Global installs from this CLI are recorded in `~/.claude/claude-skills-manifest.json`.
 
@@ -101,7 +102,7 @@ iwr -useb https://raw.githubusercontent.com/christophacham/claude-skills/main/un
 - **TDD + how-you-know** — Use red→green for changed behavior and run the checks relevant to the affected surface.
 - **Tidy First** — Separate structural and behavioral changes when doing so improves reviewability.
 - **Independent review** — Review from a fresh context and require evidence-based findings. Same-model review remains valid; a different model tier is an optional source of diversity.
-- **Ceremony follows irreversibility** — Ports, aggregates, ADRs, and sagas only when earned (`architecture-design`, `distributed-architecture`).
+- **Ceremony follows irreversibility** — Ports, ADRs, and sagas only when earned (`architecture-design`, `distributed-architecture`).
 
 Optional: Beads (`bd`) for issue tracking; design panelists for multi-lens design when the parent wants them. The general `coder` and `reviewer` do not mutate trackers.
 
@@ -109,26 +110,27 @@ Optional: Beads (`bd`) for issue tracking; design panelists for multi-lens desig
 
 ## Bundled Skills
 
-### Search & utilities
-- **`peek-repo`**: Third-party GitHub source under `~/code/tmp/<name>` (or `%USERPROFILE%\code\tmp\<name>`) for answers from real code.
+Catalog groups (selective Node installer): **SEARCH** · **CORE** (default-yes) · **AUTHOR** · **BEADS** · **OPT_IN** (offer, never default-yes). Bulk `install.sh` / `install.ps1` still install everything.
+
+### SEARCH
 - **`ddg-search`**: Free web/news search via `ddgs` (no API key). Always forks into an Explore subagent.
 - **`brave-search`**: Brave Search API (`BRAVE_API_KEY`). Always forks like `ddg-search`.
 - **`tavily-search`**: Tavily CLI (`TAVILY_API_KEY`). Search/extract; forked Explore worker.
-- **`dynamic-context-injection`**: Auditor + guide for load-time shell state injection in skills.
-- **`skill-creator`**: Creating, auditing, validating, and packaging Agent Skills.
 
-### Tracker
-- **`beads`**: Issue creation, claiming, status updates, dependency graphing, and Dolt sync via `bd`.
-
-### Software engineering
-- **`architecture-design`**: Clean Architecture layering, ports & adapters, tactical DDD.
-- **`distributed-architecture`**: Trade-offs across deployables — granularity, monolith decomposition, data, sagas, contracts.
+### CORE (default-yes)
+- **`peek-repo`**: Third-party GitHub source under `~/code/tmp/<name>` (or `%USERPROFILE%\code\tmp\<name>`) for answers from real code.
 - **`simple-design`**: Ousterhout deep modules, information hiding, red flags.
 - **`refactoring`**: Fowler smells and safe structural steps.
-- **`testing-tdd`**: Red→green, test design, mocking, testability.
-- **`third-party-integration`**: Adapter layer; only mock types you own.
-- **`mission-planning`**: OPORD, PACE, decision triggers for large initiatives.
-- **`reimpl-scout`**: Multi-agent reimplementation-grade codebase scouts.
+
+### AUTHOR (project path)
+- **`skill-creator`**: Create, validate, evaluate, and package Agent Skills; audit Claude Code load-time shell injection.
+
+### BEADS (profile — only when chosen)
+- **`beads`**: Issue creation, claiming, status updates, dependency graphing, and Dolt sync via `bd` (also installs agents + optional `pool.md`).
+
+### OPT_IN (offer, never default-yes)
+- **`architecture-design`**: Clean Architecture layering, ports & adapters.
+- **`distributed-architecture`**: Trade-offs across deployables — granularity, monolith decomposition, data, sagas, contracts.
 - **`geometric-robustness`**: Float/geometry robustness for slicers and CAD/CAM (Rust).
 
 ---

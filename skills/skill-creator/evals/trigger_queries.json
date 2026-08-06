@@ -4,6 +4,10 @@
     "should_trigger": true
   },
   {
+    "query": "Audit this Claude Code skill line: `!`deploy --target \"$ARGUMENTS\"``. The author says quoting makes it safe and deploy only reads status unless a flag is present.",
+    "should_trigger": true
+  },
+  {
     "query": "Publish this unrelated npm library to the registry.",
     "should_trigger": false
   }

@@ -97,11 +97,27 @@ class DesignDoctrineTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.architecture = (SKILLS / "architecture-design" / "references" / "reference.md").read_text(encoding="utf-8")
+        cls.architecture_skill = (SKILLS / "architecture-design" / "SKILL.md").read_text(encoding="utf-8")
         cls.distributed = (SKILLS / "distributed-architecture" / "SKILL.md").read_text(encoding="utf-8")
         cls.distributed_ref = (SKILLS / "distributed-architecture" / "references" / "reference.md").read_text(encoding="utf-8")
         cls.refactoring = (SKILLS / "refactoring" / "SKILL.md").read_text(encoding="utf-8")
-        cls.testing = (SKILLS / "testing-tdd" / "SKILL.md").read_text(encoding="utf-8")
-        cls.third_party = (SKILLS / "third-party-integration" / "SKILL.md").read_text(encoding="utf-8")
+
+    def test_architecture_design_has_no_ddd_pedagogy(self) -> None:
+        combined = f"{self.architecture_skill}\n{self.architecture}".lower()
+        for forbidden in (
+            "ddd",
+            "domain-driven",
+            "tactical ddd",
+            "strategic ddd",
+            "ubiquitous language",
+            "bounded context",
+            "aggregate root",
+            "value object",
+            "domain event",
+            "anemic domain",
+        ):
+            self.assertNotIn(forbidden, combined, forbidden)
+        self.assertNotIn("bounded context", self.distributed_ref.lower())
 
     def test_atomic_persistence_example_includes_idempotent_result_and_outbox(self) -> None:
         self.assertIn("save_submission", self.architecture)
@@ -123,18 +139,17 @@ class DesignDoctrineTests(unittest.TestCase):
 
     def test_abstraction_and_double_guidance_share_ownership(self) -> None:
         self.assertIn("not an automatic threshold", self.refactoring)
-        self.assertNotIn("| Testing | **Create** instances, assert results | **Mock** peers", self.testing)
-        self.assertIn("Application policy tests", self.third_party)
-        self.assertNotIn("Domain Code Tests", self.third_party)
 
 
 class DynamicInjectionDoctrineTests(unittest.TestCase):
+    """Injection audit lives under skill-creator after the DCI merge."""
+
     @classmethod
     def setUpClass(cls) -> None:
-        cls.skill_path = SKILLS / "dynamic-context-injection" / "SKILL.md"
+        cls.skill_path = SKILLS / "skill-creator" / "SKILL.md"
         cls.skill = cls.skill_path.read_text(encoding="utf-8")
         cls.examples = (
-            SKILLS / "dynamic-context-injection" / "references" / "injection-examples.md"
+            SKILLS / "skill-creator" / "references" / "injection-examples.md"
         ).read_text(encoding="utf-8")
         cls.skill_flat = flatten(cls.skill)
         cls.examples_flat = flatten(cls.examples)
@@ -166,6 +181,10 @@ class DynamicInjectionDoctrineTests(unittest.TestCase):
         self.assertIn("service_key=present", self.examples_flat)
         self.assertIn("never a token value", self.examples_flat)
 
+    def test_audit_mode_is_entry_visible_in_skill_creator(self) -> None:
+        self.assertIn("## Dynamic context injection (audit mode)", self.skill)
+        self.assertIn("references/injection-examples.md", self.skill)
+
 
 class SkillCreatorContractTests(unittest.TestCase):
     @classmethod
@@ -175,7 +194,7 @@ class SkillCreatorContractTests(unittest.TestCase):
             SKILLS / "skill-creator" / "references" / "spec-and-patterns.md"
         ).read_text(encoding="utf-8")
         cls.installer = (
-            SKILLS / "skill-creator" / "references" / "node-native-installer-pattern.md"
+            ROOT / "docs" / "node-native-installer-pattern.md"
         ).read_text(encoding="utf-8")
         cls.skill_flat = flatten(cls.skill)
         cls.spec_flat = flatten(cls.spec)
@@ -192,9 +211,18 @@ class SkillCreatorContractTests(unittest.TestCase):
         self.assertIn("claude-skills install [--project <dir>] [--skip-deps]", self.skill_flat)
         self.assertIn("does not install to `.agents/`", self.skill_flat)
         self.assertIn("removes only global items recorded", self.skill_flat)
+        self.assertIn("docs/node-native-installer-pattern.md", self.skill_flat)
         self.assertIn("does **not** currently implement `--all`", self.installer_flat)
+        self.assertIn("AUTHOR** — `skill-creator` suggested for the chosen project's", self.installer)
+        self.assertIn("CORE** — `peek-repo`", self.installer)
+        self.assertIn("OPT_IN + BEADS", self.installer)
+        self.assertNotIn("dynamic-context-injection", self.installer_flat)
         self.assertNotIn("npx @scope/agent-skill-books install --all", self.installer_flat)
         self.assertNotIn("return [join(base, '.claude', 'skills'), join(base, '.agents'", self.installer_flat)
+        # Installer essay is repo docs, not skill payload
+        self.assertFalse(
+            (SKILLS / "skill-creator" / "references" / "node-native-installer-pattern.md").exists()
+        )
 
     def test_eval_schema_is_consistent_across_docs_and_template(self) -> None:
         template = json.loads(
@@ -216,11 +244,11 @@ class SkillCreatorContractTests(unittest.TestCase):
     def test_all_corrected_eval_and_trigger_files_validate(self) -> None:
         names = {
             "architecture-design", "beads", "distributed-architecture",
-            "dynamic-context-injection", "geometric-robustness", "mission-planning",
-            "peek-repo", "refactoring", "reimpl-scout", "simple-design",
-            "skill-creator", "testing-tdd", "third-party-integration",
+            "geometric-robustness",
+            "peek-repo", "refactoring", "simple-design",
+            "skill-creator",
         }
-        claude_code_only = {"dynamic-context-injection", "peek-repo", "reimpl-scout"}
+        claude_code_only = {"peek-repo"}
         for name in names:
             with self.subTest(skill=name):
                 mode = "claude-code" if name in claude_code_only else "portable"
