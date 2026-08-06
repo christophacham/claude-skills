@@ -26,4 +26,4 @@ Software engineering skills and custom agents for Claude Code (doctrine, craft, 
 
 ## Product work cadence
 
-When doing or planning product implementation in a consuming app (or when the user asks how we work), follow **`operating-mode`** and README **Operating mode**: human-gated tiny units, design×3, refactor-then-integrate, live Rust/Playwright gates, review-heavy PRs, no oneshot loops. Main agent owns cadence; `coder` / `reviewer` / panelists are optional dispatches only.
+When doing or planning product implementation in a consuming app (or when the user asks how we work), follow **`operating-mode`** and README **Operating mode**: human kickoff + PR review; hands-off one-unit execution to a feature-branch PR; design×3; refactor-then-integrate; live Rust/Playwright gates; ask only on blockers or missing principles (help define them). Main may dispatch `coder` / `reviewer` / panelists without asking. No multi-unit oneshot loops.

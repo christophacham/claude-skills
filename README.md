@@ -98,38 +98,30 @@ iwr -useb https://raw.githubusercontent.com/christophacham/claude-skills/main/un
 
 ## Operating mode
 
-We work in **human-gated, tiny vertical units** on year-scale product work: deep modules, light structure, and quality over speed. An agent may write every line, but the human never merges what they cannot explain; review is heavy and may rewrite. We refuse oneshot features, unattended mega-loops, and “fix health later.” Each unit is roughly one idea (~200–300 LOC production guidance), on its own feature branch with a short PR, under live verification—Rust watch/build/test and/or Playwright as soon as UI exists—with early separation of concerns, errors, traces/logging, and explicit handling of unknowns.
+We work in **tiny vertical units** on year-scale product work: deep modules, light structure, quality over speed. An agent may write every line; the human rarely codes but **must understand every line that merges**. Hard human stops are **kickoff**, **PR review**, and **defining principles when missing**—not mid-unit micromanagement. After kickoff the main agent runs **hands-off inside one unit** until a feature-branch PR is ready: design ×3 → pick, refactor-then-integrate, live Rust watch/tests and/or Playwright as soon as UI exists, early SoC/errors/traces/unknowns. It may dispatch `coder` / `reviewer` / panelists **without asking**. It asks only on blockers or missing project law (then helps define that law). Unit size guidance ~200–300 LOC production (one idea). Oneshot multi-feature work and unattended multi-unit loops are out; **Ralf-style iteration inside one unit until PR is in**.
 
-Design is slow on purpose: **three ways, then pick**; **refactor what exists so the new piece fits**, then integrate; **prototype between units** when the next step is unclear. Spine: Beck (small steps + feedback), Fowler (tidy/refactor safely), Ousterhout (deep modules), Hohpe (architecture that still reaches working code). CI is the hard gate (lefthook/mise-class checks, strict Rust); UI confidence is Playwright. There is **no** implied multi-stage product pipeline—only the main conversation plus optional `coder` / `reviewer` / panelists when explicitly dispatched.
+Spine: Beck (small steps + feedback), Fowler (tidy/refactor), Ousterhout (deep modules), Hohpe (architecture that reaches working code). CI is the hard gate (lefthook/mise-class checks, strict Rust); UI confidence is Playwright. There is **no** grill→tickets product pipeline—main is the kernel; subagents are optional tools for the current unit. The main agent loads this cadence via **`operating-mode`** (CORE).
 
-Default cadence: choose one unit → design ×3 → refactor if needed → implement under live gates → PR → human-understanding review → merge → next unit (or a short prototype first). Tracker and panels are optional tools, not a pipeline. The main agent keeps this mode via the **`operating-mode`** skill (CORE).
+Default: you kick off one unit → agent runs to PR (assuming repo principles) → you review for understanding → merge only when you understand and gates are green → optional prototype → next unit.
 
 ```
-                    YOU (pick unit, must understand, accept/reject)
-                              │
-                              ▼
-              ┌───────────────────────────────┐
-              │  ONE UNIT (~200–300 LOC idea) │
-              │  feature branch + short PR    │
-              └───────────────┬───────────────┘
-                              │
-            design ×3 ──► pick ──► refactor existing ──► integrate new
-                              │
-                              ▼
-              live gate: cargo watch / tests
-                         and/or Playwright (if UI)
-              + errors · traces · SoC · unknowns
-                              │
-                              ▼
-              review-heavy (human ± reviewer agent)
-                              │
-                     ┌────────┴────────┐
-                     │ merge only if   │
-                     │ you understand  │
-                     │ and gates green │
-                     └────────┬────────┘
-                              │
-              optional prototype ──► next ONE UNIT
+YOU: kick off ONE unit
+        │
+        ▼
+MAIN (hands-off until PR)
+  principles clear? ──no──► propose → agree → write down → continue
+        │
+  design ×3 → pick → refactor existing → integrate
+  live Rust / Playwright + errors · traces · SoC · unknowns
+  may dispatch coder / reviewer / panelists (no ask)
+  open/update feature-branch PR
+        │
+        ▼
+YOU: review PR (understand / change / reject)
+        │
+        ▼
+merge only if understood + green
+  → optional prototype → next ONE unit
 ```
 
 ### Core doctrine (judgment libraries)
@@ -154,7 +146,7 @@ Catalog groups (selective Node installer): **SEARCH** · **CORE** (default-yes) 
 - **`tavily-search`**: Tavily CLI (`TAVILY_API_KEY`). Search/extract; forked Explore worker.
 
 ### CORE (default-yes)
-- **`operating-mode`**: Human-gated tiny units, design×3, refactor-then-integrate, live gates, review-heavy PRs — main-agent cadence.
+- **`operating-mode`**: Hands-off one-unit run to PR; design×3; live gates; main may dispatch subagents; human reviews at PR.
 - **`peek-repo`**: Third-party GitHub source under `~/code/tmp/<name>` (or `%USERPROFILE%\code\tmp\<name>`) for answers from real code.
 - **`simple-design`**: Ousterhout deep modules, information hiding, red flags.
 - **`refactoring`**: Fowler smells and safe structural steps.

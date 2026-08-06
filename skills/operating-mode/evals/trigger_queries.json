@@ -1,10 +1,10 @@
 [
   {
-    "query": "Plan the next feature unit and how we should work on it under our operating mode.",
+    "query": "I kicked off the next unit — run with it until the PR is ready.",
     "should_trigger": true
   },
   {
-    "query": "How do we work here — small PRs, live tests, design three ways?",
+    "query": "How do we work here — hands-off to PR, small units, live tests?",
     "should_trigger": true
   },
   {
