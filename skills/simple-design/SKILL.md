@@ -7,6 +7,12 @@ description: Module and API design judgment — deep modules, information hiding
 
 Module-level design judgment from John Ousterhout's *A Philosophy of Software Design*. One goal: **reduce complexity**. Section 9 is the triage index; sections 1–8 carry the detail.
 
+**Escalate (do not answer here):**
+
+- "Where does this code live?", dependency direction, ports/use cases, composition root → `architecture-design`
+- Split/merge deployables, sagas, multi-service data ownership, cross-service contracts → `distributed-architecture`
+- Behavior-preserving structural steps / smell mechanics → `refactoring`
+
 ## 1. Complexity Is the Only Budget
 
 Complexity is anything that makes software hard to understand or modify. Three symptoms:

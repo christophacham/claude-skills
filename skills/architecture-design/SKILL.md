@@ -14,6 +14,8 @@ One rule, one recipe. Everything else escalates to the reference.
 
 **Hats:** never review/refactor for design quality and add features in the same step. Note violations while building; fix them separately.
 
+**Scope:** Prefer a user-named subsystem or recently changed paths over boiling the whole repository. Before expanding, state the placement decision and one rejected alternative.
+
 ## Clean Architecture
 
 ```
