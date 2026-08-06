@@ -374,7 +374,7 @@ class PowerShellCloneProtocolTests(unittest.TestCase):
     def test_clone_matches_posix_protocol_casing(self) -> None:
         result = self.run_helper("example/project")
         fields = parse_protocol(result)
-        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         self.assertEqual("CLONED", fields["STATUS"])
         self.assertEqual("0", fields["EXIT_CODE"])
         self.assertEqual("CLONED", fields["ACTION"])

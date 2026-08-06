@@ -780,7 +780,7 @@ class PeekRepoPowerShellHelperTests(unittest.TestCase):
 
     def test_clone_passes_arguments_without_shell_reparsing(self) -> None:
         result = self.run_helper("example/project")
-        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         self.assertIn("STATUS=CLONED", result.stdout)
         args = self.log.read_text(encoding="utf-8").splitlines()
         self.assertEqual(["repo", "clone", "https://github.com/example/project.git"], args[:3])

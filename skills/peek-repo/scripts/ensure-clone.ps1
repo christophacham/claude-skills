@@ -471,7 +471,8 @@ function Invoke-Main {
 try {
     Invoke-Main
 } catch {
-    Stop-Helper -Code 4 -Status 'ERROR' -Kind 'UNEXPECTED_ERROR' -Detail 'The helper stopped on a sanitized internal error.'
+    $errorType = $_.Exception.GetType().Name
+    Stop-Helper -Code 4 -Status 'ERROR' -Kind 'UNEXPECTED_ERROR' -Detail "The helper stopped on a sanitized internal error ($errorType)."
 } finally {
     Remove-OwnedStage
 }

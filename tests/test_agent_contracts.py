@@ -214,7 +214,7 @@ class CoordinationDocumentationTests(unittest.TestCase):
         )
         self.assertEqual(
             expected_agents,
-            {str(path.relative_to(AGENTS)) for path in AGENTS.rglob("*.md")},
+            {path.relative_to(AGENTS).as_posix() for path in AGENTS.rglob("*.md")},
         )
         self.assertEqual(
             {"brave-search", "ddg-search", "tavily-search"},
