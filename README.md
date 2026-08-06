@@ -22,13 +22,15 @@ Run from inside a cloned copy of this repository:
 
 ```sh
 # macOS / Linux (POSIX)
-./install.sh             # Global (~/.claude/)
-./install.sh --project   # Project-local (./.claude/)
+./install.sh                       # Global (~/.claude/)
+./install.sh --project             # Project-local: $PWD/.claude
+./install.sh --project /path/to/app   # Project-local: /path/to/app/.claude (relative or absolute)
 ./install.sh --brave-api-key "$BRAVE_API_KEY" --tavily-api-key "$TAVILY_API_KEY"
 
 # Windows (PowerShell)
-.\install.ps1            # Global (~/.claude/)
-.\install.ps1 -Project   # Project-local (./.claude/)
+.\install.ps1                      # Global (~/.claude/)
+.\install.ps1 -Project             # Project-local: current location\.claude
+.\install.ps1 -Project C:\path\to\app   # Project-local: C:\path\to\app\.claude
 .\install.ps1 -BraveApiKey $env:BRAVE_API_KEY -TavilyApiKey $env:TAVILY_API_KEY
 ```
 
@@ -41,6 +43,55 @@ Install also:
   (never into the project tree). Skip with `--skip-brave-key` / `-SkipBraveKey`,
   `--skip-tavily-key` / `-SkipTavilyKey`, or deps with `--skip-deps` / `-SkipDeps`.
   Restart Claude Code after setting keys.
+
+### Selective installer (Node, interactive)
+
+Keeps bulk `install.sh` / `install.ps1` for full installs. For pick-and-place:
+
+```sh
+npm install          # once, from a clone
+node bin/cli.js install
+# or: npx . install   /   node bin/cli.js install --project /path/to/app
+```
+
+Guided flow (Clack UI):
+
+1. **Search skills globally?** → multiselect `ddg-search` / `brave-search` / `tavily-search`
+2. **API keys** only if a key-backed skill was chosen and the key is not already set
+3. **Project tools?** → `dynamic-context-injection` + `skill-creator` into the project `.claude/`
+4. **Remaining skills one-by-one** → Global · Project · Skip · **Done** (stop early)
+
+Global installs from this CLI are recorded in `~/.claude/claude-skills-manifest.json`.
+
+```sh
+node bin/cli.js uninstall        # removes only those tracked global items
+node bin/cli.js uninstall --yes  # no confirm
+```
+
+Project installs and bulk shell installs are **not** removed by the Node uninstall
+(use `./uninstall.sh` / `.\uninstall.ps1` for bulk).
+
+### Uninstall (bulk shell)
+
+Removes only the skills, agents, and `pool.md` that this repo installs. Leaves other
+`.claude` content, global packages (`ddgs`, `tvly`, npm modules), and API keys alone
+unless you ask:
+
+```sh
+# macOS / Linux (POSIX)
+./uninstall.sh                         # Global (~/.claude/)
+./uninstall.sh --project               # Project-local: $PWD/.claude
+./uninstall.sh --project /path/to/app  # Project-local: /path/to/app/.claude
+./uninstall.sh --remove-keys           # also drop BRAVE_* / TAVILY_API_KEY from ~/.claude/settings.json
+curl -fsSL https://raw.githubusercontent.com/christophacham/claude-skills/main/uninstall.sh | sh
+
+# Windows (PowerShell)
+.\uninstall.ps1                        # Global (~/.claude/)
+.\uninstall.ps1 -Project               # Project-local: current location\.claude
+.\uninstall.ps1 -Project C:\path\to\app
+.\uninstall.ps1 -RemoveKeys            # also drop API keys from settings
+iwr -useb https://raw.githubusercontent.com/christophacham/claude-skills/main/uninstall.ps1 | iex
+```
 
 ---
 

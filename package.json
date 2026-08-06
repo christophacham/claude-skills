@@ -1,0 +1,28 @@
+{
+  "name": "claude-skills",
+  "version": "1.0.0",
+  "description": "Selective interactive installer for the claude-skills suite (Claude Code skills + agents)",
+  "type": "module",
+  "bin": {
+    "claude-skills": "bin/cli.js"
+  },
+  "files": [
+    "bin/",
+    "lib/",
+    "skills/",
+    "agents/",
+    "pool.md",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20.11.0"
+  },
+  "scripts": {
+    "install-ui": "node bin/cli.js install",
+    "uninstall-ui": "node bin/cli.js uninstall"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.10.1",
+    "picocolors": "^1.1.1"
+  }
+}

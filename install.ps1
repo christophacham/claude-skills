@@ -1,8 +1,11 @@
 ﻿# Install claude-skills: skills -> ~/.claude/skills, agents -> ~/.claude/agents
-# Usage (local):  .\install.ps1 [-Project] [-BraveApiKey <key>] [-TavilyApiKey <key>] [-SkipBraveKey] [-SkipTavilyKey] [-SkipDeps]
+# Usage (local):  .\install.ps1 [-Project] [<ProjectPath>] [-BraveApiKey <key>] [-TavilyApiKey <key>] [-SkipBraveKey] [-SkipTavilyKey] [-SkipDeps]
 # Usage (remote): iwr -useb https://raw.githubusercontent.com/christophacham/claude-skills/main/install.ps1 | iex
+# -Project with no path uses the current location; path may be relative or absolute.
 param(
   [switch] $Project,
+  [Parameter(Position = 0)]
+  [string] $ProjectPath,
   [string] $BraveApiKey,
   [string] $TavilyApiKey,
   [switch] $SkipBraveKey,
@@ -51,7 +54,19 @@ if ($scriptDir -and (Test-Path (Join-Path $scriptDir 'skills'))) {
   $root = Get-ChildItem $tmpDir -Directory | Select-Object -First 1 | Select-Object -ExpandProperty FullName
 }
 
-$dest = if ($Project) { Join-Path (Get-Location) '.claude' } else { Join-Path $HOME '.claude' }
+if ($Project) {
+  if ([string]::IsNullOrWhiteSpace($ProjectPath)) {
+    $projectRoot = (Get-Location).Path
+  } else {
+    if (-not (Test-Path -LiteralPath $ProjectPath -PathType Container)) {
+      throw "Project path is not a directory: $ProjectPath"
+    }
+    $projectRoot = (Resolve-Path -LiteralPath $ProjectPath).Path
+  }
+  $dest = Join-Path $projectRoot '.claude'
+} else {
+  $dest = Join-Path $HOME '.claude'
+}
 # Keys always land in the user settings file so project installs don't commit secrets.
 $userClaude = Join-Path $HOME '.claude'
 $userSettingsPath = Join-Path $userClaude 'settings.json'

@@ -200,6 +200,187 @@ class InstallerTests(unittest.TestCase):
             self.assertIn("import ddgs", calls)
             self.assertNotIn("-m pip", calls)
 
+    def test_posix_installer_project_path_absolute_or_relative(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            home = base / "home"
+            elsewhere = base / "elsewhere"
+            target = base / "apps" / "my-app"
+            home.mkdir()
+            elsewhere.mkdir()
+            target.mkdir(parents=True)
+            env = os.environ.copy()
+            env["HOME"] = str(home)
+
+            # Absolute path from a different cwd
+            result = subprocess.run(
+                [
+                    str(ROOT / "install.sh"),
+                    "--project",
+                    str(target),
+                    "--skip-deps",
+                    "--skip-brave-key",
+                    "--skip-tavily-key",
+                ],
+                cwd=elsewhere,
+                env=env,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertTrue((target / ".claude" / "skills" / "work-loop" / "SKILL.md").is_file())
+            self.assertFalse((elsewhere / ".claude").exists())
+
+            # Relative path from parent of target
+            sibling = base / "apps" / "other"
+            sibling.mkdir()
+            result = subprocess.run(
+                [
+                    str(ROOT / "install.sh"),
+                    "--project",
+                    "other",
+                    "--skip-deps",
+                    "--skip-brave-key",
+                    "--skip-tavily-key",
+                ],
+                cwd=base / "apps",
+                env=env,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertTrue((sibling / ".claude" / "pool.md").is_file())
+
+            # Uninstall by absolute path from elsewhere
+            result = subprocess.run(
+                [str(ROOT / "uninstall.sh"), "--project", str(target)],
+                cwd=elsewhere,
+                env=env,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertFalse((target / ".claude" / "skills" / "work-loop").exists())
+
+            # Missing project path fails
+            missing = base / "no-such-dir"
+            result = subprocess.run(
+                [str(ROOT / "install.sh"), "--project", str(missing), "--skip-deps", "--skip-brave-key"],
+                cwd=elsewhere,
+                env=env,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertNotEqual(0, result.returncode)
+            self.assertIn("not a directory", result.stderr)
+
+    def test_posix_uninstaller_removes_bundle_and_preserves_foreign(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            home = base / "home"
+            project = base / "project"
+            settings = home / ".claude" / "settings.json"
+            settings.parent.mkdir(parents=True)
+            project.mkdir()
+            settings.write_text(
+                json.dumps(
+                    {
+                        "theme": "dark",
+                        "env": {
+                            "OTHER": "kept",
+                            "BRAVE_API_KEY": "secret-brave",
+                            "TAVILY_API_KEY": "secret-tavily",
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            env = os.environ.copy()
+            env["HOME"] = str(home)
+            install = subprocess.run(
+                [str(ROOT / "install.sh"), "--project", "--skip-deps", "--skip-brave-key", "--skip-tavily-key"],
+                cwd=project,
+                env=env,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(0, install.returncode, install.stderr)
+            dest = project / ".claude"
+            foreign_skill = dest / "skills" / "my-own-skill"
+            foreign_skill.mkdir(parents=True)
+            (foreign_skill / "SKILL.md").write_text("# mine\n", encoding="utf-8")
+            foreign_agent = dest / "agents" / "custom.md"
+            foreign_agent.write_text("# custom\n", encoding="utf-8")
+            (dest / "skills" / "work-loop" / "SKILL.md").write_text("# should go\n", encoding="utf-8")
+
+            result = subprocess.run(
+                [str(ROOT / "uninstall.sh"), "--project"],
+                cwd=project,
+                env=env,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertFalse((dest / "skills" / "work-loop").exists())
+            self.assertFalse((dest / "skills" / "brave-search").exists())
+            self.assertFalse((dest / "agents" / "coder.md").exists())
+            self.assertFalse((dest / "agents" / "panelists" / "seam.md").exists())
+            self.assertFalse((dest / "pool.md").exists())
+            self.assertTrue(foreign_skill.is_dir())
+            self.assertTrue(foreign_agent.is_file())
+            data = json.loads(settings.read_text(encoding="utf-8"))
+            self.assertEqual("secret-brave", data["env"]["BRAVE_API_KEY"])
+            self.assertEqual("secret-tavily", data["env"]["TAVILY_API_KEY"])
+            self.assertEqual("kept", data["env"]["OTHER"])
+
+    def test_posix_uninstaller_remove_keys(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            home = base / "home"
+            project = base / "project"
+            settings = home / ".claude" / "settings.json"
+            settings.parent.mkdir(parents=True)
+            project.mkdir()
+            settings.write_text(
+                json.dumps(
+                    {
+                        "theme": "dark",
+                        "env": {
+                            "OTHER": "kept",
+                            "BRAVE_API_KEY": "secret-brave",
+                            "BRAVE_SEARCH_API_KEY": "alt-brave",
+                            "TAVILY_API_KEY": "secret-tavily",
+                        },
+                        "nested": {"items": [1, 2]},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            env = os.environ.copy()
+            env["HOME"] = str(home)
+            result = subprocess.run(
+                [str(ROOT / "uninstall.sh"), "--project", "--remove-keys"],
+                cwd=project,
+                env=env,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(0, result.returncode, result.stderr)
+            output = result.stdout + result.stderr
+            self.assertNotIn("secret-brave", output)
+            self.assertNotIn("secret-tavily", output)
+            data = json.loads(settings.read_text(encoding="utf-8"))
+            self.assertEqual("dark", data["theme"])
+            self.assertEqual({"items": [1, 2]}, data["nested"])
+            self.assertEqual({"OTHER": "kept"}, data["env"])
+
 
 @unittest.skipIf(_POWERSHELL is None, "PowerShell is not installed")
 class PowerShellInstallerTests(unittest.TestCase):
@@ -251,6 +432,125 @@ class PowerShellInstallerTests(unittest.TestCase):
             self.assertEqual("kept", data["env"]["OTHER"])
             self.assertEqual({"items": [1, 2]}, data["nested"])
             self.assertTrue((project / ".claude" / "skills" / "brave-search" / "SKILL.md").is_file())
+
+    def test_windows_uninstaller_removes_bundle_and_preserves_foreign(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            home = base / "home"
+            project = base / "project"
+            settings = home / ".claude" / "settings.json"
+            settings.parent.mkdir(parents=True)
+            project.mkdir()
+            settings.write_text(
+                json.dumps(
+                    {
+                        "theme": "dark",
+                        "env": {
+                            "OTHER": "kept",
+                            "BRAVE_API_KEY": "secret-brave",
+                            "TAVILY_API_KEY": "secret-tavily",
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            env = os.environ.copy()
+            env["HOME"] = str(home)
+            env["USERPROFILE"] = str(home)
+            command = [_POWERSHELL, "-NoProfile"]
+            if os.name == "nt":
+                command += ["-ExecutionPolicy", "Bypass"]
+            install_cmd = command + [
+                "-File",
+                str(ROOT / "install.ps1"),
+                "-Project",
+                "-SkipDeps",
+                "-SkipBraveKey",
+                "-SkipTavilyKey",
+            ]
+            install = subprocess.run(
+                install_cmd,
+                cwd=project,
+                env=env,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(0, install.returncode, install.stderr)
+            dest = project / ".claude"
+            foreign_skill = dest / "skills" / "my-own-skill"
+            foreign_skill.mkdir(parents=True)
+            (foreign_skill / "SKILL.md").write_text("# mine\n", encoding="utf-8")
+            foreign_agent = dest / "agents" / "custom.md"
+            foreign_agent.write_text("# custom\n", encoding="utf-8")
+
+            uninstall_cmd = command + ["-File", str(ROOT / "uninstall.ps1"), "-Project"]
+            result = subprocess.run(
+                uninstall_cmd,
+                cwd=project,
+                env=env,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertFalse((dest / "skills" / "work-loop").exists())
+            self.assertFalse((dest / "skills" / "brave-search").exists())
+            self.assertFalse((dest / "agents" / "coder.md").exists())
+            self.assertFalse((dest / "pool.md").exists())
+            self.assertTrue(foreign_skill.is_dir())
+            self.assertTrue(foreign_agent.is_file())
+            data = json.loads(settings.read_text(encoding="utf-8"))
+            self.assertEqual("secret-brave", data["env"]["BRAVE_API_KEY"])
+            self.assertEqual("secret-tavily", data["env"]["TAVILY_API_KEY"])
+            self.assertEqual("kept", data["env"]["OTHER"])
+
+    def test_windows_uninstaller_remove_keys(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            home = base / "home"
+            project = base / "project"
+            settings = home / ".claude" / "settings.json"
+            settings.parent.mkdir(parents=True)
+            project.mkdir()
+            settings.write_text(
+                json.dumps(
+                    {
+                        "theme": "dark",
+                        "env": {
+                            "OTHER": "kept",
+                            "BRAVE_API_KEY": "secret-brave",
+                            "BRAVE_SEARCH_API_KEY": "alt-brave",
+                            "TAVILY_API_KEY": "secret-tavily",
+                        },
+                        "nested": {"items": [1, 2]},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            env = os.environ.copy()
+            env["HOME"] = str(home)
+            env["USERPROFILE"] = str(home)
+            command = [_POWERSHELL, "-NoProfile"]
+            if os.name == "nt":
+                command += ["-ExecutionPolicy", "Bypass"]
+            command += ["-File", str(ROOT / "uninstall.ps1"), "-Project", "-RemoveKeys"]
+            result = subprocess.run(
+                command,
+                cwd=project,
+                env=env,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(0, result.returncode, result.stderr)
+            output = result.stdout + result.stderr
+            self.assertNotIn("secret-brave", output)
+            self.assertNotIn("secret-tavily", output)
+            data = json.loads(settings.read_text(encoding="utf-8"))
+            self.assertEqual("dark", data["theme"])
+            self.assertEqual({"items": [1, 2]}, data["nested"])
+            self.assertEqual({"OTHER": "kept"}, data["env"])
 
 
 @unittest.skipIf(os.name == "nt" or _BASH is None, "POSIX helper tests require bash on a POSIX host")

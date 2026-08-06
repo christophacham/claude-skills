@@ -1,11 +1,13 @@
 #!/bin/sh
 # Install claude-skills: skills -> ~/.claude/skills, agents -> ~/.claude/agents
-# Usage (local):  ./install.sh [--project] [--brave-api-key KEY] [--tavily-api-key KEY]
+# Usage (local):  ./install.sh [--project [DIR]] [--brave-api-key KEY] [--tavily-api-key KEY]
 #                               [--skip-brave-key] [--skip-tavily-key] [--skip-deps]
 # Usage (remote): curl -fsSL https://raw.githubusercontent.com/christophacham/claude-skills/main/install.sh | sh
+# --project with no DIR uses the current working directory; DIR may be relative or absolute.
 set -e
 
 PROJECT=0
+PROJECT_DIR=""
 SKIP_BRAVE_KEY=0
 SKIP_TAVILY_KEY=0
 SKIP_DEPS=0
@@ -14,7 +16,22 @@ TAVILY_API_KEY_ARG=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --project) PROJECT=1; shift ;;
+    --project)
+      PROJECT=1
+      shift
+      # Optional path: next token if present and not another flag
+      if [ $# -gt 0 ]; then
+        case "$1" in
+          -*) ;;
+          *) PROJECT_DIR="$1"; shift ;;
+        esac
+      fi
+      ;;
+    --project=*)
+      PROJECT=1
+      PROJECT_DIR="${1#--project=}"
+      shift
+      ;;
     --skip-brave-key) SKIP_BRAVE_KEY=1; shift ;;
     --skip-tavily-key) SKIP_TAVILY_KEY=1; shift ;;
     --skip-deps) SKIP_DEPS=1; shift ;;
@@ -43,7 +60,8 @@ while [ $# -gt 0 ]; do
       shift
       ;;
     -h|--help)
-      echo "Usage: $0 [--project] [--brave-api-key KEY] [--tavily-api-key KEY] [--skip-brave-key] [--skip-tavily-key] [--skip-deps]"
+      echo "Usage: $0 [--project [DIR]] [--brave-api-key KEY] [--tavily-api-key KEY] [--skip-brave-key] [--skip-tavily-key] [--skip-deps]"
+      echo "  --project [DIR]  install into DIR/.claude (default DIR: current working directory)"
       exit 0
       ;;
     *)
@@ -81,7 +99,15 @@ else
 fi
 
 if [ "$PROJECT" = "1" ]; then
-  DEST="./.claude"
+  if [ -z "$PROJECT_DIR" ]; then
+    PROJECT_DIR="."
+  fi
+  if [ ! -d "$PROJECT_DIR" ]; then
+    echo "error: project path is not a directory: $PROJECT_DIR" >&2
+    exit 1
+  fi
+  PROJECT_DIR="$(cd "$PROJECT_DIR" && pwd)"
+  DEST="$PROJECT_DIR/.claude"
 else
   DEST="$HOME/.claude"
 fi
