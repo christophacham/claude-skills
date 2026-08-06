@@ -1270,18 +1270,7 @@ impl core::MlPredictor for ExperimentalModel { .. }
 
 ### SAP — the main sequence
 
-```
-A (abstractness)
-1 |  ○ stable + abstract (correct)
-  | /
-  |/   main sequence
- /|
-0 |______________○ unstable + concrete (correct)
-  0     I (instability)     1
-
-Zone of Pain (0,0):        stable + concrete → rigid, hard to change
-Zone of Uselessness (1,1): unstable + abstract → abstraction no one needs
-```
+A crate should be as abstract as it is stable. Stable + concrete = Zone of Pain (rigid); unstable + abstract = Zone of Uselessness. The formulas (abstractness `A`, instability `I`, distance `D`) and zone analysis live in `distributed-architecture/references/reference.md` — Codebase Health Metrics; the pattern here is the Rust application.
 
 ```rust
 // VIOLATION: Zone of Pain — widely depended on, fully concrete

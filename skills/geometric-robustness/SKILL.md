@@ -47,7 +47,7 @@ A *predicate* (orientation, in-circle, point-on-which-side) returns a sign and f
 
 Degeneracies are certain, not exceptional. Catalog: zero-area triangles, duplicate vertices, collinear triples, coplanar intersections, slivers, non-manifold edges, self-intersections, unclosed shells, flipped normals.
 
-- **Repair at ingestion.** One mesh-repair module on the input boundary: weld vertices, drop degenerate faces, stitch/orient shells. Inside the kernel, meshes are *valid by construction* (value-object rule: invalid states unrepresentable, architecture-design §3).
+- **Repair at ingestion.** One mesh-repair module on the input boundary: weld vertices, drop degenerate faces, stitch/orient shells. Inside the kernel, meshes are *valid by construction* (value-object rule: invalid states unrepresentable, architecture-design — Tactical DDD).
 - **Assert postconditions in the kernel**, cheaply: `debug_assert!(face.area() > tol)` after construction. A violated invariant near its cause is a 5-minute fix; 40 calls later it is a week.
 - **Never silently fix-and-continue mid-algorithm.** If a layer-polygon operation hits a degenerate it cannot represent, return a typed error naming the degeneracy. Silent repair inside algorithms is how slivers multiply.
 - **Feed every degenerate you ever meet into the test corpus** (§6). The corpus is institutional memory; production surprises become permanent regression fixtures.

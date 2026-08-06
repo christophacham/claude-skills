@@ -126,9 +126,8 @@ Beads (`bd`) is the canonical work tracker, with fallback support for GitHub, Li
 - **`beads`**: Issue creation, claiming, status updates, dependency graphing, and Dolt sync via `bd`.
 
 ### Software Engineering Disciplines
-- **`architecture-design`**: Clean Architecture, tactical DDD, SOLID, and component cohesion/coupling principles.
-- **`architectural-decomposition`**: Monolith decomposition patterns, coupling metrics, and component extraction.
-- **`distributed-architecture`**: Trade-off-driven design for distributed architectures, sagas, service topology, and database splitting.
+- **`architecture-design`**: Clean Architecture layering, ports & adapters, use cases, tactical DDD — where code lives, which way dependencies point.
+- **`distributed-architecture`**: Trade-off-driven design across deployables — granularity, monolith decomposition, data ownership, sagas, contracts, reuse.
 - **`refactoring`**: Identifying code smells, Fowler refactoring mechanics, and structural cleanups.
 - **`simple-design`**: Ousterhout simple module design (deep modules, information hiding, small surface area).
 - **`testing-tdd`**: Test-driven development cycles, test design, mocking strategies, and testability.
