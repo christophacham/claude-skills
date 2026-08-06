@@ -59,7 +59,7 @@ Guided flow (Clack UI):
 1. **Search skills globally?** → multiselect `ddg-search` / `brave-search` / `tavily-search` (default-yes)
 2. **API keys** only if a key-backed skill was chosen and the key is not already set
 3. **AUTHOR (project tools)?** → `skill-creator` into the project `.claude/` (authoring + injection audit)
-4. **CORE skills?** → `peek-repo`, `simple-design`, `refactoring` (default-yes; global or project)
+4. **CORE skills?** → `operating-mode`, `peek-repo`, `simple-design`, `refactoring` (default-yes; global or project)
 5. **OPT_IN / beads one-by-one?** → architecture, distributed, geometric, beads — **Skip default** · Global · Project · Done
 
 Global installs from this CLI are recorded in `~/.claude/claude-skills-manifest.json`.
@@ -96,11 +96,47 @@ iwr -useb https://raw.githubusercontent.com/christophacham/claude-skills/main/un
 
 ---
 
-## Core Doctrine
+## Operating mode
+
+We work in **human-gated, tiny vertical units** on year-scale product work: deep modules, light structure, and quality over speed. An agent may write every line, but the human never merges what they cannot explain; review is heavy and may rewrite. We refuse oneshot features, unattended mega-loops, and “fix health later.” Each unit is roughly one idea (~200–300 LOC production guidance), on its own feature branch with a short PR, under live verification—Rust watch/build/test and/or Playwright as soon as UI exists—with early separation of concerns, errors, traces/logging, and explicit handling of unknowns.
+
+Design is slow on purpose: **three ways, then pick**; **refactor what exists so the new piece fits**, then integrate; **prototype between units** when the next step is unclear. Spine: Beck (small steps + feedback), Fowler (tidy/refactor safely), Ousterhout (deep modules), Hohpe (architecture that still reaches working code). CI is the hard gate (lefthook/mise-class checks, strict Rust); UI confidence is Playwright. There is **no** implied multi-stage product pipeline—only the main conversation plus optional `coder` / `reviewer` / panelists when explicitly dispatched.
+
+Default cadence: choose one unit → design ×3 → refactor if needed → implement under live gates → PR → human-understanding review → merge → next unit (or a short prototype first). Tracker and panels are optional tools, not a pipeline. The main agent keeps this mode via the **`operating-mode`** skill (CORE).
+
+```
+                    YOU (pick unit, must understand, accept/reject)
+                              │
+                              ▼
+              ┌───────────────────────────────┐
+              │  ONE UNIT (~200–300 LOC idea) │
+              │  feature branch + short PR    │
+              └───────────────┬───────────────┘
+                              │
+            design ×3 ──► pick ──► refactor existing ──► integrate new
+                              │
+                              ▼
+              live gate: cargo watch / tests
+                         and/or Playwright (if UI)
+              + errors · traces · SoC · unknowns
+                              │
+                              ▼
+              review-heavy (human ± reviewer agent)
+                              │
+                     ┌────────┴────────┐
+                     │ merge only if   │
+                     │ you understand  │
+                     │ and gates green │
+                     └────────┬────────┘
+                              │
+              optional prototype ──► next ONE UNIT
+```
+
+### Core doctrine (judgment libraries)
 
 - **Deep modules, small surfaces** — Maximize benefit per unit of interface cost when the boundary is earned (`simple-design`).
-- **TDD + how-you-know** — Use red→green for changed behavior and run the checks relevant to the affected surface.
-- **Tidy First** — Separate structural and behavioral changes when doing so improves reviewability.
+- **Live how-you-know** — Run the checks relevant to the surface under change (Rust watch/tests; Playwright for UI), not a final oneshot hope.
+- **Tidy First** — Separate structural and behavioral changes when doing so improves reviewability (`refactoring`).
 - **Independent review** — Review from a fresh context and require evidence-based findings. Same-model review remains valid; a different model tier is an optional source of diversity.
 - **Ceremony follows irreversibility** — Ports, ADRs, and sagas only when earned (`architecture-design`, `distributed-architecture`).
 
@@ -118,6 +154,7 @@ Catalog groups (selective Node installer): **SEARCH** · **CORE** (default-yes) 
 - **`tavily-search`**: Tavily CLI (`TAVILY_API_KEY`). Search/extract; forked Explore worker.
 
 ### CORE (default-yes)
+- **`operating-mode`**: Human-gated tiny units, design×3, refactor-then-integrate, live gates, review-heavy PRs — main-agent cadence.
 - **`peek-repo`**: Third-party GitHub source under `~/code/tmp/<name>` (or `%USERPROFILE%\code\tmp\<name>`) for answers from real code.
 - **`simple-design`**: Ousterhout deep modules, information hiding, red flags.
 - **`refactoring`**: Fowler smells and safe structural steps.

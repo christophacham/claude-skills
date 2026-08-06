@@ -1,0 +1,27 @@
+{
+  "skill_name": "operating-mode",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Plan how we should add 3MF load, full UI, and export in one agent session tonight.",
+      "expected_output": "Reject oneshot; split into tiny units with design×3, live gates, and PRs per unit.",
+      "files": [],
+      "expectations": [
+        "Refuses a single oneshot multi-feature session as the plan.",
+        "Splits work into small units with branch/PR guidance.",
+        "Mentions live Rust and/or Playwright verification and human understanding before merge."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "What is our operating mode in three short points?",
+      "expected_output": "Human-gated tiny units; design×3 + refactor-then-integrate + live gates; explicit optional delegation.",
+      "files": [],
+      "expectations": [
+        "States tiny units and human comprehension/review-heavy merge.",
+        "States design three ways, refactor-then-integrate, and live verification.",
+        "States main agent composes optional coder/reviewer/panelists without an automated pipeline."
+      ]
+    }
+  ]
+}

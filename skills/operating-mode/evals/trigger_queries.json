@@ -1,0 +1,14 @@
+[
+  {
+    "query": "Plan the next feature unit and how we should work on it under our operating mode.",
+    "should_trigger": true
+  },
+  {
+    "query": "How do we work here — small PRs, live tests, design three ways?",
+    "should_trigger": true
+  },
+  {
+    "query": "What is the Brave Search API rate limit for a public web search?",
+    "should_trigger": false
+  }
+]

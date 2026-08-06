@@ -23,3 +23,7 @@ Other skills, agents, installers (non-search paths), docs, and tests remain fair
 ## Project purpose
 
 Software engineering skills and custom agents for Claude Code (doctrine, craft, tracker, meta), plus a selective installer. See `README.md` and, when present, `SLIM.md` for suite shape — **except** anything that contradicts the search no-go above (search ban wins).
+
+## Product work cadence
+
+When doing or planning product implementation in a consuming app (or when the user asks how we work), follow **`operating-mode`** and README **Operating mode**: human-gated tiny units, design×3, refactor-then-integrate, live Rust/Playwright gates, review-heavy PRs, no oneshot loops. Main agent owns cadence; `coder` / `reviewer` / panelists are optional dispatches only.
