@@ -194,7 +194,7 @@ class CoordinationDocumentationTests(unittest.TestCase):
         package = json.loads(read_repo_file("package.json"))
         expected_skills = {
             "architecture-design", "beads", "brave-search", "ddg-search",
-            "distributed-architecture", "dynamic-context-injection",
+            "distributed-architecture",
             "geometric-robustness", "peek-repo",
             "refactoring", "simple-design", "skill-creator",
             "tavily-search", "testing-tdd", "third-party-integration",

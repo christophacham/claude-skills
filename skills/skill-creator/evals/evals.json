@@ -36,6 +36,41 @@
         "States that Node uninstall removes only manifest-recorded global items and preserves project installs, keys, dependencies, and bulk installs.",
         "Does not claim --all, --group, --dry-run, or project uninstall exists."
       ]
+    },
+    {
+      "id": 4,
+      "prompt": "Audit this Claude Code skill line: `!`deploy --target \"$ARGUMENTS\"``. The author says quoting makes it safe and deploy only reads status unless a flag is present.",
+      "expected_output": "A violation finding that keeps invocation text and the potentially mutating command out of load-time shell.",
+      "files": [],
+      "expectations": [
+        "Explains that skill argument substitution is textual and happens before shell execution, so shell quotes do not provide argv escaping.",
+        "Treats load-time execution as unconditional and rejects the possibly mutating deploy command.",
+        "Moves validation and execution to a normal tool call while leaving invocation text in prompt content."
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "A reviewer rejected `root=$(git rev-parse --show-toplevel)` inside one fenced injection because dynamic injection is single-pass. They also split a dependent second command into a new placeholder. Correct the review.",
+      "expected_output": "A correction distinguishing renderer recursion from normal shell command substitution and requiring dependent reads to share one guarded block.",
+      "files": [],
+      "expectations": [
+        "States that single-pass means inserted stdout is not rescanned for injection markers.",
+        "Allows normal shell command substitution inside one injection.",
+        "Treats separate placeholders as independent/unordered and potentially concurrent.",
+        "Keeps dependent commands sequential in one fenced shell script."
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Review this readiness injection: `!`cat ~/.config/service.json 2>/dev/null | head -20 || echo missing``. It runs for a personal skill in every repository.",
+      "expected_output": "A secret-safe, bounded status probe with a guard around the failing read rather than a misleading pipeline fallback.",
+      "files": [],
+      "expectations": [
+        "Identifies that the final pipeline stage may hide the read failure without pipefail.",
+        "Rejects injecting configuration contents that may contain credentials and reports presence/status only.",
+        "Provides one short stdout fallback and redirects expected diagnostics.",
+        "Notes that policy-disabled shell must leave the surrounding skill coherent."
+      ]
     }
   ]
 }

@@ -58,7 +58,7 @@ Guided flow (Clack UI):
 
 1. **Search skills globally?** → multiselect `ddg-search` / `brave-search` / `tavily-search`
 2. **API keys** only if a key-backed skill was chosen and the key is not already set
-3. **Project tools?** → `dynamic-context-injection` + `skill-creator` into the project `.claude/`
+3. **Project tools?** → `skill-creator` into the project `.claude/` (authoring + injection audit)
 4. **Remaining skills one-by-one** → Global · Project · Skip · **Done** (stop early)
 
 Global installs from this CLI are recorded in `~/.claude/claude-skills-manifest.json`.
@@ -114,8 +114,7 @@ Optional: Beads (`bd`) for issue tracking; design panelists for multi-lens desig
 - **`ddg-search`**: Free web/news search via `ddgs` (no API key). Always forks into an Explore subagent.
 - **`brave-search`**: Brave Search API (`BRAVE_API_KEY`). Always forks like `ddg-search`.
 - **`tavily-search`**: Tavily CLI (`TAVILY_API_KEY`). Search/extract; forked Explore worker.
-- **`dynamic-context-injection`**: Auditor + guide for load-time shell state injection in skills.
-- **`skill-creator`**: Creating, auditing, validating, and packaging Agent Skills.
+- **`skill-creator`**: Create, validate, evaluate, and package Agent Skills; audit Claude Code load-time shell injection.
 
 ### Tracker
 - **`beads`**: Issue creation, claiming, status updates, dependency graphing, and Dolt sync via `bd`.

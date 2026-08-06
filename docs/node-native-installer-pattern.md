@@ -38,8 +38,8 @@ never resolved relative to the installed package.
 `lib/catalog.js` is the selectable inventory:
 
 1. Search skills are offered for global install under `~/.claude/skills`.
-2. `dynamic-context-injection` and `skill-creator` are suggested for the chosen
-   project's `.claude/skills`.
+2. `skill-creator` is suggested for the chosen project's `.claude/skills`
+   (authoring + injection audit).
 3. Remaining skills are offered one by one as global, project, skip, or done.
 4. Skills that declare agent/pool coupling in the catalog install those related
    resources through the shared filesystem operations.

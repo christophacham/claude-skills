@@ -1,7 +1,7 @@
 # Slim plan — 30-year maintainable core
 
 Branch: `slim/30y-maintainable-core`  
-Status: **plan only**. Source of decisions for the execution prompt below.  
+Status: **in progress** (injection → skill-creator merge done; third-party fold may remain).  
 Revised after full multi-agent audit + adversarial pass (workflow `skill-suite-slim-audit`).
 
 ## Mission (one sentence)
@@ -81,7 +81,7 @@ Newcomer placement: rare domain → archive or external project skill; agent-pul
 | Evals | **git / `dev/` only** where easy without touching search | Never npm install surface for non-search |
 | Skill-linked `references/` | **SHIP with skill** | Progressive disclosure intact |
 
-**After mission/reimpl delete (executed):** 14 skill IDs (was 16). Search trio untouched. `geometric-robustness` kept. Further planned merges (third-party, injection) still pending.
+**After mission/reimpl delete + injection merge:** 13 skill IDs (was 16). Search trio untouched. `geometric-robustness` kept. `dynamic-context-injection` folded into `skill-creator`. Further planned merge: third-party → testing-tdd.
 
 ## Merge specs
 
