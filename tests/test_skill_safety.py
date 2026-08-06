@@ -71,7 +71,7 @@ class SkillValidationTests(unittest.TestCase):
         self.assertEqual({}, failures)
 
     def test_active_injections_are_static_and_trusted(self) -> None:
-        expected = {"bd-epic-runner", "reimpl-scout", "tavily-search", "work-loop", "work-plan"}
+        expected = {"reimpl-scout", "tavily-search"}
         actual = set()
         for skill_dir in sorted(SKILLS.iterdir()):
             skill_file = skill_dir / "SKILL.md"
@@ -229,7 +229,7 @@ class InstallerTests(unittest.TestCase):
                 check=False,
             )
             self.assertEqual(0, result.returncode, result.stderr)
-            self.assertTrue((target / ".claude" / "skills" / "work-loop" / "SKILL.md").is_file())
+            self.assertTrue((target / ".claude" / "skills" / "simple-design" / "SKILL.md").is_file())
             self.assertFalse((elsewhere / ".claude").exists())
 
             # Relative path from parent of target
@@ -263,7 +263,7 @@ class InstallerTests(unittest.TestCase):
                 check=False,
             )
             self.assertEqual(0, result.returncode, result.stderr)
-            self.assertFalse((target / ".claude" / "skills" / "work-loop").exists())
+            self.assertFalse((target / ".claude" / "skills" / "simple-design").exists())
 
             # Missing project path fails
             missing = base / "no-such-dir"
@@ -316,7 +316,7 @@ class InstallerTests(unittest.TestCase):
             (foreign_skill / "SKILL.md").write_text("# mine\n", encoding="utf-8")
             foreign_agent = dest / "agents" / "custom.md"
             foreign_agent.write_text("# custom\n", encoding="utf-8")
-            (dest / "skills" / "work-loop" / "SKILL.md").write_text("# should go\n", encoding="utf-8")
+            (dest / "skills" / "simple-design" / "SKILL.md").write_text("# should go\n", encoding="utf-8")
 
             result = subprocess.run(
                 [str(ROOT / "uninstall.sh"), "--project"],
@@ -327,7 +327,7 @@ class InstallerTests(unittest.TestCase):
                 check=False,
             )
             self.assertEqual(0, result.returncode, result.stderr)
-            self.assertFalse((dest / "skills" / "work-loop").exists())
+            self.assertFalse((dest / "skills" / "simple-design").exists())
             self.assertFalse((dest / "skills" / "brave-search").exists())
             self.assertFalse((dest / "agents" / "coder.md").exists())
             self.assertFalse((dest / "agents" / "panelists" / "seam.md").exists())
@@ -494,7 +494,7 @@ class PowerShellInstallerTests(unittest.TestCase):
                 check=False,
             )
             self.assertEqual(0, result.returncode, result.stderr)
-            self.assertFalse((dest / "skills" / "work-loop").exists())
+            self.assertFalse((dest / "skills" / "simple-design").exists())
             self.assertFalse((dest / "skills" / "brave-search").exists())
             self.assertFalse((dest / "agents" / "coder.md").exists())
             self.assertFalse((dest / "pool.md").exists())

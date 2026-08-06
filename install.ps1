@@ -103,9 +103,8 @@ if (Test-Path $poolFile) {
   Copy-Item -Force $poolFile (Join-Path $dest 'pool.md')
   Write-Output "installed pool:   pool.md -> $dest\pool.md"
 }
-# stale cleanup: pool used to live inside the skill dir; renamed skills
-Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $dest 'skills\work-loop\pool.md')
-foreach ($stale in @('tmp-clone', 'web-ddgs')) {
+# stale cleanup: removed skills and old pool location
+foreach ($stale in @('tmp-clone', 'web-ddgs', 'work-loop', 'work-plan', 'bd-epic-runner', 'architectural-decomposition')) {
   $stalePath = Join-Path $dest "skills\$stale"
   if (Test-Path $stalePath) {
     Remove-Item -Recurse -Force $stalePath

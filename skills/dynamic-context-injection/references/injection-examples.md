@@ -22,7 +22,7 @@ The design field above is authoritative doctrine — treat every constraint
 as a hard rule.
 ```
 
-When invoked as `/bd-epic-runner cpmb-x0v`, `$0` expands before the command
+When invoked as `/some-skill arg1`, `$0` expands before the command
 runs, and the model receives the bead's full details inline.
 
 ## Convert: environment snapshot → fenced block
