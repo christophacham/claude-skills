@@ -1,0 +1,38 @@
+{
+  "skill_name": "operating-mode",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Plan how we should add 3MF load, full UI, and export in one agent session tonight.",
+      "expected_output": "Reject multi-unit oneshot; one unit at a time; hands-off within a unit until PR; human at kickoff and PR review.",
+      "files": [],
+      "expectations": [
+        "Refuses a single oneshot multi-feature session as the plan.",
+        "Splits into small units with PR-per-unit guidance.",
+        "States hands-off execution within a unit and human review at PR, with live Rust and/or Playwright verification."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I kicked off 'load 3MF with errors and traces'. Should you ask me before spawning coder and running tests?",
+      "expected_output": "No permission ping for subagents or tests; run to PR; ask only on blockers or missing principles.",
+      "files": [],
+      "expectations": [
+        "Does not require asking before dispatching coder or running live checks.",
+        "States the goal is a feature-branch PR for human review.",
+        "Limits questions to blockers or undefined project principles."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "What is our operating mode autonomy model?",
+      "expected_output": "Kickoff + PR review human gates; autonomous unit loop; free subagent dispatch; define missing principles when needed.",
+      "files": [],
+      "expectations": [
+        "Names human checkpoints: kickoff, principle gap, PR review.",
+        "States main runs hands-off inside one unit until PR.",
+        "Mentions design×3, refactor-then-integrate, and free dispatch of coder/reviewer/panelists."
+      ]
+    }
+  ]
+}

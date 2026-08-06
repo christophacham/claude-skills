@@ -214,7 +214,7 @@ class SkillCreatorContractTests(unittest.TestCase):
         self.assertIn("docs/node-native-installer-pattern.md", self.skill_flat)
         self.assertIn("does **not** currently implement `--all`", self.installer_flat)
         self.assertIn("AUTHOR** — `skill-creator` suggested for the chosen project's", self.installer)
-        self.assertIn("CORE** — `peek-repo`", self.installer)
+        self.assertIn("CORE** — `operating-mode`, `peek-repo`", self.installer)
         self.assertIn("OPT_IN + BEADS", self.installer)
         self.assertNotIn("dynamic-context-injection", self.installer_flat)
         self.assertNotIn("npx @scope/agent-skill-books install --all", self.installer_flat)
@@ -244,7 +244,7 @@ class SkillCreatorContractTests(unittest.TestCase):
     def test_all_corrected_eval_and_trigger_files_validate(self) -> None:
         names = {
             "architecture-design", "beads", "distributed-architecture",
-            "geometric-robustness",
+            "geometric-robustness", "operating-mode",
             "peek-repo", "refactoring", "simple-design",
             "skill-creator",
         }
