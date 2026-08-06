@@ -1,0 +1,10 @@
+[
+  {
+    "query": "Design checkout across payment, inventory, and shipping. We use at-least-once messages, payment capture cannot truly be undone, and product wants an immediate response. Compare orchestration and choreography and specify recovery.",
+    "should_trigger": true
+  },
+  {
+    "query": "Should this private Rust helper be extracted into a deeper module?",
+    "should_trigger": false
+  }
+]

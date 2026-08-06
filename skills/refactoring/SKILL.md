@@ -9,11 +9,11 @@ Merges Fowler's *Refactoring* (2nd ed.) with Ousterhout's performance chapter. O
 
 ## Core discipline
 
-**Refactoring changes internal structure without changing external behavior.** It is not bug-fixing and not feature work — it makes code easier to understand and cheaper to modify.
+**Refactoring changes internal structure without intentionally changing observable behavior.** Define that behavior before moving code: outputs and state, errors and panic behavior, ordering/serialization, timing or allocation guarantees that are contractual, and deterministic results. It is not bug-fixing and not feature work — it makes code easier to understand and cheaper to modify.
 
 - **Two Hats:** never add functionality and refactor in the same step. Switch hats consciously.
-- **Small steps:** one refactoring at a time; compile and test after every change; commit at each green state so any step can be reverted cheaply.
-- **Rule of Three:** first time just do it; second time wince at the duplication but do it anyway; third time refactor.
+- **Small reversible steps:** one structural move at a time. Run the cheapest relevant check after each risky step and the broader suite at planned green checkpoints. Record a rollback point with the mechanism the workflow permits (IDE/patch/VCS); do not create commits unless the user or repository workflow asks for them.
+- **Rule of Three:** for repeated code that represents the same knowledge and should change together, the third occurrence is a useful prompt to consider refactoring—not an automatic threshold. Refactor earlier when a concrete correctness, safety, ownership, or change-coupling problem already exists; leave coincidentally similar code separate.
 - **Name after intent:** functions named after what they do, not how. If a block needs a comment to say what it does, extract it into a function named after that comment.
 - **When to refactor:** preparatory (before a feature, refactor to make the addition easy), comprehension (while reading code, to clarify it), litter-pickup (fix what you pass). Dedicated debt-paydown sessions are the last resort, not the default. Good internal design keeps feature velocity constant; without it each feature gets harder.
 
@@ -23,9 +23,10 @@ When advising on a refactoring:
 
 1. **Smell** — what makes the code hard to change or understand.
 2. **Target refactoring(s)** — named patterns from the matrix below.
-3. **Safe sequence** — small steps, compile+test between them.
-4. **Language constraints** — e.g. Rust ownership/borrowing, traits, `Result` types that shape the mechanics.
-5. **Stop condition** — how you know behavior stayed the same and the design improved.
+3. **Behavior surface and checkpoints** — what must not change, which characterization/contract tests guard it, and which cheap check runs after each step.
+4. **Safe sequence** — small reversible moves with explicit green checkpoints and a rollback route.
+5. **Language constraints** — e.g. Rust ownership/borrowing, trait dispatch, `Result` and panic contracts that shape the mechanics.
+6. **Stop condition** — evidence behavior stayed the same and the design or measured performance improved.
 
 ## Smell → refactoring matrix
 
@@ -60,35 +61,25 @@ Diagnose first, then pick moves. (Signs and mechanics for each smell: `reference
 
 ## Safety checklist + stop conditions
 
-- **Before:** tests pass; code compiles; you understand what the code does; you have a clear goal. Do not refactor code you cannot verify.
-- **During:** small steps; compile after each change; test frequently; commit at every green state.
-- **After (done when):** all tests still pass, no functionality changed, code is measurably clearer. Then reassess whether further refactoring is still pulling its weight.
-- **Back out:** if a step breaks and isn't fixed within minutes, revert to the last green commit and re-plan — never debug in the middle of a refactoring.
+- **Before:** establish a green baseline and name the observable contract. If coverage is weak, add characterization tests around current behavior—including current errors, ordering, and edge cases—without first “cleaning up” the code.
+- **During:** keep one conceptual move in flight. Run formatting/type/compile checks when they catch the current failure cheaply; run focused tests at each step and broader tests at checkpoints. Do not blindly run an hour-long suite after every rename.
+- **After (done when):** required checks pass, no intended behavior changed, deterministic outputs remain deterministic, and the named design problem is reduced. Then reassess whether another move pays for itself.
+- **Back out:** if the step stops being locally understandable, restore the last green checkpoint and re-plan. Do not mix bug investigation or changed requirements into the refactoring hat.
 
 ## Refactoring for performance
 
 Same small-steps discipline, plus one extra stop condition: **measurement**. Clean design and high performance are compatible — simpler code usually runs faster (fewer calls, fewer branches, less redundant work).
 
-Both extremes fail: optimizing everything adds complexity that often doesn't help; ignoring performance entirely is death by a thousand cuts — a system 5–10x slower than needed and hard to fix later. The sweet spot: choose design alternatives that are naturally efficient yet clean.
+Both extremes fail: optimizing everything adds unproven complexity; ignoring known workload constraints can make the design expensive to repair. Choose naturally efficient structures when they are equally clear, but do not assume a hash table, fewer allocations, copying, batching, or sequential access is faster for the real data and platform. Ordering, locality, contention, allocator behavior, and input distribution decide.
 
-**Cheap choices when equally simple:** hash table over ordered map for lookups; inline storage over pointer indirection (fewer allocations, better cache); avoid unnecessary memory copies; sequential access patterns.
-
-**Know what's expensive:**
-
-| Operation | Cost |
-|-----------|------|
-| Network roundtrip (datacenter / wide-area) | 10–50 µs / 10–100 ms |
-| Disk I/O (HDD / SSD) | 5–10 ms / 10–100 µs |
-| Memory allocation | malloc + GC overhead, significant |
-| Cache miss | hundreds of instructions; often decides overall performance |
-
-Use micro-benchmarks to measure operation costs in isolation and accumulate them over time.
+Do not copy latency tables into a decision: hardware, runtime, topology, load, and percentiles move by orders of magnitude. Measure end-to-end user/workload outcomes first; use profiles, allocation/IO counters, and focused benchmarks to explain the result. A microbenchmark answers a narrow mechanism question and must not be summed into a system forecast without validation.
 
 ### Process
 
-1. **Measure — never guess.** Intuitions about performance are unreliable, even for experienced developers. Profile the existing behavior, establish a baseline, find where time is actually spent.
-2. **Design the ideal critical path.** Identify the minimum code for the common case; ignore the existing structure entirely; imagine a single method using the most convenient data structures. That "ideal" will clash with the current structure — treat it as the target and redesign toward it while keeping the code clean.
-3. **Remove special cases from the hot path.** One guard check at the start detects *all* special cases; special-case handling branches off the critical path, where simplicity matters more than speed.
+1. **Define the workload and guardrails.** Name representative inputs, concurrency, warm/cold state, target metric and percentile, resource budget, and correctness/error/determinism constraints.
+2. **Measure the baseline.** Profile before changing structure. Repeat enough runs to see variance; control build mode, machine load, data set, cache/warmup state, and runtime configuration. Keep raw results.
+3. **Design the critical path.** Use the profile to identify work that can be removed, moved, batched, cached, or represented differently. Sketch the minimum common path, but preserve the external contract and keep uncommon behavior correct.
+4. **Separate measured slow paths when it helps.** A guard can route uncommon cases away from a hot path, but do not force every edge case through one check or assume branches are the bottleneck without evidence.
 
 ```rust
 if available_append_bytes >= num_bytes {  // single check covers all special cases
@@ -98,7 +89,7 @@ if available_append_bytes >= num_bytes {  // single check covers all special cas
 alloc_slow(num_bytes)  // all special cases handled here
 ```
 
-4. **Eliminate shallow layers.** Pass-through methods add call overhead on every operation — collapse them into one deep method.
+5. **Remove overhead only where measured.** Inline/collapse a layer when profiling shows dispatch, allocation, copying, or indirection matters and the layer hides no valuable policy. Most pass-through call overhead is optimized away or irrelevant; deleting a useful boundary for speculative speed is not a performance refactoring.
 
 ### Complexity budget
 
@@ -108,7 +99,13 @@ alloc_slow(num_bytes)  // all special cases handled here
 
 ### Performance stop condition
 
-Re-measure after the change. If it doesn't measurably help, **back it out** — never keep complexity without proven benefit.
+Re-run the same workload and correctness checks. Compare distributions/percentiles and resource use, not one lucky duration. Verify output ordering, numerical results, error behavior, cancellation, and determinism under concurrency. If the improvement is inside noise or misses the stated target, **back it out** unless the structural change is independently simpler.
+
+## Error and determinism guardrails
+
+A structural edit can silently change the API by replacing a typed error with a string, changing which error wins when several inputs are invalid, dropping a source chain, converting recoverable failure to panic, or changing retry/cancellation behavior. Characterize these before moving boundaries. Changing the error contract is a separate feature/API migration, not a refactoring step.
+
+Determinism includes more than equal values: stable ordering, tie-breaking, serialization, generated IDs, seeded randomness, and reproducible parallel reductions may be observable. Replacing an ordered map with a hash map, a loop with unordered parallel work, or a stable sort with an unstable one requires explicit evidence that order is not part of the contract. If deterministic output is required, make the ordering/key/seed explicit and test repeated runs.
 
 ## Reference loading
 

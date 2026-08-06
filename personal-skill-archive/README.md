@@ -9,29 +9,9 @@ They are kept here only so nothing is lost.
 
 ---
 
-## What we do here (the repo this sits in)
+## Current managed suite
 
-`claude-skills` is the universal software engineering doctrine and skills
-suite for Claude Code:
-
-- **Doctrine** — short beads + clear seams, design before build (TDD), Tidy
-  First, independent cross-model review, drop-tested prep refactors,
-  committed-tree evidence, honest gates.
-- **Core skills** — `work-loop` (one unit end-to-end), `work-plan` (sized
-  design panel), `bd-epic-runner`, `dynamic-context-injection`,
-  `peek-repo`, `ddg-search`, `brave-search`, `tavily-search`,
-  `reimpl-scout`.
-- **Discipline skills** — architecture, decomposition, distributed systems,
-  refactoring, simple-design, testing-tdd, third-party integration,
-  mission-planning, skill-creator.
-- **Trackers** — `beads` via the `bd` CLI, with GitHub/Linear/markdown
-  fallbacks.
-- **Install** — `install.ps1` (Windows) / `install.sh` (POSIX) copy skills,
-  agents, panelists, `pool.md`, install runtime deps (Brave `npm`, `ddgs`,
-  Tavily CLI), and optionally prompt for Brave/Tavily API keys into
-  `~/.claude/settings.json`.
-
-See the repo root `README.md` for the full picture.
+The root [`README.md`](../README.md) is the source of truth for the current managed suite, its agents, installation behavior, and doctrine. This archive intentionally does not duplicate that catalog because archived contents and the active suite evolve independently.
 
 ---
 

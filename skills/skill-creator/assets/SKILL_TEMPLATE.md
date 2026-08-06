@@ -1,57 +1,45 @@
 ---
 name: <skill-name>
-description: <What the skill helps with. Use when the user asks for..., needs to..., or mentions.... Include boundaries if near-misses are common.>
+description: <What this skill does. Use when the request involves specific intents/tasks. Not for the nearest keyword-sharing case.>
 ---
 
-# <Skill Title>
+# <Skill title>
 
-Use this skill when <specific user intent/task>. It helps the agent <core capability> by providing <specific knowledge/workflow/tools>.
+<State the task-specific contract or goal in one short paragraph. Remove every
+placeholder section that the skill does not need.>
+
+## Decision rules
+
+- <Non-obvious default, with the condition that makes it apply.>
+- <Real exception and fallback, only if one exists.>
 
 ## Workflow
 
-1. <Inspect/clarify/gather required inputs.>
-2. <Create a short plan if the operation is multi-step, destructive, or ambiguous.>
-3. <Perform the core operation using the default approach below.>
-4. <Validate the result; if validation fails, fix and rerun validation.>
-5. <Report results in the requested format, including validation evidence.>
-
-## Defaults
-
-- Use <preferred tool/approach> for <common case> because <reason>.
-- If <exception/edge case>, use <fallback> instead.
+1. <First dependency-sensitive or fragile step.>
+2. <Core operation.>
+3. <Concrete validation and what to do on failure.>
 
 ## Gotchas
 
-- <Concrete, non-obvious fact the agent is likely to get wrong.>
-- <Project/domain-specific convention or edge case.>
+- <Specific fact a capable agent would reasonably get wrong.>
 
-## Validation
+## Output
 
-- Run `<validation command>` when <condition>.
-- If no automated check exists, verify <specific observable criteria> before finalizing.
-
-## Output format
-
-Use this structure unless the user requests something else:
-
-```markdown
-## Summary
-<brief outcome>
-
-## Changes / Results
-- <item>
-
-## Validation
-- <checks run and results>
-
-## Next steps
-- <optional follow-ups>
-```
+<Include an exact output shape only when the format is contractual. Otherwise
+state the few facts/evidence the final response must contain.>
 
 ## Supporting files
 
-Only load these when needed:
+- `references/<file>.md` — Read when <condition>.
+- `scripts/<script>` — Run when <condition>; usage: `<command>`.
+- `assets/<file>` — Use when <condition>.
 
-- `references/<file>.md` — Read when <specific condition>.
-- `scripts/<script>` — Run when <specific condition>; usage: `<command>`.
-- `assets/<template>` — Use when <specific output/template condition>.
+<!--
+Validate explicitly for the intended target:
+  python3 scripts/validate_skill.py <skill-dir> --mode portable --format text
+  python3 scripts/validate_skill.py <skill-dir> --mode claude-code --format text
+
+Portable frontmatter uses only name, description, license, compatibility,
+metadata, and allowed-tools. Read references/claude-code-skills.md before adding
+Claude Code-only fields or dynamic injection.
+-->

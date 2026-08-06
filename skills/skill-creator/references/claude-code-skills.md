@@ -1,6 +1,6 @@
 # Claude Code skills — platform reference
 
-Distilled from https://code.claude.com/docs/en/skills (fetched 2026-08-02).
+Distilled from https://code.claude.com/docs/en/skills (verified 2026-08-06).
 Read this when creating or editing skills that will run in Claude Code.
 Claude Code follows the Agent Skills open standard and extends it; this file
 covers only the extensions and platform behavior.
@@ -28,7 +28,10 @@ covers only the extensions and platform behavior.
 
 ## Frontmatter fields
 
-All optional except `description` (recommended). Booleans accept
+Claude Code treats every field as optional and recommends `description`; it
+falls back to the first body paragraph and directory name when metadata is
+absent. Portable upload/package validation still requires `name` and
+`description`. Booleans accept
 yes/no/on/off/1/0 (v2.1.218+; before that only true/false).
 
 | Field                      | Purpose |
@@ -90,36 +93,47 @@ allowed-tools: Bash(${CLAUDE_SKILL_DIR}/scripts/render.sh *)
 
 ## Dynamic context injection
 
-`` !`<command>` `` runs BEFORE Claude sees the skill; output replaces the line.
-Grounds skills in live state with zero tool round-trips:
+`` !`<command>` `` is a Claude Code-only preprocessing feature. Before the model
+sees a skill, Claude Code runs each active placeholder in the selected shell and
+replaces it with stdout. Portable skill uploads accept the Markdown but do not
+perform this preprocessing.
 
-```markdown
-## Ready work
-!`bd ready`
+Exact literal examples belong in a reference file: the skill preprocessor scans
+fenced examples in `SKILL.md` too. In body prose, `KEY=!`cmd`` is safe because the
+`!` follows a non-whitespace character.
 
-## Current diff
-!`git diff HEAD`
-```
+Semantics:
 
-- Recognized only when `!` starts the line or follows whitespace.
-- Multi-line: fenced block opened with ` ```! `.
-- Single pass: command output is NOT re-scanned for further placeholders.
-- Policy kill-switch: `"disableSkillShellExecution": true` in settings
-  replaces each command with a placeholder note (managed-settings use).
-- `shell: powershell` frontmatter runs injections via PowerShell (Windows
-  default when the PowerShell tool is enabled).
+- Inline form is recognized when `!` starts a line or follows whitespace; it may
+  appear after prose (`State: !`cmd``). Multi-line form is a fence opened with
+  ` ```! ` and is one shell script.
+- Rendering is a single pass over the original skill. Inserted stdout is not
+  scanned for more injection placeholders.
+- The selected shell still performs normal expansion inside a command. Shell
+  variables, pipelines, conditionals, and `$(...)` command substitution work in
+  one Bash block; this does not contradict single-pass rendering.
+- Treat separate placeholders as independent and unordered. They may execute
+  concurrently and do not share variables, `cd`, or exit status. Put dependent
+  commands in one fenced script, where statements run sequentially.
+- All-arguments, indexed, and named skill placeholders are substituted before
+  shell execution. This is textual substitution, not safe argv quoting. Never
+  place invocation text in injected shell, even inside quotes; keep it in prompt
+  content, validate it, and use a normal tool call.
+- `${CLAUDE_SKILL_DIR}` and `${CLAUDE_PROJECT_DIR}` are trusted platform paths;
+  quote them. Never print secret environment values—only presence/status.
+- `shell: bash` is the default. `shell: powershell` uses PowerShell only where the
+  PowerShell tool is enabled.
+- `"disableSkillShellExecution": true` replaces user/project/plugin/additional-
+  directory commands with `[shell command execution disabled by policy]`.
+  Bundled and managed skills are not affected. Surrounding prose must tolerate
+  missing live state.
 
-Empirical findings (verified 2026-08-02, beyond the official docs):
-
-- The preprocessor scans fenced code blocks too — a `!` example at line
-  start inside a ``` block EXECUTES. A skill teaching this pattern must keep
-  literal examples in a references/ file (Read is never preprocessed) and
-  keep a non-whitespace char before any `!` in SKILL.md prose.
-- A failing injected command doesn't just inline an error — an unparseable
-  one aborts the whole skill load. Guard anything that can fail.
-- `$ARGUMENTS` and `$0`-style placeholders expand even inside backtick code
-  spans in prose; `\$` escaping protects only the FIRST occurrence per
-  render. Avoid `$`-tokens in prose entirely — use words ("indexed `$N`").
+A failing command has no recoverable tool-result turn: diagnostics/failure text
+can pollute the rendered prompt. Guard expected absence in the same placeholder
+and emit one bounded status line. In Bash, do not rely on
+`cmd | head || fallback` without `pipefail`; the final pipeline command may hide
+the read failure. In PowerShell, native nonzero exits require checking
+`$LASTEXITCODE` even inside `try`/`catch`.
 
 ## Forked execution (`context: fork`)
 
@@ -163,8 +177,10 @@ history. Use for parallelizable or context-polluting tasks.
 
 ## High-leverage patterns (use these)
 
-1. **Inject live state** — `!`bd ready``, `!`git status --short``,
-   `!`gh pr diff``: the skill arrives pre-grounded; no exploratory tool calls.
+1. **Inject bounded local state** — static, read-only repository/tool readiness
+   that every invocation needs, with expected failures guarded. Keep network
+   reads, mutations, secret values, and invocation-derived arguments in normal
+   tool calls.
 2. **Permission-free bundled scripts** — `allowed-tools` +
    `${CLAUDE_SKILL_DIR}` rule matching the exact command the body runs.
 3. **Fork for isolation/parallelism** — `context: fork` + `agent: Explore`

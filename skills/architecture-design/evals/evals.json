@@ -1,0 +1,38 @@
+{
+  "skill_name": "architecture-design",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Our Rust order use case calls Postgres and Kafka directly. Submission must enforce order invariants, reject duplicate commands, and never lose OrderPlaced after the database commits. Show where the code and interfaces should live.",
+      "expected_output": "A scoped application-architecture recommendation that separates domain invariants, application policy, earned client-owned ports, adapters, composition, and durable event delivery.",
+      "files": [],
+      "expectations": [
+        "Positive: places intrinsic Order invariants in the domain and idempotency/transaction sequencing in application policy.",
+        "Defines only earned ports in the policy-side client's vocabulary rather than one interface per infrastructure class.",
+        "Closes the database-to-broker crash gap with an atomic state-plus-outbox commit and idempotent at-least-once dispatch."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Should billing and invoicing remain one deployable or become two microservices with separate databases?",
+      "expected_output": "A boundary-aware response that identifies this as a cross-deployable granularity decision for distributed-architecture rather than forcing Clean Architecture layers onto it.",
+      "files": [],
+      "expectations": [
+        "Negative: does not decide service granularity using domain/application/infrastructure layering.",
+        "Routes the decision to distributed-architecture and names coupling, transactions, data ownership, and deployment trade-offs as the relevant evidence."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Review this proposal: every infrastructure class gets an application trait with Send + Sync; use cases contain no business policy; main is the only file allowed to mention concrete types; after repo.save succeeds we publish directly to Kafka; every directory wraps errors with #[from].",
+      "expected_output": "A correction of each overgeneralization without discarding Clean Architecture's dependency direction.",
+      "files": [],
+      "expectations": [
+        "Corrected behavior: says ports are earned and owned by the policy-side client, while Send/Sync/async bounds depend on the runtime.",
+        "Allows application policy in use cases and describes the composition root as object-graph owner, not the only code that may know a concrete type.",
+        "Explains outbox durability and maps errors at semantic boundaries instead of mechanically wrapping one enum per directory.",
+        "Distinguishes internal domain events from versioned integration contracts at a bounded-context boundary."
+      ]
+    }
+  ]
+}

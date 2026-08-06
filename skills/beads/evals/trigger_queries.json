@@ -1,0 +1,10 @@
+[
+  {
+    "query": "This repo already uses Beads. Create a P0 bug called 'Prevent duplicate invoice charge' with the acceptance criterion 'a retried webhook creates exactly one charge'. Do not claim or publish it.",
+    "should_trigger": true
+  },
+  {
+    "query": "Create a GitHub issue for this bug; this repository has no .beads directory.",
+    "should_trigger": false
+  }
+]

@@ -133,7 +133,10 @@ let names: Vec<_> = people.iter()
 - Extracting code out of a method: pass `&`/`&mut` explicitly and let the borrow checker verify each step.
 
 ### Result-based error handling
-- **Replace Panic with Result:** recoverable failures must be `Result`, never `unwrap`/panic.
+
+Panic-vs-`Result`, public variants, source chains, display text consumed by users/tools, and which failure wins are observable behavior. Preserve them during a refactoring. **Replace Panic with Result** is an API/behavior change unless it occurs entirely behind a boundary that maps back to the same outward behavior; do it under a feature/bug-fix hat with migration tests.
+
+Within an unchanged outward contract, extraction should keep typed errors and `?` propagation:
 
 ```rust
 fn parse(s: &str) -> Result<Config, ConfigError> {
@@ -141,28 +144,25 @@ fn parse(s: &str) -> Result<Config, ConfigError> {
 }
 ```
 
-- **Consolidate Error Types:** unify scattered error types into one enum (`thiserror`, `#[from]` conversions).
-
-```rust
-#[derive(Debug, thiserror::Error)]
-enum ProcessError {
-    #[error("IO error: {0}")]
-    Io(#[from] std::io::Error),
-    #[error("Parse error: {0}")]
-    Parse(#[from] serde_json::Error),
-}
-```
+**Reshape Error Types** only when callers need a coherent abstraction. Merge errors that represent the same caller action; keep distinctions for retry, conflict, validation, cancellation, and corruption. `#[from]` is useful for lossless internal conversion, but explicit `map_err` is clearer when crossing a boundary or classifying a vendor error. Add characterization tests before renaming variants or messages.
 
 ### Traits
-- **Extract Trait:** you need polymorphism or decoupling → define a minimal trait; accept `&impl Trait` at call sites.
+
+**Extract Trait** only for a real consumer role: multiple implementations, a volatile policy/detail boundary, or an earned test seam. Define the minimal trait beside the client/policy that needs it, not beside the implementor and not in a generic interfaces module.
 
 ```rust
-trait Meshable { fn triangles(&self) -> &[Triangle]; }
-fn slice(mesh: &impl Meshable) -> Layers
+trait TriangleSource { fn triangles(&self) -> &[Triangle]; }
+fn slice(source: &impl TriangleSource) -> Layers
 ```
 
-- **Replace Dynamic with Static Dispatch:** `dyn Trait` overhead isn't needed → generic parameter or `impl Trait`.
-- Rust's Replace Conditional with Polymorphism = trait + impls per variant (see above).
+Choose dispatch from requirements:
+
+- concrete parameter when no substitution is needed
+- generic/`impl Trait` for static dispatch and compile-time specialization
+- `&dyn Trait`/`Box<dyn Trait>` for runtime heterogeneity, plugin boundaries, or type erasure
+- enum + exhaustive `match` for a closed variant set
+
+Do not replace `dyn Trait` with generics merely because dispatch might be faster; measure, and account for code size/compile time. Before changing a public trait, preserve object safety, auto-trait bounds (`Send`/`Sync`), associated types, lifetimes, and downstream implementation compatibility. Rust's Replace Conditional with Polymorphism may be a trait, enum dispatch, or plain functions—the closed/open set decides.
 
 ## Remaining catalog (lower frequency)
 
@@ -187,7 +187,7 @@ One-liners so every name stays searchable; apply the same small-steps mechanics.
 - **Slide Statements** — related code should be adjacent; enables extraction.
 - **Split Loop** — a loop doing two things → two loops (or two pipelines).
 - **Introduce Special Case** — repeated identical checks for a special value → a special-case object (e.g. `Customer::unknown()`).
-- **Introduce Assertion** — code assumes something about state → `assert!`/`debug_assert!`.
+- **Introduce Assertion** — document an internal invariant with `assert!`/`debug_assert!` only if failure behavior is not externally observable or the assertion already follows from the contract; otherwise this changes behavior and needs a separate decision.
 - **Change Reference to Value / Value to Reference** — small immutable object → value semantics; genuinely shared mutable state → reference (`Arc`).
 - **Substitute Algorithm** — swap in a clearly better algorithm for the same job.
 - **Inheritance moves** — Pull Up/Push Down Method/Field, Extract Superclass, Collapse Hierarchy, Replace Type Code with Subclasses, Remove Subclass, Replace Subclass/Superclass with Delegate. In Rust these map to trait + impl restructuring and composition over inheritance.

@@ -1,243 +1,236 @@
 ---
 name: mission-planning
-description: "Plan complex software initiatives with military-derived doctrine: the OPORD artifact, commander's intent, backbriefs, PACE fallback tiers, decision triggers, recon/maneuver/sustainment cycles, and OODA feedback loops. Use when kicking off a multi-week or multi-team initiative (migration, launch, incident-prone work), writing the mission for an epic/RFC, running a backbrief, designing fallback layers for a critical path (payments, auth, comms, ingest, deploys), defining kill/rollback/SLO-breach criteria, fixing uneven sprint rhythm or starving tech debt, or diagnosing slow incident feedback. Produces one markdown OPORD as the source of intent plus labeled beads issues as the source of status. Not for single PRs, quick bugfixes, exploratory spikes, or routine maintenance."
+description: "Plan complex, high-stakes software initiatives with adaptable military-derived lenses: mission and commander's intent, backbriefs, PACE fallback options, decision triggers, recon/maneuver/sustainment modes, and OODA feedback. Use for multi-week or multi-team migrations, launches, resilience planning, rollback criteria, or slow feedback loops. Produces a tracker-neutral mission artifact and projects work into an existing tracker only when requested. Not for single PRs, quick bugfixes, routine maintenance, or as a mandate for military terminology and ceremonies."
 ---
 
 # Mission Planning
 
 > "No plan survives contact with the enemy." — Helmuth von Moltke the Elder
 
-Military operations resolve a paradox — **ruthlessly detailed planning** combined with **extreme adaptability when plans fail** — by separating *intent* from *execution*, pre-committing decisions before crises, and naming fallback layers so degradation is planned rather than accidental. This skill applies that doctrine to software: one durable artifact (the OPORD) plus the frameworks that fill it.
+This skill adapts mission-command ideas to software planning: make the outcome and decision rights durable, prepare for consequential failure, and update the plan when evidence changes. The doctrine is a set of lenses, not a mandatory process. Use the smallest subset that improves a real decision.
 
-The frameworks stand alone: PACE for one subsystem's resilience, triggers for one rollout's kill criteria, a mission statement for one epic — none require a full OPORD. Together they populate a single document that survives context breaks, handoffs, and surprises.
+The plan artifact is tracker-neutral. It can stand alone or be projected into the repository's existing Beads, GitHub, Jira, Linear, or other tracker. Never initialize, replace, or relabel a tracker merely to fit this skill.
 
-## When to use / when to skip
+## Choose the planning depth
 
-Use the full apparatus when **at least two** of these hold:
+A full mission artifact is usually worthwhile when at least two of these apply:
 
-- The initiative spans more than ~2 weeks of work
-- Multiple people or teams execute parts without continuous coordination
-- Failure of a critical path is costly (data loss, customer-visible outage, missed regulatory deadline)
-- The plan crosses a contested environment (unreliable dependency, vendor migration, regulatory pressure, security incident)
-- The work must survive context breaks — future-you must reconstruct intent from the artifact alone
+- The initiative spans multiple weeks or independent workstreams.
+- Several people or teams must act without continuous coordination.
+- Failure could cause meaningful customer, data, security, regulatory, or operational harm.
+- External dependencies or deadlines make adaptation likely.
+- Intent and decision history must survive handoffs or long context gaps.
 
-Do **not** use it for a single PR, a quick bugfix, exploratory spikes, or routine maintenance. The overhead only pays off when intent must outlive the session.
+Treat that as a heuristic, not a gate. For a narrower need, use only the relevant lens: a mission sentence for an epic, PACE for one critical function, triggers for a rollout, or OODA to diagnose a feedback delay. Skip the apparatus for a single PR, routine maintenance, or a low-cost exploratory spike.
 
-## Intent: the mission sentence
+Before applying a practice, tailor it:
 
-> **One sentence: "We will achieve X by Y so that Z."**
+| Lens | Use when | Do not force |
+|------|----------|--------------|
+| Mission + intent | Executors need durable outcome, constraints, or decision rights | Military role titles; a separate document when an existing RFC can hold it |
+| Backbrief | Handoff, ambiguity, stakes, or distributed ownership make divergent interpretations costly | A synchronous ceremony for a clear task owned by the author |
+| PACE | A critical function needs planned degradation or recovery options | Four implemented systems when a tier's cost exceeds its risk reduction |
+| Recon | Reducible uncertainty could change a consequential decision | Research for every unknown or certainty before action |
+| Operational modes | Explicit mode changes would improve focus or capacity | Fixed sprint lengths, universal ratios, or whole-team lockstep |
+| OODA | The team is learning or responding too slowly | Assuming the bottleneck phase before observing it |
 
-| Part | Guards against |
-|------|----------------|
-| **X** — outcome, measurable (*cut p99 checkout latency below 800ms*) | Vague success criteria; arguing in retrospect about whether we succeeded |
-| **Y** — means, broad (*by introducing a write-through cache layer in the order service*) | Skipping execution planning; pretending the *how* will sort itself |
-| **Z** — the business/user reason (*so that mobile checkout abandonment in high-latency markets drops to parity with desktop*) | Building the wrong thing right; losing the plot when scope shifts |
+## Mission and intent
 
-Writing rules:
+Start with one sentence:
 
-- **Start from the outside.** What changes in the world if this works — not what you'll build. If you can't articulate the change, you don't know what success is.
-- **Make X measurable.** *"Improve checkout experience"* is not a mission; you must be able to point at a number, query, or test and say hit/missed.
-- **Constrain Y just enough.** *"By caching"* is too loose; naming the Redis client, cache pattern, and exact call sites is an implementation, not a mission. Name the change; leave the team the technology choices.
-- **Make Z concrete.** Not "to improve UX" — *which user does what differently, or which business metric moves?* Without a concrete why, every trade-off becomes a meeting.
+> **We will achieve X by Y so that Z.**
 
-Below the sentence, add **Commander's Intent**: 2–4 sentences answering three questions — what does success look like from outside (what would a user, on-call, or exec notice)? What does failure look like (often more clarifying than the success picture)? Where is the line between "good enough to ship" and "keep working"?
+- **X — outcome:** Prefer an observable measure, query, test, or externally verifiable state. If a number would create false precision, name qualitative evidence and who judges it.
+- **Y — broad means:** Constrain the approach enough to focus planning without freezing implementation details.
+- **Z — reason:** Name the user, operational, or business effect that makes the trade-off worthwhile.
 
-> **Mission:** We will cut p99 checkout latency below 800ms by introducing a write-through cache layer in the order service so that mobile checkout abandonment in high-latency markets drops to parity with desktop.
+Below it, write **Commander's Intent** (or the organization's preferred term, such as initiative intent):
+
+- What success looks like from outside.
+- What failure looks like.
+- The minimum acceptable outcome and non-negotiable constraints.
+- Which trade-offs executors may make without escalation.
+
+Example:
+
+> **Mission:** We will cut p99 checkout latency below 800 ms by introducing a cache at the order-service boundary so that mobile checkout completion in high-latency markets approaches desktop performance.
 >
-> **Intent:** Success looks like LATAM/APAC mobile users completing checkout at desktop rates, with no measurable impact on EMEA/NA. Failure looks like checkout rate unchanged because the real bottleneck was payment-processor round-trips, not the order service. Good enough to ship is p99 sustainably below 1000ms across two business weeks; below 800ms is ideal but not a launch blocker.
+> **Intent:** Success means sustained latency improvement without correctness regressions in unaffected regions. Failure means latency moves but completion does not, indicating the wrong bottleneck. A sustained p99 below 1000 ms for two representative business weeks is acceptable for launch; correctness and rollback readiness remain non-negotiable.
 
-The intent is what lets the team make calls without you: at p99 = 950ms after two weeks, they read it and ship instead of coming back to ask.
+## Decision rights and backbrief
 
-## Authority split + Backbrief
+The useful principle is that the initiative owner sets outcome, constraints, and escalation boundaries while the executing team chooses implementation and sequencing inside them. Adapt this split to actual governance; architecture, security, regulatory, or incident-command roles may own specific decisions.
 
-Under mission command, **the commander owns the why, the team owns the how**:
+Record decision rights explicitly:
 
-| Decision | Owner |
-|----------|-------|
-| What success looks like; the mission and intent | Commander (initiative owner) |
-| Measurable success criteria | Commander, with team input |
-| Ship at "good enough" vs push for "ideal" | Team, guided by intent |
-| Implementation architecture, sequencing, milestones | Team |
-| Revising the approach mid-execution | Team |
-| Changing the *intent* | Escalation back to commander — then re-backbrief |
+| Decision | Accountable role | Executor autonomy | Escalation condition |
+|----------|------------------|-------------------|----------------------|
+| Mission outcome and constraints | Initiative owner | Propose changes | Material change to intended outcome |
+| Implementation and sequencing | Technical owner/team | Decide within constraints | Trigger, policy, or risk boundary crossed |
+| Ship/rollback | Named release authority | Follow agreed trigger where applicable | Novel condition outside the trigger |
 
-The split prevents **micromanagement** (commander dictates implementation; deliverable arrives misaligned with reality) and **drift** (team improvises without intent; deliverable arrives misaligned with the business reason). In the OPORD: the commander writes §2 MISSION, the team writes §3 EXECUTION after the backbrief. §3 must never contradict the intent; if it starts reading like the *what* instead of the *how*, the lines have crossed.
+A **backbrief** is an alignment check, not a required meeting. Use it when another person or team will execute, interpretations could diverge, or the cost of rework is high. It may be synchronous, an async written reply, or a review in an existing design forum. Ask executors to:
 
-**The backbrief.** Before execution starts, the executing team plays their interpretation back to the commander — the cheapest alignment check available (20 minutes now vs 3 weeks of misdirected work):
+1. Restate the mission and minimum acceptable outcome in their own words.
+2. Summarize their approach and the assumptions that could change it.
+3. Identify decisions they can make and conditions that require escalation.
+4. Surface unresolved questions and residual risk.
 
-1. **Restate mission and intent** in their own words. Parroting the doc verbatim means it isn't internalized — push for paraphrase.
-2. **State what they think success looks like.** Mismatches here are the highest-leverage catch.
-3. **Walk the approach** — briefly; this is not a design review, just proof they're aimed at the right outcome.
-4. **Surface questions and assumptions** they want confirmed.
-5. **Name their decision triggers** — when they would come back to the commander (scope change, sustainment gate failure, kill criterion fired).
+Capture corrections in the mission artifact. Skip a separate backbrief when the task is low-ambiguity, low-consequence, and owned end-to-end by the same executor; still make decision rights legible if others depend on the result. Re-backbrief after a material intent, constraint, ownership, or risk-boundary change—not after every implementation adjustment.
 
-The commander confirms or corrects (4) and ratifies (5). After the backbrief, the team has explicit authority to execute §3 the way they described. Skip the backbrief only for unambiguous tasks under ~1 week; for anything spanning weeks, always do it. "We already discussed it" is not a substitute — discussion is not commitment.
+## PACE fallback options
 
-## Resilience: PACE
+PACE names ways to preserve a **function** under failure:
 
-> "Two is one and one is none."
+| Tier | Meaning | Example for receipt delivery |
+|------|---------|------------------------------|
+| **Primary** | Preferred normal path | Transactional email provider |
+| **Alternate** | Comparable function through an independent mechanism | Second provider behind a tested switch |
+| **Contingency** | Deliberately degraded but useful service | Queue receipts for delayed delivery |
+| **Emergency** | Last-resort survival or manual procedure | Reconcile and send a daily digest manually |
 
-Every critical path gets four named, **verified** fallback tiers. Apply to paths where failure is costly — payments, auth, customer comms, data ingest, deploy pipeline, region failover, external AI/LLM dependency. Do not apply where failure is cheap (analytics writes, non-blocking enrichment).
+Use PACE only for functions whose interruption justifies advance options. The four tiers are prompts, not a requirement to purchase or build four systems. Omit, combine, or mark a tier unavailable when cost, correctness, or shared failure modes make it unsound; record the rationale and accepted consequence.
 
-| Tier | What it is | Example (receipt delivery) |
-|------|-----------|---------------------------|
-| **Primary** | The default, optimal path | SendGrid templated transactional |
-| **Alternate** | Same function, different mechanism/vendor/location; near-transparent to users | SES via flag `comms.email.backend=ses` |
-| **Contingency** | Degraded but functional; users notice | Queued delivery with stale templates |
-| **Emergency** | Manual, out-of-band, humans in the loop; survivability, not efficiency | Manual CSV reconciliation, next-day digest |
+For each retained option, capture:
 
-Design rules:
+- Function preserved and user-visible degradation.
+- Independent and shared dependencies.
+- Transition condition and authorized action.
+- Owner and operational instructions.
+- Return-to-primary handling, including state accumulated while degraded.
+- Evidence that the option works and when that evidence expires.
 
-1. **Plan against functions, not technologies.** "Send the customer their receipt" is a function; "use SendGrid" is a technology. Tiers are different ways to satisfy the same function.
-2. **Name each tier concretely.** *"Failover to backup"* is not a plan. *"SES (us-west-2) via Terraform-managed flag `comms.email.backend=ses`; latency parity +200ms; footer renders without tracking pixels"* is.
-3. **Pre-commit the trip-wire for every transition** (see Decision triggers): Primary→Alternate *"3 consecutive minutes of >2% 5xx"*; Alternate→Contingency *"Alternate unavailable >5min OR p99 > 30s"*; Contingency→Emergency *"backlog not draining within 1 hour"*. A PACE plan with no triggers is one nobody executes under pressure.
-4. **Drill every tier.** Primary is verified by daily use; the rest only exist if tested — Alternate: quarterly failover drill (cut Primary, measure parity); Contingency: run a "degraded day"; Emergency: walk the manual procedure end-to-end with the on-call rotation at least annually. **Tiers you don't drill don't exist.** Alternate is the most expensive tier (must keep parity with Primary); skipping it is sometimes right — make it explicit.
-5. **Document the un-fallback.** How do you return to Primary once healthy? Fallbacks break in reverse: you fell to Contingency, accumulated state there, and now Primary's data is stale. Plan the reverse transition too.
-
-Contingency is where feature flags earn their keep: identify which features can degrade and ship the kill-switch *before* you need it. Make degraded mode visibly degraded — if Contingency looks identical to Primary, users and support can't tell, and the team doesn't know to fall back further. Emergency procedures must be findable cold by whoever is on-call; link them from the OPORD.
-
-Skipping a tier is allowed if explicit: no Alternate when a duplicate vendor costs more than the expected loss (if Contingency is robust and tested); no Contingency for hard-correctness systems where degraded is worse than outage (then plan Emergency thoroughly); no Emergency — almost never acceptable. *"We have no Alternate because <cost analysis>; we accept up to 4h degraded"* is defensible; *"we didn't think of it"* is not.
+Validation cadence should follow consequence, change rate, prior failures, and validation cost. A frequently changing high-impact alternate may need release or monthly checks; a stable manual emergency procedure may use a tabletop after material change. Calendar examples are starting hypotheses, not universal quarterly/annual mandates. An unvalidated tier should be labeled unproven rather than treated as available.
 
 ## Decision triggers
 
-A decision trigger is an if-then statement, agreed in advance, that fires automatically when its condition is met — so the team doesn't re-decide under pressure. Use for kill criteria, rollback conditions, SLO breach responses, PACE tier transitions, go/no-go gates. Push back on *"we'll decide that when we get there"* — decide now, conditionally. Do **not** force triggers onto genuinely contextual decisions; that gives false rigor — flag those as deliberate deferrals instead.
+A decision trigger is a conditional commitment for a predictable case. It reduces delay when the condition is objectively observable and the response is understood. Do not force a trigger onto a genuinely contextual decision; document the decision owner and deliberate deferral instead.
 
-**Anatomy — five parts; missing any means it won't fire:**
+Capture the parts needed for the case:
 
-1. **Condition** — metric, threshold, time window, and monitoring source, all named. Bad: *"if latency is bad."* Good: *"if checkout p99, per `grafana://d/checkout-latency`, exceeds 200ms for any 1-week rolling window."*
-2. **Action** — concrete enough that whoever sees it fire knows exactly what to do. Bad: *"reconsider caching."* Good: *"flip flag `checkout.cache.backend=redis-write-through`, notify #checkout, page on-call."* If the action is "convene a meeting," the trigger is just an alert.
-3. **Owner** — a named person or role accountable for executing the action, not just noticing it.
-4. **Monitoring source** — the alert rule, dashboard, or runbook check that *generates* the event. Best: automated alert naming the trigger; worst: "we'll notice."
-5. **Review cadence** — triggers go stale; set a review date, even just "OPORD close."
+1. **Condition:** signal, threshold or qualitative event, observation window, and source.
+2. **Action:** specific response or fallback.
+3. **Owner:** role accountable for acting.
+4. **Authority/escalation:** whether the action is pre-authorized and where novel cases go.
+5. **Review/expiry:** event or date after which the trigger must be revalidated.
 
-**Good/bad pair:**
+Example:
 
-| | Trigger |
-|---|---|
-| Bad | "If p99 > 200ms, monitor the situation." |
-| Good | `perf-breach`: if checkout p99 > 200ms for 1 week (Grafana alert `checkout-p99-breach`), then switch to PACE Alternate caching — owner @alice, review at OPORD close. |
+```text
+perf-breach: If checkout p99 exceeds 200 ms for 15 minutes according to alert
+checkout-p99-breach, release on-call rolls back cache writes and notifies the
+checkout owner. Pre-authorized during rollout; review after the rollout closes.
+```
 
-**Escalation trees.** One condition can have tiered responses — p99 > 200ms sustained 5min → page on-call; 1h → war room; 1d → flip to PACE Alternate; 1w → re-architecture decision. Each tier is its own trigger; the point is escalation happens on schedule, not when someone gets frustrated.
+Select thresholds and review timing from the system's dynamics and decision cost. Fast incidents may need minute-scale windows; strategic adoption decisions may use weeks. An alert with no agreed action is not yet a trigger. A contextual action such as "assess blast radius, then choose" can still be valid when it names the decision owner and evidence required.
 
-**Decision rights vs triggers.** Rights say *who* decides novel cases ("Alice owns scope changes"); triggers say *what was already decided* for predictable ones. Both belong in OPORD §5.
+Look for candidate triggers around material assumptions, rollout/rollback boundaries, retained PACE transitions, external dependencies, and minimum success criteria. Do not mechanically turn every assumption into a standing tracker item.
 
-**Finding missing triggers** — run this checklist against any plan; each gap is a trigger:
+## Recon, maneuver, and sustainment modes
 
-1. Every assumption in SITUATION: if it's wrong, what do we do?
-2. Every PACE tier transition: what makes us fall back?
-3. Every success criterion in MISSION: what if we miss it? (often a kill criterion)
-4. Every external dependency in SUSTAINMENT: what's the response if it fails?
-5. Every "we'll decide later": can we decide now, conditionally?
+These are planning modes, not mandatory sequential phases or sprint names:
 
-Also write triggers for *good* outcomes ("if adoption is 3x model, accelerate hiring") — good news without a trigger leaves opportunity on the table. Keep triggers visible to anyone touching the system, especially during incidents — not buried in an on-call runbook.
+| Mode | Purpose | Possible exit evidence |
+|------|---------|------------------------|
+| **Recon** | Reduce decision-relevant, reducible uncertainty through prototypes, measurements, threat models, or vendor evaluation | The new evidence supports a decision, changes the plan, or shows further research is not worth its cost |
+| **Maneuver** | Deliver the intended outcome and observe its effects | Outcome reached, trigger fired, or evidence requires re-planning |
+| **Sustainment** | Restore or protect execution capacity: reliability, tooling, observability, docs, security, knowledge, and recovery | Named capacity or risk measure improves enough for the next objective |
 
-**Anti-patterns:** trigger theater (no monitoring source or owner — half-built triggers are worse than none); alert masquerading as a trigger (action is "monitor" or "re-decide later"); forever triggers (no review date → the matrix accumulates dead rows nobody trusts).
+Use recon when additional information could change the chosen action and can be obtained at reasonable cost. Do not require every unknown to be retired. Classify residual uncertainty:
 
-## Rhythm: operational cycles
+- **Reducible now:** investigate before an irreversible or high-cost commitment.
+- **Reducible later:** keep the choice reversible and observe during delivery.
+- **Irreducible/contextual:** bound exposure with staged rollout, PACE, or a trigger.
+- **Low decision value:** record or ignore it rather than delaying action.
 
-Replace generic one-size sprints with three named modes; each cycle ends when its job is done, not when the calendar says so.
+Proceed when evidence is sufficient for the decision's reversibility and consequence, not when certainty is complete. Recon can run before, inside, or parallel to maneuver. If a prototype becomes production work, make that scope change explicit rather than pretending it is still research.
 
-| Cycle | Goal | Exit criterion | Success metric | Typical length |
-|-------|------|----------------|----------------|----------------|
-| **Recon** | Reduce uncertainty: spikes, load tests, threat models, vendor evals, "could we actually…?" probes | The unknowns named at cycle start are resolved (even with "no") | Number of unknowns retired — zero features shipped can be a successful cycle | 3 days–2 weeks; longer means it's maneuver in disguise |
-| **Maneuver** | Deliver outcomes against the committed plan | The pre-defined measurable outcome is delivered, or the time-box expires and you re-plan | Outcome delivered, or learning produced (missed, but we know why); "we worked hard" is neither | 2–4 weeks; longer needs splitting into sub-maneuvers |
-| **Sustainment** | Restore capacity ("refit and rearm"): debt, tooling, CI flakiness, docs, observability, launch recovery | Chosen debt items addressed *and* team energy measurably recovered (calmer on-call, fewer blockers) | Capacity restored — measured by how the next maneuver cycle starts | 1–2 weeks; dragging means bigger-than-expected debt (a finding) or escape from harder work |
+Operational mode may be declared per initiative, team, workstream, or specialist depending on coordination needs. Specialists can own recon or sustainment work; do not rotate everyone through every mode merely for symmetry. Avoid hidden handoffs by naming ownership, interfaces, and how findings reach decision-makers.
 
-Rules:
+Choose timeboxes and review cadence from uncertainty, feedback latency, and operational load. Short checkpoints are useful when evidence changes quickly; longer windows may fit migrations or vendor lead times. Fixed 3-day/2-week/quarterly defaults and fixed recon/maneuver/sustainment percentages are examples at most, never doctrine.
 
-- **Maneuver requires unknowns retired first.** Committing to outcomes while SITUATION assumptions are unresolved is how scope and time blow up — a recon cycle now is cheaper than scope creep later.
-- **Recon output is a decision, not a deployment.** If the spike produces shippable code, ship it intentionally and declare maneuver — don't let spikes drift into MVPs into production.
-- **Sustainment is restoration, not rest.** Name the specific items and the capacity being restored; it's an "off cycle" only if you're doing it wrong.
-- **Cycle types are per-team, not per-person.** "Alice does recon, Bob does maneuver" means nothing rotates — everyone participates in each mode.
-- **Name the dominant mode each week** and write its exit criterion. That declaration, plus a mode-specific retro (recon: what did we learn? maneuver: did we ship to plan? sustainment: is the team measurably restored?), is most of the discipline. Renaming sprints without changing the contents is cargo-culting.
+## OODA feedback
 
-Calibrate the mix to the phase (illustrative, not prescriptive):
+OODA is **Observe → Orient → Decide → Act → repeat**:
 
-| Phase | Recon | Maneuver | Sustainment |
-|-------|-------|----------|-------------|
-| Early — high uncertainty | 60% | 30% | 10% |
-| Build — known scope | 10% | 80% | 10% |
-| Late — launch and post-launch | 10% | 50% | 40% |
-| Steady-state product | 20% | 60% | 20% |
+| Phase | Question | Common failure |
+|-------|----------|----------------|
+| Observe | What happened, and how trustworthy is the signal? | Missing, delayed, or misleading evidence |
+| Orient | What model explains it in this context? | Stale assumptions or missing domain knowledge |
+| Decide | What action is justified and who owns it? | Unclear rights, endless deliberation, or false certainty |
+| Act | Can the decision be executed and measured? | Delivery friction or action with no next signal |
 
-## Feedback: OODA
+Any phase can be the bottleneck. Diagnose from evidence before prescribing telemetry, meetings, triggers, or delivery automation. Every consequential action should produce or schedule a useful next observation when feasible.
 
-> "He who can handle the quickest rate of change is the one who survives." — John Boyd
+Read [references/ooda-diagnosis.md](references/ooda-diagnosis.md) when investigating a slow loop. Use its table as hypotheses to test, not a universal ranking of bottlenecks.
 
-The loop is **Observe → Orient → Decide → Act → repeat**. In a contested environment the faster *correctly-oriented* loop wins — not by being smarter but by being less wrong for less time.
+## Tracker-neutral mission artifact
 
-| Phase | Question | Trap | Fast looks like |
-|-------|----------|------|-----------------|
-| **Observe** | What's actually happening? | Measuring what's convenient, not what matters | Signals reach a human in minutes; important changes notify, not just update a dashboard |
-| **Orient** | What does it mean? | Orienting from a stale model (same symptom ≠ same cause) | Shared mental models; short frequent retros keep the model fresh — no meeting needed to interpret |
-| **Decide** | What will we do? | Infinite deliberation — if you can't say what data would change the decision, you have enough data | Decision rights are explicit; triggers pre-commit the obvious cases so only novel ones get deliberated |
-| **Act** | Make it real | Acting without instrumenting the result | **Every Act produces a measurable signal for the next Observe** — "did it move the metric," not "did we ship it" |
+For a full plan, keep one durable source of intent. Use the repository's existing RFC, epic, ADR, launch-plan, or planning convention when one exists. If there is no convention, propose `docs/opords/<slug>.md` as a default location; do not create a new path or insist on the term OPORD when the project prefers another artifact.
 
-Diagnosing a slow loop — **most slow loops are stuck in Observe or Orient, almost never in Act.** For the symptom → bottleneck → fix table, load `references/ooda-diagnosis.md` when a team's feedback loop feels slow and you need to locate the stuck phase before prescribing a fix.
-
-**The commitment duality.** Pre-commitment and late commitment are both agility: triggers pre-decide the common cases so the team skips deliberation and goes Observe → Orient → Act; at the same time, defer *architectural* commitment to the last responsible moment — keep reversible choices reversible until real load patterns exist, feature-flag new work so Decide and Act can separate, and hold scope open until SITUATION is understood. The heuristic: **decide when the cost of waiting starts to exceed the value of new information.** And never tighten Act while Observe is broken — speed without data just makes you wrong faster. Beware the Orient bypass ("alert fires → restart service"): fine for known-good runbook responses, catastrophic when the alert means something new.
-
-The cycle rotation above is a long-period OODA loop — Recon is extended Observe/Orient, Maneuver is Decide/Act, Sustainment improves the loop itself — while the short-period loop runs inside every standup, alert, and demo. A team running only maneuver cycles has collapsed OODA to "Act, Act, Act": fine for a sprint, broken over months.
-
-## Artifacts: the OPORD (once)
-
-One markdown file per initiative at `docs/opords/<slug>.md`. Five stable top-level headings — **do not rename them**; tooling and future agents depend on the structure.
+The following five sections are a stable default structure, not immutable heading names. Map them into an existing template when necessary and preserve any repository tooling contract.
 
 ```markdown
-# OPORD: <Initiative Name>
-**Slug:** `<kebab-case>`   **Beads epic:** `bd-XXX`   **Status:** draft | active | sustaining | closed   **Last updated:** YYYY-MM-DD
+# Mission Plan: <Initiative Name>
+**Slug:** `<kebab-case>`  **Status:** draft | active | sustaining | closed
+**Owner:** <role/person>  **Last updated:** YYYY-MM-DD
+**Execution tracker:** <none or tracker reference>
 
 ## 1. SITUATION
-Operating environment; known constraints (deadlines, compliance gates, frozen contracts, capacity);
-intelligence gaps (each gap → a recon task); assumptions (each assumption → a candidate trigger).
+Constraints, dependencies, known evidence, material assumptions, and uncertainty.
+For each important gap: investigate, defer with a reversible choice, accept, or guard with a trigger.
 
 ## 2. MISSION
-"We will achieve X by Y so that Z." Commander's Intent (2–4 sentences: success / failure /
-good-enough line). Success criteria — measurable, each with a named measurement source.
+"We will achieve X by Y so that Z." Intent, minimum acceptable outcome,
+non-negotiable constraints, and evidence of success.
 
 ## 3. EXECUTION
-Approach (one paragraph — if a teammate reads only this, do they know what we're building?);
-PACE plan table per critical path (tier / path / trip-wire / drill cadence / beads ID) plus the
-un-fallback procedure; cycle rhythm (recon → maneuver → sustainment with exit criteria);
-backbrief commitment.
+Approach and workstreams; retained PACE options and return paths; selected
+operational modes; backbrief/alignment record where useful.
 
 ## 4. SUSTAINMENT
-CI/CD readiness; observability (named dashboards, alerts, queries — the OODA loop's Observe);
-security posture and response; team readiness (skill gaps, on-call, knowledge concentration);
-platform dependencies. If sustainment isn't ready, the rest of the plan is fiction — fix gaps
-before declaring the OPORD active.
+Delivery and rollback readiness; observability; security/compliance; operational
+and team capacity; knowledge concentration; external service dependencies.
 
 ## 5. COMMAND & SIGNAL
-Decision rights table (decision / owner / escalation); communication rhythm (standup format:
-last 24h actions, next 24h plan, blockers, intel; async updates; escalation channel);
-Decision Support Matrix (trigger / condition / action / owner / source / review) — one row per
-§1 assumption that, if wrong, would force a re-plan.
+Decision-rights table; communication and review rhythm suited to the initiative;
+decision-trigger matrix; artifact owner and change process.
 ```
 
-**The 1/3–2/3 rule:** the commander gets 1/3 of available time to plan; the team gets 2/3 to prepare and execute. For a 3-week initiative, time-box OPORD writing to 2–3 days; still revising past that means you're planning for hypotheticals (cut scope) or missing intelligence (run the recon first). Do war-gaming (premortem, threat modeling, scenario probes) and the sustainment check *before* committing to execution — that's the point of the section order.
+Treat the 1/3–2/3 planning rule as a reminder to preserve executor preparation time, not a time-accounting formula. Time-box planning relative to stakes and reversibility. If the artifact grows without changing decisions, reduce it; if evidence is missing, run targeted recon rather than polishing prose.
 
-**Sync discipline: the OPORD is the source of intent; beads is the source of status.** Never duplicate narrative or status between them.
+The mission artifact is the source of intent, assumptions, decisions, and fallback rationale. A selected execution tracker, if any, is the source of task status. Do not duplicate changing status in the artifact. Link tracker items back to the motivating artifact section where practical.
 
-- Derive beads issues from the OPORD; each issue body starts with a back-link to the OPORD section that motivates it (`SOURCE: docs/opords/<slug>.md §3`).
-- When reality diverges: edit the OPORD **first** (bump Last updated, add a change-log line), then update beads to match. Never let beads diverge silently — work that traces to no OPORD section means either a stale OPORD or out-of-scope work.
-- When intent itself changes mid-flight, write it down and re-backbrief.
-- Triggers are standing `decision` issues, not tasks: when one fires, comment with timestamp and observed value, execute the action, and leave the trigger open with a `fired` label while the post-trigger state holds. Retire triggers with a note ("condition no longer relevant because …"), not a silent close — even after OPORD close if the condition is still live.
-- At close: set Status `closed` with a note on what shipped, what didn't, which triggers fired, what you'd do differently — the durable post-mortem — then close the epic.
+When reality changes:
 
-**Beads labels** (conventions; see the beads skill for the tracker itself):
+- Update status only in the tracker.
+- Update the artifact when intent, assumptions, constraints, decision rights, fallback rationale, or the material approach changes.
+- Record material changes and re-run alignment only for affected owners.
+- Archive or mark the artifact closed when authorized; do not infer permission to close tracker items.
 
-- Epic: `opord`, `opord:<slug>` — description carries the mission sentence + intent + OPORD path
-- PACE tiers: `pace:primary|alternate|contingency|emergency` (query each tier — `bd query "label=pace:contingency AND label=opord:<slug>"` — to audit resilience coverage)
-- Triggers: `trigger:<name>`, type `decision`; add `fired` when fired
-- Work items: `cycle:recon|maneuver|sustainment` (if closed sustainment work is always zero, the team is starving the cycle that restores capacity)
-- OODA investments: `ooda:observe|orient|decide|act` — only for work that improves the loop, not routine work inside it
+## Conditional tracker projection
 
-Three-line recipe:
+Projection is optional. Determine the tracker from the user's request and repository conventions. If none is selected, stop at the artifact. If the request asks for a plan but not tracker mutations, propose the mapping without creating items.
 
-```bash
-bd create "OPORD: <name>" --type epic -l "opord,opord:<slug>"   # then children with pace:*, cycle:*, trigger:* labels, --parent <epic>
-bd create "TRIGGER: <name>" --parent <epic> --type decision -d "IF <condition>. THEN <action>. OWNER: @who. REVIEW: <when>. SOURCE: docs/opords/<slug>.md §5" -l "opord:<slug>,trigger:<name>"
-bd query "label=opord:<slug>"   # everything; refine with AND label=pace:alternate / type=decision / label=cycle:recon AND status=open
-```
+For any selected tracker:
 
-**Merged anti-patterns:** load `references/anti-patterns.md` when reviewing a finished OPORD, auditing a running initiative, or when a plan feels off and the inline anti-patterns above didn't catch it — the full list, grouped by framework (OPORD/intent, PACE, cycles, OODA).
+1. Preserve its native types, fields, states, and existing label conventions.
+2. Create only the requested work items and relationships.
+3. Link each item to the relevant mission section when useful.
+4. Use labels only when they improve an actual query or review; do not require military vocabulary.
+5. Keep narrative decisions in the artifact and live execution status in the tracker.
+
+### Optional Beads projection
+
+Use this only when Beads is already initialized, is the selected tracker, and tracker mutation is authorized. Load the `beads` skill and follow its request-scoped mutation and commit/sync rules. Do not run `bd init`, close issues, or commit/push Dolt history as an automatic consequence of mission planning.
+
+Possible labels—not requirements—include:
+
+- mission grouping: `mission:<slug>` or an existing project equivalent;
+- retained fallback work: `pace:primary|alternate|contingency|emergency`;
+- intentional mode work: `cycle:recon|maneuver|sustainment`;
+- feedback-loop investments: `ooda:observe|orient|decide|act`.
+
+Before using these, inspect existing labels and query needs. Do not add all labels to every issue, infer a special issue type, or create a dependency graph from the artifact without explicit mapping decisions.
+
+Read [references/anti-patterns.md](references/anti-patterns.md) when reviewing a completed mission artifact or diagnosing a plan that is not improving decisions.

@@ -2,15 +2,13 @@
   "skill_name": "<skill-name>",
   "evals": [
     {
-      "id": "<short-id>",
+      "id": 1,
       "prompt": "<realistic user message>",
-      "expected_output": "<human-readable description of successful output>",
-      "files": [
-        "evals/files/<optional-input-file>"
-      ],
-      "assertions": [
-        "<specific observable requirement with concrete pass/fail evidence>",
-        "<another requirement; prefer mechanical checks when possible>"
+      "expected_output": "<human-readable successful outcome>",
+      "files": [],
+      "expectations": [
+        "<observable requirement with concrete pass/fail evidence>",
+        "<another output/action requirement; do not grade hidden reasoning>"
       ]
     }
   ]

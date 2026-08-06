@@ -4,7 +4,7 @@ Use for **full** mode. Topic mode may map subsets (types≈A/D, flow≈B/C, keys
 
 | Layer | Name | Primary artifacts | Done bar (honest) |
 |-------|------|-------------------|-------------------|
-| **A** | Symbol / API catalog | `api-ref/`, `…_11_symbol_catalog_stats.md` | 100% public-surface inventory; decls labeled method (regex/AST/lang tool); host set tagged |
+| **A** | Symbol / API catalog | `api-ref/`, `…_11_symbol_catalog_stats.md` | Public-surface manifest reconciles exactly to deterministic scope; declarations label tool/method and blind spots; host set tagged |
 | **B** | Architecture | `20`–`52`, `60`, `70`, diagrams | Module map + critical pipeline E2E with **owners** |
 | **C** | Use graph | `…_12_use_graph.md`, `api-ref/usage/` | Every HOST_SURFACE façade depth ≥1 or explicit no-callers; pipeline depth 2–3 samples |
 | **D** | Mutation / ownership | `…_13_mutation_model.md`, `api-ref/types/` | Cards for all **core state types** that exist; field writers honest PARTIAL if not fully audited |
@@ -96,9 +96,16 @@ mutation / dual stats remain open.
 
 ## Extraction order (A)
 
-1. Emit complete surface list (`_surface_list.txt` or language equivalent).
-2. Mechanical extract → shards (regex/ctags/clang/rustc/tsc/… as available).
-3. Merge → INDEX + stats with **method** and blind spots.
-4. Tag host-referenced via includes/imports from outside the lib.
-5. Deepen **host set first**, then internal.
-6. Split HOST_SURFACE: (a) domain freeze (b) utility/i18n/logging.
+1. Emit a sorted scope manifest and complete surface list (`_surface_list.txt` or
+   language equivalent); record root, exclusions, command/tool version, git
+   identity, and exact count.
+2. Derive stable non-overlapping extraction-unit IDs from that manifest.
+3. Mechanical extract → unit artifacts (compiler/language index preferred;
+   ctags or labeled scripts/regex when necessary).
+4. Merge by unit ID → INDEX + stats with **method**, zero-match units, parse
+   failures, and named blind spots; missing or duplicate units fail reconciliation.
+5. Tag host-referenced via canonical includes/imports from outside the lib.
+6. Deepen **host set first**, then internal; report exact found/expected counts.
+7. Split HOST_SURFACE: (a) domain freeze (b) utility/i18n/logging.
+8. Require an independent review pass over the merged evidence before a
+   freeze-ready judgment; label disclosed self-review when no separate reviewer exists.

@@ -1,0 +1,41 @@
+{
+  "skill_name": "geometric-robustness",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Review this Rust segment intersection: it branches on a raw f64 cross product, computes the point, clamps t into [0,1], and later decides endpoint identity with distance < 1e-6. Recommend the smallest robust redesign.",
+      "expected_output": "A predicate-first, certified-construction redesign with an explicit exact-zero/endpoint policy and no epsilon-based topology override.",
+      "files": [],
+      "expectations": [
+        "Separates topological classification from coordinate construction.",
+        "Uses filtered-exact predicate signs for represented inputs and names exact zero as a policy case.",
+        "Rejects silent parameter clamping and validates construction parameters/residuals against a numerical bound.",
+        "Does not present one generic epsilon or the golden output as the correctness authority."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Design property tests for a slicer under translation, rotation, reflection, uniform scale, and non-uniform affine transforms. The slicer uses fixed world-Z layers and anisotropic process settings.",
+      "expected_output": "Preconditioned metamorphic properties that transform the slicing frame and dimensional/process parameters correctly rather than asserting false mesh-only symmetry.",
+      "files": [],
+      "expectations": [
+        "Explains why arbitrary Z translation or mesh-only rotation is not invariant with fixed world-Z layers.",
+        "Scales dimensional tolerances/process parameters under uniform scaling but not dimensionless relative tolerances.",
+        "Handles reflection orientation reversal and inverse-transpose normal transformation.",
+        "Uses numerical residual bounds for inverse round trips instead of byte equality."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Our Linux CI hashes g-code twice and our cross-platform numeric goldens use tolerances. Can we claim deterministic and treat the blessed files as correct? Define a defensible contract and review gate.",
+      "expected_output": "Named determinism tiers and an authority hierarchy in which specs/invariants/oracles outrank snapshots.",
+      "files": [],
+      "expectations": [
+        "Distinguishes canonical/topological, pinned-byte, and cross-platform-byte determinism.",
+        "States that a two-run hash proves neither cross-platform bytes nor geometric correctness.",
+        "Requires exact topology/order comparison and field tolerances unless a byte tier applies.",
+        "Requires blessing justification from a higher authority and forbids silent regeneration."
+      ]
+    }
+  ]
+}

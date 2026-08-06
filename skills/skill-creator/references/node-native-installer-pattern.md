@@ -1,168 +1,114 @@
-# Node-native Agent Skill installer pattern
+# Node-native installer — this repository's pattern
 
-Reference implementation for packaging a skill repo as a portable Node CLI that works with both `npx` and `bunx` without requiring Bun. The principles, CLI checklist, and validation commands are in `SKILL.md`; this file is the code.
+Use this reference when changing the package installer in this repository. It is
+a description of the current implementation, not a wishlist for a generic skill
+package.
 
-## package.json essentials
+## Package contract
 
-```json
-{
-  "type": "module",
-  "bin": {
-    "agent-skill-books": "bin/cli.js"
-  },
-  "files": [
-    "bin/",
-    "lib/",
-    "skills/",
-    "README.md",
-    "LICENSE"
-  ],
-  "engines": {
-    "node": ">=20.11.0"
-  }
-}
+`package.json` exposes `claude-skills` from `bin/cli.js`, requires Node
+`>=20.11.0`, and ships complete `bin/`, `lib/`, `skills/`, and `agents/` trees
+plus `pool.md` and README. The entrypoint has a Node shebang and no Bun runtime
+dependency, so both `npx` and `bunx` can launch it.
+
+Because the whole `skills/` tree is packaged, adding an eval/reference/script
+under an already-shipped skill does not require another `package.json.files`
+entry. Adding a selectable skill still requires a catalog entry and matching
+README examples/catalog text.
+
+## Current CLI
+
+```text
+claude-skills install [--project <dir>] [--skip-deps]
+claude-skills uninstall [--yes]
+claude-skills --help
 ```
 
-Groups are registry-level labels; skills always live flat under `skills/`, so `files: ["skills/"]` covers every group.
+No subcommand defaults to `install`. The CLI is intentionally interactive; it
+does **not** currently implement `--all`, `--group`, `--dry-run`, project
+uninstall, target-root selection, or `.agents/` installation. Do not put those
+flags in skill instructions unless the implementation changes in the same task.
 
-## CLI entrypoint
+`--project` accepts an absolute path or a path relative to the invocation working
+directory. The package root is used only as the copy source; project output is
+never resolved relative to the installed package.
 
-```js
-#!/usr/bin/env node
+## Selection and placement
 
-import { parseArgs } from 'node:util';
-import { installAll, installGroups, uninstallAll, uninstallGroups } from '../lib/installer.js';
+`lib/catalog.js` is the selectable inventory:
 
-const { values, positionals } = parseArgs({
-  args: process.argv.slice(2),
-  options: {
-    all: { type: 'boolean', default: false },
-    group: { type: 'string', multiple: true },
-    'dry-run': { type: 'boolean', default: false },
-    help: { type: 'boolean', short: 'h', default: false },
-  },
-  allowPositionals: true,
-});
+1. Search skills are offered for global install under `~/.claude/skills`.
+2. `dynamic-context-injection` and `skill-creator` are suggested for the chosen
+   project's `.claude/skills`.
+3. Remaining skills are offered one by one as global, project, skip, or done.
+4. Skills that declare agent/pool coupling in the catalog install those related
+   resources through the shared filesystem operations.
 
-const command = positionals[0] || 'install';
-const opts = { dryRun: values['dry-run'] };
+`lib/paths.js` is the placement authority:
 
-if (values.help) {
-  console.log(`Usage: agent-skill-books [install|uninstall] [--all] [--group <name>] [--dry-run]`);
-  process.exit(0);
-}
+- global Claude root: `~/.claude`;
+- project Claude root: `<resolved-project>/.claude`;
+- skill/agent/pool destinations are derived from that root.
 
-if (command === 'install') {
-  const skills = values.all
-    ? installAll('global', opts)
-    : installGroups(values.group ?? [], 'global', opts);
-  console.log(`Installed ${skills.length} skills globally.`);
-} else if (command === 'uninstall') {
-  const skills = values.all
-    ? uninstallAll('global', opts)
-    : uninstallGroups(values.group ?? [], 'global', opts);
-  console.log(`Removed ${skills.length} skills globally.`);
-} else {
-  console.error(`Unknown command: ${command}`);
-  process.exit(1);
-}
-```
+There is no automatic mirror to `~/.agents` or `.agents` in this Node flow.
+Portable-client distribution must be a separately designed feature with tests.
 
-Interactive prompts can be added, but keep the non-interactive path simple and scriptable.
+## Manifest and uninstall ownership
 
-## Registry pattern
+The Node installer records only global items it installed in
+`~/.claude/claude-skills-manifest.json`. `lib/uninstall-flow.js` removes only
+those recorded global skills/agents/panelists/pool entries, then clears the
+manifest.
 
-```js
-export const GROUPS = [
-  {
-    name: 'design',
-    label: 'A Philosophy of Software Design',
-    type: 'multi',
-    skills: ['simple-design', 'refactoring'],
-  },
-  {
-    name: 'skill-creator',
-    label: 'Skill Creator',
-    type: 'single',
-  },
-];
+It deliberately leaves these untouched:
 
-export function getGroup(name) {
-  const group = GROUPS.find((g) => g.name === name);
-  if (!group) {
-    const valid = GROUPS.map((g) => g.name).join(', ');
-    throw new Error(`Unknown group "${name}". Valid groups: ${valid}`);
-  }
-  return group;
-}
+- project `.claude` installs;
+- API keys in `~/.claude/settings.json`;
+- installed npm/Python/uv dependencies; and
+- files placed only by `install.sh` or `install.ps1`.
 
-export function getSkillNames(group) {
-  return group.type === 'multi' ? group.skills : [group.name];
-}
-```
+The shell/PowerShell bulk installers have matching bulk uninstallers and are a
+separate ownership path. Do not make the Node uninstaller infer ownership by
+scanning arbitrary directories.
 
-## Installer pattern
+## Change map
 
-```js
-import { cpSync, rmSync, mkdirSync } from 'node:fs';
-import { join, resolve } from 'node:path';
-import { homedir } from 'node:os';
-import { GROUPS, getGroup, getSkillNames } from './groups.js';
+Inspect all owners before editing behavior:
 
-const PKG_ROOT = resolve(import.meta.dirname, '..');
-const SKILLS_ROOT = join(PKG_ROOT, 'skills');
+| Concern | Source |
+|---|---|
+| CLI arguments/help/default command | `bin/cli.js` |
+| Selectable skills and coupled resources | `lib/catalog.js` |
+| Interactive install sequence | `lib/install-flow.js` |
+| Tracked global uninstall | `lib/uninstall-flow.js` |
+| Global/project destination paths | `lib/paths.js` |
+| Copy/remove behavior | `lib/fs-ops.js` |
+| Dependency setup | `lib/deps.js` |
+| Manifest schema/merge | `lib/manifest.js` |
+| API-key presence/storage | `lib/settings.js` |
+| Published files/runtime/dependencies | `package.json` |
 
-function targetDirs(scope) {
-  const base = scope === 'global' ? homedir() : process.cwd();
-  return [join(base, '.claude', 'skills'), join(base, '.agents', 'skills')];
-}
+Keep help text, SKILL guidance, README, tests, and implementation synchronized.
+Install and uninstall must share ownership data; duplicated hand-maintained lists
+will drift.
 
-export function installGroup(groupName, scope, opts = {}) {
-  const group = getGroup(groupName);
-  const skills = getSkillNames(group);
-  for (const dir of targetDirs(scope)) {
-    if (!opts.dryRun) mkdirSync(dir, { recursive: true });
-    for (const skill of skills) {
-      const src = join(SKILLS_ROOT, skill);
-      const dest = join(dir, skill);
-      if (opts.dryRun) console.log(`copy ${src} -> ${dest}`);
-      else cpSync(src, dest, { recursive: true });
-    }
-  }
-  return skills;
-}
+## Verification
 
-export function uninstallGroup(groupName, scope, opts = {}) {
-  const group = getGroup(groupName);
-  const skills = getSkillNames(group);
-  for (const dir of targetDirs(scope)) {
-    for (const skill of skills) {
-      const target = join(dir, skill);
-      if (opts.dryRun) console.log(`delete ${target}`);
-      else rmSync(target, { recursive: true, force: true });
-    }
-  }
-  return skills;
-}
-
-export function installAll(scope, opts = {}) {
-  return GROUPS.flatMap((g) => installGroup(g.name, scope, opts));
-}
-
-export function uninstallAll(scope, opts = {}) {
-  return GROUPS.flatMap((g) => uninstallGroup(g.name, scope, opts));
-}
-```
-
-## README examples
-
-Show both runners, but avoid implying Bun is required for `npx`:
+At minimum:
 
 ```bash
-npx @scope/agent-skill-books install --all
-bunx @scope/agent-skill-books install --all
-npx @scope/agent-skill-books install --group skill-creator
-npx @scope/agent-skill-books uninstall --group skill-creator
+node bin/cli.js --help
+npm pack --dry-run
 ```
 
-For GitHub Packages, include one-time scope registry setup and token scope requirements.
+For flow changes, use isolated temporary HOME/project directories and verify:
+
+- absolute and relative `--project` resolution;
+- selected items land only in the intended `.claude` root;
+- global manifest entries are deduplicated and sorted;
+- uninstall removes recorded global items only;
+- project files, foreign files, settings keys, and dependencies survive; and
+- no credential value appears on stdout/stderr.
+
+If adding non-interactive flags, test them directly with Node before documenting
+`npx`; `bunx` success alone does not prove the Node path works.

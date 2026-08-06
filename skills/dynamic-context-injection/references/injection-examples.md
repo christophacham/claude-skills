@@ -1,130 +1,197 @@
 # Dynamic context injection — worked examples
 
-This file is read on demand, never preprocessed — so it can safely contain
-literal injection syntax. Each example shows the pattern exactly as it would
-appear in a real SKILL.md.
+Reference files are read on demand and are not preprocessed as skill bodies, so
+this file can show literal Claude Code injection syntax. Each `After` block is
+what would appear in a real `SKILL.md`.
 
-## Convert: static read → injection
+## Convert: bounded static read
 
-Before (costs a tool call + result envelope every load):
-
-```markdown
-1. `bd show <epic>` — read the design field in full.
-```
-
-After (arg comes from the skill invocation, so `$0` works):
+Before (one routine tool round-trip on every invocation):
 
 ```markdown
-## Epic doctrine (live at load)
-!`bd show $0`
-
-The design field above is authoritative doctrine — treat every constraint
-as a hard rule.
-```
-
-When invoked as `/some-skill arg1`, `$0` expands before the command
-runs, and the model receives the bead's full details inline.
-
-## Convert: environment snapshot → fenced block
-
-Before:
-
-```markdown
-First check the tree is clean and what's ready: run `git status --short`
-and `bd ready`.
-```
-
-After (multi-line commands in a fence opened with three backticks + `!`):
-
-````markdown
-## State at load
-```!
-git status --short
-bd ready 2>/dev/null || echo "(no beads here)"
-```
-````
-
-## Convert: version/tooling preamble
-
-Before:
-
-```markdown
-Check the toolchain: run `node --version` and `npm --version`.
+First run `git status --short` and use the result as repository context.
 ```
 
 After:
 
+```markdown
+## Repository state at load
+!`git status --short 2>/dev/null || printf '%s\n' '(git status unavailable)'`
+
+If the state line says it is unavailable, continue without repository state.
+```
+
+No invocation text enters the command. The fallback is short and the surrounding
+instruction still works when shell execution is disabled by policy.
+
+## Convert: dependent reads in one fenced script
+
+Commands inside one fenced injection run sequentially in one shell, so local
+variables and shell command substitution are valid:
+
 ````markdown
-## Toolchain
+## Repository identity
 ```!
-node --version
-npm --version
+if root=$(git rev-parse --show-toplevel 2>/dev/null); then
+  printf 'root=%s\n' "$root"
+  if sha=$(git -C "$root" rev-parse --short HEAD 2>/dev/null); then
+    printf 'sha=%s\n' "$sha"
+  else
+    printf '%s\n' 'sha=unavailable'
+  fi
+else
+  printf '%s\n' 'git=unavailable'
+fi
 ```
 ````
 
-## VIOLATION: mutation injected (never do this)
+The `$(...)` forms are normal Bash command substitution. The renderer's
+single-pass rule only says that *stdout* is not scanned for more injection
+markers.
+
+## Independent placeholders: no ordering contract
 
 ```markdown
-!`bd update $0 --claim`
+## Runtime
+!`node --version 2>/dev/null || printf '%s\n' 'node=unavailable'`
+
+## Repository
+!`git status --short 2>/dev/null || printf '%s\n' 'git=unavailable'`
 ```
 
-Injected commands run at load even if the model, after reading everything,
-decides NOT to claim. Claiming is a decision; it must stay a tool call.
-Injection is only for reads the model needs *before* deciding anything.
+These reads are independent. Claude Code may execute separate placeholders
+concurrently. They cannot share `cd`, variables, temporary files, or exit status.
+If the second read depends on the first, combine them into one fenced script.
 
-## VIOLATION: chained args (single pass)
+## Violation: invocation argument pasted into shell
 
 ```markdown
-!`bd ready`
-!`bd show $(bd ready --json | jq -r '.[0].id')`
+!`bd show "$ARGUMENTS"`
+!`bd show "$0"`
 ```
 
-Wrong twice over: substitution runs once (no re-scan, no dependency between
-lines), and the bead id isn't known at invocation time. Keep the first line;
-the second must be an instruction the model executes as a tool call after
-reading the ready list.
-
-## VIOLATION: `!` not at line start (silently literal)
+Both are unsafe. Claude Code performs argument substitution before the shell
+runs; shell quotes surround the pasted text but do not create a safely escaped
+argv element. Keep the argument visible as ordinary prompt content and execute
+only after model-side validation:
 
 ```markdown
-Run mode: KEY=!`cmd`
+## Request
+$ARGUMENTS
+
+Validate the requested bead id as data. Then call `bd show` with a normal Bash
+tool call; do not interpolate it into load-time shell.
 ```
 
-The `!` follows `=`, so nothing runs — the line stays literal text and the
-model sees the placeholder verbatim. If you meant injection, the `!` must be
-at line start or after whitespace.
+Named arguments behave the same way. If frontmatter declares
+`arguments: [bead]`, `$bead` must not appear in injected shell source.
 
-## VIOLATION: unguarded command at user-level scope
-
-A skill in `~/.claude/skills/` loads in repos without beads:
+## Violation: cross-placeholder dependency
 
 ```markdown
-!`bd ready`
+!`bd ready --json`
+!`bd show "$id_from_the_previous_output"`
 ```
 
-In a non-beads repo this dumps an error (or aborts the load) into context —
-the opposite of the goal. Guard it:
+Separate placeholders do not pass data or shell state to one another. The first
+stdout becomes prompt text; it is not a shell variable and is not reprocessed.
+Keep the second step as a normal tool call after the model selects and validates
+an id. If all inputs are trusted and the read is truly unconditional, combine
+the dependent commands into one guarded fenced injection instead.
+
+## Violation: mutation at load
 
 ```markdown
-!`bd ready 2>/dev/null || echo "(no beads initialized here — skill does not apply)"`
+!`bd update task-123 --claim`
+!`git add -A && git commit -m checkpoint`
 ```
 
-The guard turns a polluting failure into one informative line.
+Rendering is unconditional and precedes model judgment. Claims, installs,
+writes, commits, pushes, and other state changes stay ordinary tool calls.
 
-## Guarded optional reads (pattern library)
+## Violation: misleading pipeline fallback
+
+This looks guarded but is not reliable in Bash without `pipefail`:
 
 ```markdown
-!`git log -3 --oneline 2>/dev/null || echo "(not a git repo)"`
-!`cat package.json 2>/dev/null | head -40 || echo "(no package.json)"`
+!`cat package.json 2>/dev/null | head -40 || echo '(no package.json)'`
 ```
 
-Keep guards short — the fallback text also lands in context.
+If `cat` fails, `head` can still exit zero, so the fallback never runs. Guard
+the failing read and bound output afterward:
 
-## What NEVER converts (stay tool calls)
+````markdown
+```!
+if content=$(cat package.json 2>/dev/null); then
+  printf '%s\n' "$content" | head -40
+else
+  printf '%s\n' '(package.json unavailable)'
+fi
+```
+````
 
-- `bd update/close/dep add`, `git commit/push`, file writes — mutations.
-- Commands whose args come from earlier output (see chained-args violation).
-- Interactive commands (`bd edit` opens an editor; blocks agents).
-- Slow or network-heavy commands a skill only sometimes needs — injection
-  pays the cost on EVERY load, including accidental triggers.
-- Commands the model must decide whether to run at all.
+## Bash guard for optional tooling
+
+````markdown
+```!
+if command -v bd >/dev/null 2>&1; then
+  if ready=$(bd ready 2>/dev/null); then
+    printf '%s\n' "$ready" | head -30
+  else
+    printf '%s\n' 'beads=unavailable'
+  fi
+else
+  printf '%s\n' 'beads=not-installed'
+fi
+```
+````
+
+The output is bounded and reveals no credential value.
+
+## PowerShell guard for optional tooling
+
+With `shell: powershell`:
+
+````markdown
+```!
+if (Get-Command git -ErrorAction SilentlyContinue) {
+  try {
+    $root = & git rev-parse --show-toplevel 2>$null
+    if ($LASTEXITCODE -eq 0) { "root=$root" } else { 'git=unavailable' }
+  } catch {
+    'git=unavailable'
+  }
+} else {
+  'git=not-installed'
+}
+```
+````
+
+PowerShell `try`/`catch` does not turn every native nonzero exit into an
+exception, so the example checks `$LASTEXITCODE`.
+
+## Secret-safe readiness snapshot
+
+Report only presence, never a token value:
+
+````markdown
+```!
+if [ -n "${SERVICE_API_KEY:-}" ]; then
+  printf '%s\n' 'service_key=present'
+else
+  printf '%s\n' 'service_key=missing'
+fi
+```
+````
+
+Environment variables used as trusted local state are different from skill
+invocation arguments. Still audit the output: anything inserted here becomes
+model-visible context.
+
+## What does not convert
+
+- User-derived arguments or values selected from earlier model-visible output.
+- Mutations: issue claims/updates, installs, file writes, commits, pushes.
+- Network calls, long scans, interactive commands, and optional expensive work.
+- Commands whose execution is itself a model decision.
+- Reads whose raw output may expose secrets or is too large to bound safely.

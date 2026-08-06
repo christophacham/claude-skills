@@ -70,7 +70,7 @@ High efferent coupling = high change risk. When this component's dependencies ch
 A = abstract elements / (abstract + concrete elements)
 ```
 
-Ratio of interfaces/abstract classes to concrete implementations. Too low = brittle and hard to understand. Too high = useless abstractions.
+Ratio of abstract elements to abstract + concrete elements. Neither low nor high is inherently bad: leaf implementations should often be concrete, while highly stable policy packages may expose more abstraction. Count only meaningful extension contracts; adding empty interfaces to improve the metric is gaming it.
 
 ### Instability (I)
 
@@ -78,7 +78,7 @@ Ratio of interfaces/abstract classes to concrete implementations. Too low = brit
 I = Ce / (Ce + Ca)
 ```
 
-Ratio of outgoing to total coupling. I ≈ 1 = highly unstable (breaks easily). I ≈ 0 = stable or rigid.
+Ratio of outgoing to total coupling. `I≈1` means few dependents and many outgoing dependencies: easy to change without breaking others, but exposed to dependency change. `I≈0` means many dependents and few outgoing dependencies: stable in the dependency graph, not necessarily reliable or rigid.
 
 ### Distance from the Main Sequence (D)
 
@@ -86,13 +86,13 @@ Ratio of outgoing to total coupling. I ≈ 1 = highly unstable (breaks easily). 
 D = |A + I - 1|
 ```
 
-Measures the balance between abstractness and instability. Closer to 0 = healthier.
+Measures distance from the line `A + I = 1`. Closer to zero means closer to the **main sequence**, not automatically healthier; architecture intent and change history decide whether distance is a problem.
 
-**Two danger zones:**
-- **Zone of Uselessness** — too abstract, too stable, difficult to use
-- **Zone of Pain** — too concrete, too unstable, brittle and hard to maintain
+**Two opposite zones far from the line:**
+- **Zone of Pain** — stable and concrete (`A≈0, I≈0`): many dependents, few extension seams, so change is costly
+- **Zone of Uselessness** — unstable and abstract (`A≈1, I≈1`): abstractions have few stable dependents and may serve no real client
 
-If many components fall into either zone, the codebase may not be worth decomposing — consider a rewrite or major refactoring first.
+Use the scatter plot to select components for inspection. Do not infer “rewrite,” “split,” or “add interfaces” from `D` alone; confirm with co-change, ownership, defects, deployment constraints, and actual client needs.
 
 ---
 
@@ -145,25 +145,25 @@ After applying each pattern, guard against regression with fitness functions:
 
 ## Saga Patterns in Full
 
-The positional superscript gives (communication, consistency, coordination): s/a = sync/async, a/e = atomic/eventual, o/c = orchestrated/choreographed.
+The source vocabulary labels combinations as (communication, desired outcome, coordination): s/a = sync/async, a/e = “all-or-compensated”/eventual, o/c = orchestrated/choreographed. Treat `a` as a business goal only. **No row provides ACID atomicity or isolation across services.** Async is a transport/interaction choice, not proof of parallelism or temporal decoupling.
 
-| Pattern | Comm | Consist | Coord | Coupling | Complexity | Responsiveness | Scale |
-|---------|------|---------|-------|----------|------------|----------------|-------|
-| Epic Saga (sao) | Sync | Atomic | Orch | Very high | Low | Low | Very low |
-| Phone Tag (sac) | Sync | Atomic | Chor | High | High | Low | Low |
+| Pattern | Comm | Business goal | Coord | Coupling | Complexity | Responsiveness | Scale |
+|---------|------|---------------|-------|----------|------------|----------------|-------|
+| Epic Saga (sao) | Sync | Compensated outcome | Orch | Very high | Low | Low | Very low |
+| Phone Tag (sac) | Sync | Compensated outcome | Chor | High | High | Low | Low |
 | Fairy Tale (seo) | Sync | Eventual | Orch | High | Very low | Medium | High |
 | Time Travel (sec) | Sync | Eventual | Chor | Medium | Low | Medium | High |
-| Fantasy Fiction (aao) | Async | Atomic | Orch | High | High | Low | Low |
-| Horror Story (aac) | Async | Atomic | Chor | Medium | Very high | Low | Medium |
+| Fantasy Fiction (aao) | Async | Compensated outcome | Orch | High | High | Low | Low |
+| Horror Story (aac) | Async | Compensated outcome | Chor | Medium | Very high | Low | Medium |
 | Parallel Saga (aeo) | Async | Eventual | Orch | Low | Low | High | High |
 | Anthology (aec) | Async | Eventual | Chor | Very low | High | High | Very high |
 
 Notes the selection tree doesn't show:
 
 - **Anthology (aec)** — services must carry workflow context via stamp coupling (see Contracts).
-- **Horror Story (aac)** — usually arises when someone "improves performance" of an Epic Saga by adding async + choreography without considering the entangled dimensions. **Escape by dropping atomic consistency → Parallel Saga (aeo).**
-- **Fairy Tale (seo)** — simplest good option when consistency can be eventual and scale is moderate.
-- **Fantasy Fiction (aao)** — async + atomic = pain; avoid.
+- **Horror Story (aac)** — usually arises when someone adds messages and choreography while still expecting a synchronous all-or-nothing experience. Escape by accepting and modeling eventual state, or move the invariant back into one transaction boundary.
+- **Fairy Tale (seo)** — a simple option when visible intermediate state is acceptable and scale is moderate.
+- **Fantasy Fiction (aao)** — messages plus an all-or-compensated user promise requires durable orchestration and difficult recovery; avoid unless the business case pays for it.
 
 ### Orchestration vs Choreography
 
@@ -177,12 +177,12 @@ Notes the selection tree doesn't show:
 
 ### Compensating Updates vs State Management
 
-| | Compensating updates | State management |
-|-|---------------------|------------------|
-| Advantages | All data restored; allows retries and restart | Good responsiveness; less end-user impact |
-| Disadvantages | No isolation; side effects; may fail; poor responsiveness | Data temporarily out of sync; convergence takes time |
+| | Compensation | Forward recovery / state management |
+|-|--------------|-------------------------------------|
+| Advantages | Can restore an acceptable business state when a semantic inverse exists | Preserves irreversible work; supports retry, repair, and operator intervention |
+| Disadvantages | Not rollback; no isolation; inverse may be partial, illegal, or fail | Intermediate states are visible; convergence and stuck-workflow handling are explicit product concerns |
 
-State management gives the user an immediate response; the state machine documents all paths through the workflow.
+For every step record: idempotency key, attempt state, deadline, next action, compensating action (if any), and manual resolution path. A refund does not erase a captured payment, an email cannot be unsent, and inventory released later was still unavailable in the interim. Prefer forward recovery for such irreversible effects.
 
 ---
 
@@ -196,7 +196,7 @@ State management gives the user an immediate response; the state machine documen
 | Connection management (service instances × connections can exceed database capacity) | Database transactions (ACID required across tables?) |
 | Scalability (can the DB scale with services?) | |
 | Fault tolerance (does one DB crash take down all services?) | |
-| Architectural quantum (shared DB forces a single quantum) | |
+| Architectural quantum (shared transactions, failure controls, and change ownership can couple deployables even on one server) | Shared hosting alone does not prove one quantum when schemas, migrations, transactions, and failure controls are independently owned |
 | Database type optimization (would some data benefit from non-relational storage?) | |
 
 ### Joint Ownership — Four Techniques
@@ -236,7 +236,7 @@ ALTER TABLE Product DROP COLUMN inv_cnt;
 4. Move schemas to separate databases.
 5. Switch over to independent databases.
 
-**Key rule: a service should NEVER connect to multiple databases or schemas.** If it needs data from another domain, use one of the four read-access patterns.
+**Steady-state rule:** one service owns writes for its data; avoid operational paths that write across owners. Cross-database reads can be deliberate for reporting, administration, or a time-bounded migration, but they create availability, security, and change coupling—document the exception and keep domain write authority singular.
 
 ---
 
@@ -284,6 +284,21 @@ This yields bounded contexts (each service evolves internally), implementation d
 
 Advantages: loose coupling, per-consumer variability in strictness, evolvable. Disadvantages: requires engineering maturity (disciplined CI, no skipping failed tests); two mechanisms (contract + test) instead of one.
 
+### Contract placement and ownership
+
+- The **provider** owns the offered API/event schema, semantics, compatibility policy, and deprecation telemetry.
+- Each **consumer** owns the subset it relies on and publishes those expectations as contract tests where appropriate.
+- A neutral schema or generated client can live in a shared artifact, but provider and consumer domain objects stay local. Sharing one domain model makes a schema bump a lockstep source-code release.
+- Commands belong at the service that decides and owns the state change. Events are published facts owned by the producer; consumers translate them into their own language. Do not place workflow policy in a “shared contracts” package.
+
+### Compatibility and versioning
+
+Prefer additive changes: optional fields with defined defaults, new event types, and tolerant readers that ignore unknown fields. Do not repurpose a field or change units/meaning under the same contract. For a breaking change, publish a new endpoint/media type/event schema, run both versions during a measured migration window, and retire the old one only after consumer adoption is known. A version number without a compatibility and retirement policy is decoration.
+
+### Delivery and idempotency
+
+Retries occur after timeouts, crashes, and at-least-once delivery, so the contract must define duplicate behavior. Put a stable idempotency key on retried commands and an immutable message/event ID on published facts. The owner records command results or consumers maintain an inbox/dedup record in the same local transaction as their state change. Define deduplication scope and retention, response replay, ordering key (if any), and which failures are safe to retry. Idempotency is a business invariant at the handler boundary, not just a broker setting.
+
 ### Stamp Coupling — Both Faces
 
 Passing a large data structure where the consumer uses only a small part.
@@ -299,9 +314,15 @@ Passing a large data structure where the consumer uses only a small part.
 ☐ Consumer count/diversity — many or external → loose + consumer-driven contracts
 ☐ Stamp coupling — any fields the consumer doesn't use? Trim to need-to-know
 ☐ Deployment constraints — slow consumer deploy cycle (app store, external)? → loose
+☐ Placement — provider owns offered contract; consumer owns expectations;
+    shared artifacts contain wire schema, not shared domain policy
+☐ Evolution — additive/tolerant by default; breaking versions have overlap,
+    adoption telemetry, and a retirement condition
+☐ Retry safety — idempotency key/event ID, dedup scope + retention, ordering,
+    and retryable failure semantics are explicit
 ☐ Verification — strict: schema validation at build time; loose: consumer-driven
     contracts as fitness functions
-☐ Document contract decisions in ADRs
+☐ Document only hard-to-reverse contract decisions in ADRs
 ```
 
 ---

@@ -1,0 +1,61 @@
+{
+  "skill_name": "reimpl-scout",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Scout this parser library for a compatible reimplementation. I need the complete public API, architecture, callers, mutation model, contracts, and local extensions.",
+      "expected_output": "Create a source-informed full pack with a deterministic scope manifest, A-F artifacts, mutation cards, exact reconciliation, and independent adversarial judgment.",
+      "files": [],
+      "expectations": [
+        "The index classification is SOURCE_INFORMED unless documented clean-room separation and provenance were supplied.",
+        "The scope manifest records root, exclusions, git identity, sorted command/tool version, stable unit IDs, and exact count.",
+        "All A-F layers remain present, including mutation cards for every discovered core state type.",
+        "The scorecard uses evidence states, found/expected counts, methods, and named gaps rather than ceremonial percentages."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Read this repository and give my implementation team a clean-room reimplementation blueprint. We are all in the same session and everyone can browse the source.",
+      "expected_output": "Produce source-informed compatibility research while explicitly declining to claim clean-room status without a real source/implementation boundary and provenance.",
+      "files": [],
+      "expectations": [
+        "States that repository, session, prompt, or agent isolation alone does not establish clean-room provenance.",
+        "Records SOURCE_INFORMED and identifies missing implementer source denial, handoff provenance, and auditable separation.",
+        "Does not make legal conclusions or imply that a scout pack proves implementation independence."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Map the persistence subsystem in this large monorepo: config keys, runtime flow, state mutation, storage contracts, and tests. Use parallel help if useful.",
+      "expected_output": "Measure scope, derive deterministic non-overlapping units, then use only the subagents justified by those units and a separate review role.",
+      "files": [],
+      "expectations": [
+        "No fixed agent count, wave quota, or percentage target is imposed.",
+        "Each extraction unit has a stable ID, path set, method, artifact, and terminal state.",
+        "The topic pack preserves mutation/persistence and contract deliverables and identifies an independent reviewer or SELF_REVIEW limitation."
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Audit this existing scout pack. It says 92% complete, but several API shards and mutation cards look missing.",
+      "expected_output": "Reconcile the pack against files on disk and replace unsupported percentages with evidence states, exact counts, methods, gaps, and an ordered fix list.",
+      "files": [],
+      "expectations": [
+        "Rebuilds scope/host counts from canonical artifacts instead of trusting wave status or the stated percentage.",
+        "Marks affected A/C/D/E layers PARTIAL when named manifest units, callers, cards, or contracts are missing.",
+        "Writes 91_adversary_notes with critical count, review-independence label, and ordered fixes."
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Run the same scout prompt against repo A and repo B separately, then compare their packs. Does that make the work clean-room?",
+      "expected_output": "Keep each source run analytically isolated, compare only in a later pack, and explain that this controls cross-contamination but does not prove clean-room implementation.",
+      "files": [],
+      "expectations": [
+        "Each run uses its own reponame-prefixed 2_ or 4_ output without foreign product findings.",
+        "Comparison occurs only from completed packs in a separate artifact/session.",
+        "The response does not equate dual-repo, session, prompt, or agent isolation with source/implementation separation or provenance."
+      ]
+    }
+  ]
+}

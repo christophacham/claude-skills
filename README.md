@@ -97,13 +97,13 @@ iwr -useb https://raw.githubusercontent.com/christophacham/claude-skills/main/un
 
 ## Core Doctrine
 
-- **Deep modules, small surfaces** — Maximize benefit per unit of interface cost (`simple-design`).
-- **TDD + how-you-know** — Red→green for behavior; re-run the checks named in acceptance criteria on the committed tree.
-- **Tidy First** — Structure and behavior never share a commit when you can help it.
-- **Independent review** — Prefer a different model tier for `reviewer` than for `coder` when both run.
+- **Deep modules, small surfaces** — Maximize benefit per unit of interface cost when the boundary is earned (`simple-design`).
+- **TDD + how-you-know** — Use red→green for changed behavior and run the checks relevant to the affected surface.
+- **Tidy First** — Separate structural and behavioral changes when doing so improves reviewability.
+- **Independent review** — Review from a fresh context and require evidence-based findings. Same-model review remains valid; a different model tier is an optional source of diversity.
 - **Ceremony follows irreversibility** — Ports, aggregates, ADRs, and sagas only when earned (`architecture-design`, `distributed-architecture`).
 
-Optional: Beads (`bd`) for issue tracking; design panelists for multi-lens design when the parent wants them.
+Optional: Beads (`bd`) for issue tracking; design panelists for multi-lens design when the parent wants them. The general `coder` and `reviewer` do not mutate trackers.
 
 ---
 
@@ -139,15 +139,15 @@ Install into `~/.claude/agents` (or project `.claude/agents`). Dispatch from the
 
 | Agent | Role |
 |-------|------|
-| **`coder`** | Implement one unit (TDD Phase A or structural Phase B); commit; report SHA |
-| **`reviewer`** | Independent audit → PASS / FIX / ROLLBACK |
-| **`beads-creator`** | All `bd` mutations; epic children require non-empty `design` |
-| **`beads-reviewer`** | Board hygiene; auto-fix safe mechanical issues |
-| **`panelists/deep-module`** | Design lens: one deep owner |
-| **`panelists/minimal-diff`** | Design lens: fewest honest files |
-| **`panelists/seam`** | Design lens: behavior-preserving seam |
+| **`coder`** | Implement a scoped implementation brief using project `CLAUDE.md`, focused changes, and relevant checks; a user-authorized commit is optional |
+| **`reviewer`** | Read-only independent audit of a diff, commit, branch, or file set → PASS / CHANGES_REQUESTED / REPLAN_RECOMMENDED |
+| **`beads-creator`** | Execute explicitly requested Beads creates, updates, labels, and links; destructive actions and Dolt pushes require user authorization |
+| **`beads-reviewer`** | Read-only board hygiene by default; apply only explicitly requested, deterministic repairs |
+| **`panelists/deep-module`** | Design lens: natural ownership, information hiding, and justified module depth |
+| **`panelists/minimal-diff`** | Design lens: every touch point and structural cost must be earned |
+| **`panelists/seam`** | Design lens: smallest justified contract that contains demonstrated coupling |
 
-Optional **`pool.md`** (global or project `.claude/pool.md`) documents preferred coder/reviewer model tiers for cross-model review. Agents work without it.
+Optional **`pool.md`** (global or project `.claude/pool.md`) provides advisory routing preferences for agent model tiers. Agents do not require it, and same-model review remains valid.
 
 ---
 

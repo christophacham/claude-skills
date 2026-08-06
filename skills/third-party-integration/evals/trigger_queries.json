@@ -1,0 +1,10 @@
+[
+  {
+    "query": "Integrate a payment vendor that supports idempotency keys, paginated refunds, rate-limit headers, and signed webhooks. Decide whether we need an adapter and outline tests without mocking the SDK.",
+    "should_trigger": true
+  },
+  {
+    "query": "Compare current vendor prices and choose which provider we should purchase.",
+    "should_trigger": false
+  }
+]

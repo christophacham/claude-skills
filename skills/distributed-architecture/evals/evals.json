@@ -1,0 +1,39 @@
+{
+  "skill_name": "distributed-architecture",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Design checkout across payment, inventory, and shipping. We use at-least-once messages, payment capture cannot truly be undone, and product wants an immediate response. Compare orchestration and choreography and specify recovery.",
+      "expected_output": "A trade-off analysis that treats a saga as local transactions with visible intermediate states, chooses workflow ownership deliberately, and specifies durable recovery and duplicate handling.",
+      "files": [],
+      "expectations": [
+        "Positive: states that a saga is not ACID and compensation is a new semantic action rather than rollback.",
+        "Analyzes temporal coupling separately from synchronous/asynchronous communication.",
+        "Defines persisted workflow state, forward recovery for irreversible capture, compensation-failure handling, deadlines, and operator intervention.",
+        "Requires idempotency keys or message IDs plus transactional inbox/outbox or equivalent deduplication."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "In one deployable Rust application, should the SQL repository implementation live in domain, application, or infrastructure?",
+      "expected_output": "A scope correction that hands single-application layer placement to architecture-design.",
+      "files": [],
+      "expectations": [
+        "Negative: does not apply service-splitting, saga, or database-per-service doctrine to a single-application placement question.",
+        "Routes to architecture-design and briefly identifies dependency direction/port ownership as the relevant topic."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Our architecture review says a concrete unstable component is in the Zone of Pain, any shared database means one quantum, and adding v2 to every event plus broker deduplication completes our contract strategy. Correct the review.",
+      "expected_output": "A precise correction of main-sequence zones, quantum evidence, contract ownership/versioning, and handler idempotency.",
+      "files": [],
+      "expectations": [
+        "Corrected behavior: identifies Zone of Pain as stable plus concrete (A near 0, I near 0) and Zone of Uselessness as abstract plus unstable (A near 1, I near 1).",
+        "Treats distance from the main sequence as a diagnostic, not an automatic rewrite/split/interface mandate.",
+        "Says shared tables, transactions, migrations, and failure domains can collapse quanta, while co-location on one database server alone is insufficient proof.",
+        "Places offered contract/compatibility with the provider and expectations with consumers; prefers additive evolution and requires handler-level idempotency with scope/retention, not only broker deduplication."
+      ]
+    }
+  ]
+}

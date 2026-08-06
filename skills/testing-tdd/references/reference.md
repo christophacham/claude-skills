@@ -12,9 +12,9 @@ Load this file only when the SKILL.md summary is insufficient — for full patte
 
 **RED:** Write the test as you expect the code to work, even if types/methods don't exist yet — compilation failure counts as red. The test expresses the desired API from the caller's perspective. Run the suite to confirm the failure.
 
-**GREEN:** Write the absolute minimum production code to pass. Hard-coding is valid. No code for future features — no "I can see it coming." Speed through green; correctness of approach comes in refactor.
+**GREEN:** Write the smallest coherent production change that passes. A temporary constant is useful only when it exposes the next example that will force generalization; do not preserve knowingly false behavior or code for future features.
 
-**REFACTOR:** Remove duplication between test and production code (drives generalization), within production code (DRY), and within test code (extract helpers). Improve naming and idiomatic usage. If a test breaks during refactoring, fix it before proceeding. Never add features during refactor. Confirm still green, then commit.
+**REFACTOR:** Remove duplication that represents shared knowledge, improve naming and idiomatic structure, and keep behavior fixed. If a test breaks, restore green before proceeding. Never add features during refactor. Record a green checkpoint with the workflow's allowed mechanism; do not create a commit unless requested.
 
 ### Step Size
 
@@ -24,9 +24,9 @@ Load this file only when the SKILL.md summary is insufficient — for full patte
 
 ### What to Test / What Not to Test
 
-Test conditionals, loops, operations, polymorphism — only code you write. Don't test external code unless you distrust it; if a third-party library has buggy behavior you depend on, pin it with a test that fails if the behavior is ever "fixed."
+Test behavior and risk, not syntax categories by quota. Focus on code and contracts you own. For an external dependency, write learning/contract tests only for assumptions your adapter relies on—including a documented quirk you intentionally depend on—and run them against the real protocol/sandbox or a faithful server, not a mocked vendor object.
 
-Think in terms of mean time between failures: if a condition can never occur (e.g., integer overflow with arbitrary-precision arithmetic), a test for it adds no robustness. Tests are a means to confidence, not an end. Find your own level — there is no universal count (Beck wrote 6 tests for the triangle classifier where Binder wrote 65).
+A test for an impossible condition adds no robustness, but verify the premise at the actual numeric/runtime boundary. Tests are a means to justified confidence, not an end; there is no universal count.
 
 ---
 
@@ -34,7 +34,7 @@ Think in terms of mean time between failures: if a condition can never occur (e.
 
 ### Test List
 
-Contents: (1) examples of every operation to implement, (2) null versions of operations that don't exist yet, (3) refactorings you foresee. Rules: don't implement tests en masse (creates long red bars); one test at a time, always close to green; add newly-discovered tests and refactorings to the list as they arise; never more than one change from green.
+Contents: known success examples, boundaries, caller-visible failures, open questions, and cleanup observations. Do not encode speculative abstractions as requirements. Work one behavior at a time, stay close to a meaningful green checkpoint, and add discoveries as they arise.
 
 ### Feature List (Siddiqui)
 
@@ -75,8 +75,8 @@ Resolves the first-feature paradox: you can't write a test without infrastructur
 - **Another Test** — tangential idea? Add it to the list, return to the topic.
 - **Regression Test** — a reported defect starts as the smallest failing test. Every regression test is a test you should have written; ask how you could have known. If you must refactor to isolate the defect, the design is telling you it isn't done.
 - **Do Over** — lost and stuck? Throw the code away and start fresh rather than "untwisting it enough."
-- **Broken Test** — solo session: leave the last test failing as a bookmark for fast re-entry.
-- **Clean Check-in** — team session: all tests green before check-in. If integration fails on check-in, the simplest rule is to revert and redo. Never comment out tests.
+- **Broken Test** — an uncommitted local failing test can bookmark a solo session when no one else consumes the worktree. Prefer leaving a note plus a green checkpoint when automation or handoff will run.
+- **Clean Check-in** — shared branches and CI stay green. Restore the last checkpoint when a change cannot be repaired locally; never comment out a test merely to pass.
 
 ---
 
@@ -241,7 +241,7 @@ void sendAndProcess(OrderBuilder orderDetails) {
 
 ### Khorikov's Taxonomy
 
-All doubles are mocks or stubs: **mocks** emulate and examine *outgoing* interactions (commands/side effects); **stubs** emulate *incoming* interactions (queries/data). Spies are handwritten mocks; dummies and fakes are forms of stubs. Command Query Separation: commands → mocks with strict verification; queries → stubs, never asserted on (asserting stub interactions is overspecification).
+Khorikov groups all doubles as **mocks** (emulate and examine outgoing interactions) or **stubs** (supply incoming data); under that taxonomy spies are handwritten mocks and dummies/fakes fall on the stub side. Meszaros keeps five separate categories. State which vocabulary you are using. Command/query is a useful heuristic, not “every command gets a strict mock”: verify an outgoing message only when that message is observable behavior, and never assert a query-stub interaction merely to prove the implementation called it.
 
 ### Siddiqui's Guidance
 
@@ -254,7 +254,7 @@ Use real code when a double costs more than the real thing. Use doubles when the
 ### Strategies
 
 - **Transient Fresh Fixture** — in-memory, garbage-collected. The default.
-- **Persistent Fresh Fixture** — DB/filesystem; requires explicit teardown. Prefer a Fake to avoid persistence.
+- **Persistent Fresh Fixture** — DB/filesystem; requires reliable isolation/teardown. Use a fake for fast application-policy tests; use the production engine or faithful emulator for tests claiming persistence fidelity.
 - **Shared Fixture** — reused across tests; saves setup time but causes Interacting Tests, Test Run Wars, Erratic Tests. Variants: **Immutable Shared Fixture** (read-only shared part + per-test fresh mutable layer — much safer); **Prebuilt Fixture** (seeded outside the run; risk of Unrepeatable Tests).
 - **Minimal Fixture** — only objects that directly affect the behavior under test. A large General Fixture obscures cause and effect.
 - **Standard Fixture** — same fixture *design* (not instance) rebuilt fresh per test.
@@ -460,7 +460,7 @@ You own `support`, so you can mock it; you test objects, not formatted strings. 
 
 ### Mocking Concrete Classes
 
-Overriding methods on a concrete class hides the role the collaborator plays. `CdPlayer` has 5 methods but `MusicCentre` uses 2 — the real abstraction is `ScheduledDevice`. Extract the interface; naming the relationship makes it findable, reusable, discussable. Exception: legacy/third-party code — write a veneer, override only visible methods.
+Overriding methods on a concrete class can hide the role the collaborator plays. `CdPlayer` has 5 methods but `MusicCentre` uses 2 — when that narrower scheduling role is real production knowledge, an owned `ScheduledDevice` contract can make it explicit. Legacy or third-party code does not automatically justify a veneer: add one only when it owns translation, volatility, failure, policy, or a protocol the application genuinely needs to substitute.
 
 ### Mocking Values
 
@@ -521,7 +521,7 @@ Code and branch coverage are gap signals, not goals — easily gamed (assertion-
 | Doubles for | Shared dependencies only | All mutable dependencies |
 | Style | State-based | Communication-based |
 
-Classical is preferred: indiscriminate London mocking couples tests to intra-system communications, damaging refactoring resistance.
+Use the classical/state-based style as the default when real in-process collaborators are fast and deterministic. Outside-in mockist tests can be useful for discovering roles at process/vendor boundaries, but indiscriminate collaborator mocking couples tests to intra-system communication and damages refactoring resistance. Keep the chosen style coherent within a slice.
 
 ### Four Pillars Detail
 
@@ -544,7 +544,7 @@ Intra-system calls (between your classes) are implementation details — mocking
 | Refactoring resistance | High | Medium | Low |
 | Maintainability | High | Medium | Low |
 
-Always prefer output-based; get more of it by pushing side effects to the edges (functional architecture): identify side effects in domain logic, replace them with return values (a `FileUpdate` instruction instead of a write), move execution to the shell, test the core with plain input/output assertions.
+Prefer output-based verification when it fits the domain; it usually resists refactoring best. One way to gain more of it is to return decisions (for example a `FileUpdate`) from a pure core and apply them in a shell. Treat that as an architectural option revealed by test pressure, not a mandate for every object model; hand cross-module structure to `architecture-design`.
 
 ### Functional Core / Mutable Shell
 
@@ -582,24 +582,23 @@ Both keep decision-making out of the controller and make side-effect decisions u
 
 ### Integration Testing Practices
 
-- Unit tests cover edge cases in domain logic; integration tests cover one longest happy path per scenario plus unreachable edge cases.
-- Test preconditions with domain significance; skip purely technical ones.
-- Database: schema in source control with migration-based delivery; own DB per developer; clear data at the start of each test; run DB tests sequentially; real databases (in-memory substitutes like SQLite-for-Postgres mask differences); same data-access code in tests as production; test only complex reads; test repositories indirectly through integration tests.
-- Factory methods for arrange, decorator methods for act (wrap controller creation), fluent assertions for assert.
-- Interfaces sparingly: single-implementation interfaces exist only for mocking, so only unmanaged deps need them. Inject managed deps as concrete classes. Keep domain classes concrete — interfaces on domain classes invite mocking intra-system communications.
-- Support logging: treat as unmanaged dependency behind a domain-specific interface; verify in integration tests. Diagnostic logging: don't test; verify through production monitoring.
-- Fail Fast: preconditions that crash immediately (guard clauses) make some integration edge cases unnecessary — a crash without data corruption is sufficient protection.
+- Focused tests cover dense policy and boundary cases; integration tests cover assumptions that only the real database/framework/protocol can establish. Select scenarios by risk rather than a mandatory “longest path.”
+- Database: keep schema/migrations in source control; use the production engine or a faithful emulator for fidelity tests; isolate with transactions, schemas, containers, unique keys, or sequential execution according to actual commit/concurrency semantics. A SQLite/in-memory substitute is a fake for application tests, not evidence about Postgres behavior.
+- Use factory/builders for arrange and domain assertions for readable verification; do not hide the behavior under excessive test DSL layers.
+- Interfaces are earned by a client role, volatility boundary, or needed substitution—not by whether a dependency is called managed/unmanaged. Keep in-process domain types concrete unless polymorphism is real.
+- Treat support-facing logging/audit output as a contract only when operations or compliance acts on it; diagnostic logging is usually observed via production telemetry rather than exact-string tests.
+- Fail fast on broken internal preconditions, but a panic is not automatically sufficient protection for caller input. Test typed caller-visible failure when recovery is expected.
 
 ### Mocking Best Practices
 
-1. Unmanaged dependencies only.
-2. Mock at the system edge (last type before the external call).
-3. Prefer spies over framework mocks at the edge — independent verification + fluent assertions.
-4. Verify exact call counts and no other calls.
-5. Mocks belong in integration tests only.
-6. Mock types you own — wrap third-party SDKs behind your adapter.
+1. Mock only an owned contract with an externally meaningful outgoing interaction.
+2. Prefer the narrowest boundary that keeps intra-system implementation out of the assertion.
+3. Spies often keep verification readable; framework mocks are acceptable when their failure diagnostics and protocol expectations are clearer.
+4. Verify exact counts/order/no-other-calls only when duplicates or order are contractual.
+5. Application tests and integration tests may both use owned doubles for different reasons; pure domain tests usually need none.
+6. Do not mock third-party SDK objects to restate assumptions. Use `third-party-integration` to choose a real sandbox, emulator, protocol fake, or earned adapter.
 
-No "one mock per test" rule — use as many as there are unmanaged dependencies in the operation.
+No “one mock per test” rule, but many interaction expectations are a design/test-level warning—reassess whether the test observes behavior or scripts an implementation.
 
 ### Common Pitfalls
 
@@ -607,7 +606,7 @@ No "one mock per test" rule — use as many as there are unmanaged dependencies 
 - **Exposing private state** — interact with the SUT as production code does; test the observable behavior that depends on the state (the discount amount, not the internal enum).
 - **Leaking domain knowledge to tests** — hardcode expected values, pre-calculated independently (domain expert, legacy system). Reimplementing the algorithm in the test is a tautology.
 - **Code pollution** — `if (isTestEnvironment)` in production adds maintenance cost and bug surface. Use an interface with a fake in the test project instead.
-- **Mocking concrete classes** — needing to override one method signals an SRP violation: split the dependency-facing part into an adapter with an interface.
+- **Mocking concrete classes** — needing to override one method is a design signal, not proof of an SRP violation. Prefer the real collaborator when practical; add an owned adapter/interface only when a production boundary or observable interaction contract earns it.
 - **Working with time** — avoid ambient context (static clock: shared state, test concerns in production). Service injection is acceptable at controller level. Value injection (pass time as a parameter to domain logic) is preferred.
 
 ---
@@ -616,7 +615,7 @@ No "one mock per test" rule — use as many as there are unmanaged dependencies 
 
 ### Error Wish List
 
-Before implementing error handling: (1) signal errors explicitly — never silently wrong results; (2) be greedy — collect ALL failures, not the first; (3) return no valid result alongside an error — force callers to handle it.
+Before implementing failure handling, define the caller contract: classification, partial-result policy, retryability, and diagnostic detail. Never silently return a wrong success. Aggregate failures when users benefit from correcting them together (for example independent validation fields); fail fast when continuing is unsafe, expensive, or would produce misleading secondary failures. A partial result can be valid when explicitly modeled, not smuggled alongside an error.
 
 ### Language Idioms
 
@@ -675,27 +674,55 @@ def evaluate(self, bank, currency):
     raise Exception("Missing exchange rate(s):[" + failures + "]")
 ```
 
-**Rust — `Result<T, E>`, collect then return:**
+**Rust — typed `Result<T, E>`; aggregate only when the contract calls for it:**
 
 ```rust
-fn evaluate(&self, bank: &Bank, currency: &str) -> Result<Money, String> {
-    let mut total = 0.0;
-    let mut failures = Vec::new();
-    for m in &self.moneys {
-        match bank.convert(m, currency) {
-            Ok(converted) => total += converted.amount,
-            Err(msg) => failures.push(msg),
+#[derive(Debug, PartialEq)]
+enum EvaluationError {
+    MissingRates(Vec<CurrencyPair>),
+}
+
+fn evaluate(&self, bank: &Bank, currency: Currency) -> Result<Money, EvaluationError> {
+    let mut total = Decimal::ZERO;
+    let mut missing = Vec::new();
+    for money in &self.moneys {
+        match bank.convert(money, currency) {
+            Ok(converted) => total += converted.amount(),
+            Err(ConvertError::MissingRate(pair)) => missing.push(pair),
         }
     }
-    if failures.is_empty() {
+    if missing.is_empty() {
         Ok(Money::new(total, currency))
     } else {
-        Err(format!("Missing exchange rate(s):[{}]", failures.join(",")))
+        Err(EvaluationError::MissingRates(missing))
     }
 }
 ```
 
-Never panic for expected failures.
+Test the enum variant and payload callers use. Preserve sources when infrastructure details matter to diagnostics. Do not panic for expected input/dependency failures; use `#[should_panic]` only when panic is the intentional contract.
+
+### Rust test mechanics
+
+```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rejects_a_missing_exchange_rate() -> Result<(), TestSetupError> {
+        let portfolio = portfolio_with_missing_rate()?;
+        let error = portfolio.evaluate(&bank(), Currency::EUR).unwrap_err();
+        assert!(matches!(error, EvaluationError::MissingRates(_)));
+        Ok(())
+    }
+}
+```
+
+- Use `snake_case`; colocate private unit tests, use `tests/` for the public crate API, and use doctests for compiling public examples.
+- A test returning `Result` can use `?` for setup. `expect` should explain a fixture precondition; a bare `unwrap` often hides it.
+- `#[should_panic(expected = ...)]` verifies an intentional panic contract only. For ordinary validation, assert the typed error.
+- Control clocks, RNGs, IDs, and async scheduling. Seed property tests and retain the smallest counterexample. For concurrency, synchronize causally with barriers/channels or paused virtual time; sleeps are not proof.
+- Deterministic snapshots/golden files require stable ordering and explicit normalization. Re-running should not change output unless variability is the behavior under test.
 
 ---
 
@@ -708,7 +735,7 @@ In TDD, refactoring preserves semantics with respect to passing tests — the bu
 - **Migrate Data** — temporarily duplicate old and new formats. Internal-first: add new field, set it everywhere old is set, read it everywhere old is read, delete old, change interface. API-first: add new parameter, translate new→old internally, delete old parameter, migrate uses, delete old format.
 - **Extract Method** — pull a meaningful chunk (loop body, branch) into a named method; parameterize outer temps used.
 - **Inline Method** — paste the body at the call site when indirection has become twisted; re-extract with fresh eyes.
-- **Extract Interface** — need a second implementation → interface of shared operations. The interface gets the clean name (`File`), the implementation the specific one (`DiskFile`).
+- **Extract Interface** — when a client has an earned role that needs substitution or dependency inversion, define the smallest interface beside that client. A second implementation is evidence, not a prerequisite; a mock alone is not sufficient evidence. Name implementations by what is specific (`DiskFile`, `InMemoryFile`).
 - **Move Method** — signal: two or more messages to another object in one method:
 
   ```java
@@ -744,7 +771,7 @@ One-liners (use when the situation arises, not by phase):
 
 ### Values vs. Objects
 
-Values: no identity, immutable, functional style — create instances in tests. Objects: distinct identity, mutable state, message-passing — mock peers, verify interactions. Create domain value types even for simple wrappers (prevents feet-vs-meters confusion, gives behavior a home). Techniques: **breaking out** (extract coherent behavior from a complex object), **budding off** (placeholder wrapping one field), **bundling up** (group values used together).
+Values have no identity and are usually immutable—create instances in tests. Objects have distinct identity and collaborate over time; verify their observable outcomes and mock a peer only when its outgoing protocol is the behavior. Create a domain value type when it protects units, validation, normalization, or meaningful operations; a behaviorless wrapper created only for style is ceremony. Discovery techniques: **breaking out**, **budding off** once a rule appears, and **bundling up** values that must remain consistent.
 
 ### Tell, Don't Ask
 
@@ -771,7 +798,7 @@ Queries are acceptable for values, collections, factory results — but describe
 [External System] <-> [Adapter] <-> [Port (interface)] <-> [Domain Model]
 ```
 
-Ports use domain vocabulary; adapters translate between domain and technical objects; the domain model never references infrastructure directly. Two driving forces: separation of concerns and higher abstraction levels.
+Ports use the policy-side client's vocabulary; adapters translate boundary semantics. This structure is useful when inversion is earned by volatility, substitution, or ownership. A direct concrete dependency inside a cohesive module is simpler when no such seam exists. Layer placement and port ownership belong to `architecture-design`; vendor-boundary choices belong to `third-party-integration`.
 
 ### Context Independence
 
@@ -779,9 +806,9 @@ Whatever an object needs from its environment is passed in; relationships are de
 
 ### Interface Design
 
-- Narrow interfaces: fewer methods = clearer role; easier adapters and decorators; pull interfaces into existence from client needs (on-demand design).
-- No `Impl` classes: `BookingImpl` duplicates `implements Booking`. Name by what's specific: `HttpBooking`, `InMemoryBooking`. Can't name it → bad interface or a value type.
-- Refactor interfaces too: merge same-concept interfaces, split different-concept lookalikes.
+- Narrow client-owned interfaces can clarify an earned role; fewer methods help only when the capability remains coherent.
+- Do not create an interface merely to rename one concrete class. When an interface exists, name implementations by what is specific (`HttpBooking`, `InMemoryBooking`) rather than `BookingImpl`.
+- Refactor contracts carefully: merge true duplicate concepts and split different roles, preserving downstream compatibility or treating the edit as an API change.
 
 ### Where Objects Come From
 
@@ -825,7 +852,7 @@ Reflect regularly: fiddly logic → more unit tests (or simplify the logic); unh
 
 ### Separation of Concerns (Siddiqui)
 
-Test code depends on production code, never the reverse; production code must never behave differently under test. Separate test and production code into different files once you have 2+ entities; one concept per file; explicit imports; language visibility controls to hide internals. Modularization checklist: separate source files → namespaces/packages → explicit imports → one concept per file.
+Production behavior must not branch on a test mode. Place tests according to ecosystem conventions and the boundary they exercise: Rust commonly colocates private unit tests under `#[cfg(test)]` and uses `tests/` for public cross-crate integration; other languages use dedicated test source roots. File count and one-concept-per-file are design choices, not TDD rules.
 
 ### Deleting Tests
 

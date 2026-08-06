@@ -178,6 +178,7 @@ class InstallerTests(unittest.TestCase):
                 encoding="utf-8",
             )
             (fake_bin / "npm").write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            (fake_bin / "tvly").write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
             for executable in fake_bin.iterdir():
                 executable.chmod(0o755)
 
@@ -566,7 +567,11 @@ class PeekRepoHelperTests(unittest.TestCase):
         self.helper = SKILLS / "peek-repo" / "scripts" / "ensure-clone.sh"
         gh = self.bin / "gh"
         gh.write_text(
-            "#!/bin/sh\nprintf '%s\\n' \"$@\" > \"$GH_LOG\"\nmkdir -p \"$4/.git\"\n",
+            "#!/bin/sh\n"
+            "printf '%s\\n' \"$@\" > \"$GH_LOG\"\n"
+            "git -C \"$4\" init -q\n"
+            "git -C \"$4\" remote add origin \"$3\"\n"
+            "case \" $* \" in *' --depth 1 '*) printf '%040d\\n' 0 > \"$4/.git/shallow\";; esac\n",
             encoding="utf-8",
         )
         gh.chmod(0o755)
@@ -583,9 +588,29 @@ class PeekRepoHelperTests(unittest.TestCase):
         else:
             isolated = self.base / "isolated-bin"
             isolated.mkdir(exist_ok=True)
-            mkdir = shutil.which("mkdir")
-            assert mkdir
-            (isolated / "mkdir").symlink_to(mkdir)
+            for command in ("mkdir", "mktemp", "mv", "find", "tr", "rm"):
+                executable = shutil.which(command)
+                assert executable, command
+                (isolated / command).symlink_to(executable)
+            real_git = shutil.which("git")
+            assert real_git
+            fake_git = isolated / "git"
+            fake_git.write_text(
+                "#!/bin/sh\n"
+                "case \" $* \" in\n"
+                "  *' clone '*)\n"
+                "    eval \"dest=\\${$#}\"\n"
+                "    url=\n"
+                "    for arg in \"$@\"; do case \"$arg\" in https://github.com/*) url=$arg;; esac; done\n"
+                "    \"$REAL_GIT\" -C \"$dest\" init -q\n"
+                "    \"$REAL_GIT\" -C \"$dest\" remote add origin \"$url\"\n"
+                "    case \" $* \" in *' --depth 1 '*) printf '%040d\\n' 0 > \"$dest/.git/shallow\";; esac;;\n"
+                "  *) exec \"$REAL_GIT\" \"$@\";;\n"
+                "esac\n",
+                encoding="utf-8",
+            )
+            fake_git.chmod(0o755)
+            env["REAL_GIT"] = real_git
             env["PATH"] = str(isolated)
         bash = _BASH
         assert bash
@@ -602,18 +627,20 @@ class PeekRepoHelperTests(unittest.TestCase):
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertIn("STATUS=CLONED", result.stdout)
         self.assertIn("SLUG=example/project", result.stdout)
-        self.assertEqual(
-            ["repo", "clone", "example/project", str(self.home / "code" / "tmp" / "project"), "--", "--depth", "1"],
-            self.log.read_text(encoding="utf-8").splitlines(),
-        )
+        args = self.log.read_text(encoding="utf-8").splitlines()
+        self.assertEqual(["repo", "clone", "https://github.com/example/project.git"], args[:3])
+        self.assertRegex(args[3], r"/code/tmp/\.peek-repo-project\.")
+        self.assertEqual(["--", "--depth", "1", "--single-branch"], args[4:])
+        self.assertTrue((self.home / "code" / "tmp" / "project" / ".git").is_dir())
 
     def test_full_clone_omits_depth(self) -> None:
         result = self.run_helper("example/project", "--full")
         self.assertEqual(0, result.returncode, result.stderr)
-        self.assertEqual(
-            ["repo", "clone", "example/project", str(self.home / "code" / "tmp" / "project")],
-            self.log.read_text(encoding="utf-8").splitlines(),
-        )
+        args = self.log.read_text(encoding="utf-8").splitlines()
+        self.assertEqual(["repo", "clone", "https://github.com/example/project.git"], args[:3])
+        self.assertRegex(args[3], r"/code/tmp/\.peek-repo-project\.")
+        self.assertEqual(4, len(args))
+        self.assertTrue((self.home / "code" / "tmp" / "project" / ".git").is_dir())
 
     def test_rejects_shell_text_without_side_effect(self) -> None:
         marker = self.base / "owned"
@@ -667,10 +694,11 @@ class PeekRepoHelperTests(unittest.TestCase):
         self.assertIn("STATUS=BLOCKED", result.stdout)
         self.assertFalse(self.log.exists())
 
-    def test_reports_missing_gh(self) -> None:
+    def test_uses_noninteractive_git_fallback_without_gh(self) -> None:
         result = self.run_helper("example/project", with_gh=False)
-        self.assertEqual(3, result.returncode)
-        self.assertIn("gh CLI not found", result.stdout)
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertIn("STATUS=CLONED", result.stdout)
+        self.assertIn("CLONE_BACKEND=git", result.stdout)
 
 
 @unittest.skipIf(_POWERSHELL is None, "PowerShell is not installed")
@@ -687,13 +715,20 @@ class PeekRepoPowerShellHelperTests(unittest.TestCase):
         if os.name == "nt":
             gh = self.bin / "gh.cmd"
             gh.write_text(
-                "@echo off\n>\"%GH_LOG%\" (echo %1& echo %2& echo %3& echo %4& echo %5& echo %6& echo %7)\nmkdir \"%4%\\.git\"\n",
+                "@echo off\n>\"%GH_LOG%\" (echo %1& echo %2& echo %3& echo %4& echo %5& echo %6& echo %7& echo %8)\n"
+                "git -C \"%4%\" init -q\n"
+                "git -C \"%4%\" remote add origin \"%3%\"\n"
+                "if \"%6\"==\"--depth\" >\"%4%\\.git\\shallow\" echo 0000000000000000000000000000000000000000\n",
                 encoding="utf-8",
             )
         else:
             gh = self.bin / "gh"
             gh.write_text(
-                "#!/bin/sh\nprintf '%s\\n' \"$@\" > \"$GH_LOG\"\nmkdir -p \"$4/.git\"\n",
+                "#!/bin/sh\n"
+                "printf '%s\\n' \"$@\" > \"$GH_LOG\"\n"
+                "git -C \"$4\" init -q\n"
+                "git -C \"$4\" remote add origin \"$3\"\n"
+                "case \" $* \" in *' --depth 1 '*) printf '%040d\\n' 0 > \"$4/.git/shallow\";; esac\n",
                 encoding="utf-8",
             )
             gh.chmod(0o755)
@@ -746,11 +781,11 @@ class PeekRepoPowerShellHelperTests(unittest.TestCase):
 
     def test_clone_passes_arguments_without_shell_reparsing(self) -> None:
         result = self.run_helper("example/project")
-        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         self.assertIn("STATUS=CLONED", result.stdout)
         args = self.log.read_text(encoding="utf-8").splitlines()
-        self.assertEqual(["repo", "clone", "example/project"], args[:3])
-        self.assertEqual(["--", "--depth", "1"], args[-3:])
+        self.assertEqual(["repo", "clone", "https://github.com/example/project.git"], args[:3])
+        self.assertEqual(["--", "--depth", "1", "--single-branch"], args[-4:])
 
     def test_blocks_destination_symlink(self) -> None:
         root = self.home / "code" / "tmp"

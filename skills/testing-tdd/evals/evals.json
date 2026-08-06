@@ -1,0 +1,39 @@
+{
+  "skill_name": "testing-tdd",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Add a timeout rule to an untested Rust invoice importer that reads the clock and calls a vendor SDK. Show a TDD path, which doubles to use, and idiomatic Rust test placement.",
+      "expected_output": "A coherent characterization-first TDD plan that moves to one failing behavior test, uses owned seams selectively, hands vendor-contract questions off appropriately, and follows Rust conventions.",
+      "files": [],
+      "expectations": [
+        "Positive: explicitly chooses characterization-first/brownfield TDD, captures current behavior, then drives the timeout with a meaningful red-green-refactor loop.",
+        "Uses a passed clock/time value or earned owned seam for determinism without mocking all in-process collaborators.",
+        "Does not mock the vendor SDK as proof of integration; delegates sandbox/protocol/adapter decisions to third-party-integration.",
+        "Uses #[cfg(test)] colocated unit tests or tests/ for public integration as appropriate, snake_case names, typed Result errors, and causal async/time control rather than sleeps."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Create a load-test plan for 100,000 concurrent users and a penetration-test checklist for the public API.",
+      "expected_output": "A scope correction because this skill excludes performance/load and penetration testing.",
+      "files": [],
+      "expectations": [
+        "Negative: does not answer with unit-test pyramids, mocks, or Red-Green-Refactor as if they were load/security testing methods.",
+        "States the testing-tdd boundary and requests or points to performance/security-specific guidance."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Our TDD standard says mock every collaborator, verify exact call order and no extra calls, wrap every third-party SDK, put all Rust tests in separate files, and always create ports-and-adapters because hard tests prove the architecture. Correct it.",
+      "expected_output": "A correction that presents coherent TDD modes, restrained doubles, architecture handoff, vendor specialization, and Rust conventions.",
+      "files": [],
+      "expectations": [
+        "Corrected behavior: distinguishes example-driven, outside-in, and characterization-first approaches rather than merging their rules into one mandate.",
+        "Prefers real in-process collaborators and output/state assertions; exact interactions are verified only when protocol/order/duplicates are observable behavior.",
+        "Rejects universal wrappers and hands vendor contract decisions to third-party-integration; hands cross-module layer/port decisions to architecture-design.",
+        "Corrects Rust placement to colocated #[cfg(test)] unit tests, tests/ integration tests, and doctests for public examples."
+      ]
+    }
+  ]
+}

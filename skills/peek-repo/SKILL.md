@@ -9,6 +9,7 @@ description: >-
   when training-data guesses are not good enough and the canonical repo should
   be read locally. Not for adding package dependencies, permanent installs,
   forking, PRs, or cloning into the current workspace root.
+compatibility: Claude Code; requires git and either gh or HTTPS clone access, plus Bash or PowerShell.
 argument-hint: "[owner/repo | github-url | product-hint]"
 arguments: [repo]
 allowed-tools: >-
@@ -63,9 +64,17 @@ bash "${CLAUDE_SKILL_DIR}/scripts/ensure-clone.sh" "owner/repo" --full
 
 - POSIX destination: `$HOME/code/tmp/<repo-name>`.
 - Windows destination: the user profile's `code\tmp\<repo-name>`.
-- Default is shallow (`--depth 1`); full history only when requested.
-- Existing clone returns `STATUS=EXISTS`; a non-git occupied path is blocked.
-- Missing/failing `gh` returns an error. Do not invent a path.
+- Default is shallow (`--depth 1`). On a matching existing shallow clone,
+  `--full` fetches full history but never pulls, resets, or updates the worktree.
+- Helpers reject every pre-existing file, link/reparse point, empty directory, or
+  non-repository directory. They reuse only a physically contained standalone
+  clone with a case-insensitively matching canonical GitHub origin.
+- New clones are completed and validated inside an invocation-owned unpredictable
+  staging directory, then published with a no-clobber rename. A destination that
+  appears concurrently is preserved. `gh` receives an explicit github.com URL;
+  when `gh` is unavailable, public HTTPS clone falls back to noninteractive `git`.
+- Prompts are disabled. Raw `gh`/`git` diagnostics are suppressed; report only
+  the structured result. Missing/failing tools never justify inventing a path.
 
 ## Inspect after clone when requested
 
@@ -78,16 +87,33 @@ bash "${CLAUDE_SKILL_DIR}/scripts/ensure-clone.sh" "owner/repo" --full
 Use only `PATH` returned by the helper. Prefer structure and key files over
 large dumps. Do not copy source into the active project unless separately asked.
 
-## Report
+## Structured result and report
+
+Preserve helper field names and casing exactly:
 
 ```text
-STATUS: CLONED | EXISTS | BLOCKED | ERROR | NEED_REPO
-PATH:   <platform tmp path>   (omit if unavailable)
-SLUG:   owner/repo
+STATUS=CLONED | EXISTS | BLOCKED | ERROR
+EXIT_CODE=0 | 2 | 3 | 4 | 5 | 6 | 7
+PATH=<platform tmp path>       # when a destination was resolved
+SLUG=owner/repo                # when identity was resolved
+ACTION=CLONED | NONE | UNSHALLOWED
+SHALLOW=true | false
+FRESHNESS=CLONE_TIME | NOT_CHECKED | WORKTREE_NOT_UPDATED
+ORIGIN_CHECK=PASSED
+CLONE_BACKEND=gh | git            # new clones only
 ```
 
-`NEED_REPO` means identity could not be resolved; include the question or
-candidate results. After `CLONED`/`EXISTS`, inspect only when intent requires it.
+Exit `0` is success; `2` is invalid input or a blocked/pre-existing path; `3`
+is a missing tool; `4` is a filesystem/finalization error; `5` is clone failure;
+`6` is clone/git validation failure; `7` is unshallow failure. `ERROR` and
+`COMMAND_EXIT` add sanitized detail on failures.
+
+If identity cannot be resolved before helper invocation, report
+`STATUS=NEED_REPO` in prose with the question or candidate results; this is an
+agent status, not helper output. Never describe `EXISTS` as current:
+`FRESHNESS=NOT_CHECKED` means no remote freshness check occurred, and
+`WORKTREE_NOT_UPDATED` means history was fetched without changing checkout.
+After `CLONED`/`EXISTS`, inspect only when intent requires it.
 
 ## Hard rules
 

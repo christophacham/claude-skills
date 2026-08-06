@@ -1,0 +1,10 @@
+[
+  {
+    "query": "Peek at https://github.com/astral-sh/uv/tree/main and explain from source where the CLI dispatches commands.",
+    "should_trigger": true
+  },
+  {
+    "query": "Add serde_json as a permanent dependency in this repository.",
+    "should_trigger": false
+  }
+]

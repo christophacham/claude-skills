@@ -1,0 +1,70 @@
+{
+  "skill_name": "beads",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "This repo already uses Beads. Create a P0 bug called 'Prevent duplicate invoice charge' with the acceptance criterion 'a retried webhook creates exactly one charge'. Do not claim or publish it.",
+      "expected_output": "Creates exactly the requested bug at priority 0, verifies it, and leaves claiming, labels, relationships, close, commit, and push untouched.",
+      "expectations": [
+        "Uses Beads priority 0 as the highest priority rather than remapping P0 to 1.",
+        "Does not invent phase, size, mission, epic, parent, dependency, design, or other labels/fields.",
+        "Does not run bd close, bd dolt commit, bd dolt push, git commit, or git push.",
+        "Verifies the created issue with a read command and reports the exact mutation."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "The Dolt server is running, but I need to know whether my Beads edits are committed. Which status command should I use?",
+      "expected_output": "Explains that working-set status and engine health are different and selects the version-control status command.",
+      "expectations": [
+        "Uses bd vc status to inspect the Dolt branch and uncommitted issue-data changes.",
+        "States that bd dolt status reports Dolt engine/server health and is not the pending-change check.",
+        "Does not mutate, commit, close, pull, or push anything."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Our old note says this project runs Beads in no-db mode and issues.jsonl is the source of truth. Should I just git pull and import the JSONL to sync?",
+      "expected_output": "Corrects the legacy assumption, identifies the live Dolt database as authoritative, and recommends read-only discovery before any migration or sync operation.",
+      "expectations": [
+        "States that current Beads uses Dolt and that no-db/legacy SQLite instructions are stale.",
+        "Treats issues.jsonl as an optional export rather than the authoritative database or routine sync channel.",
+        "Recommends bd where and installed-command help or diagnostics before acting.",
+        "Does not recommend routine JSONL import as a replacement for bd dolt pull and does not perform an unauthorized pull."
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Update bd-42 to priority 1 and publish the resulting Beads change to its configured Dolt remote. Do not commit or push source code.",
+      "expected_output": "Updates only the requested field, verifies it, inspects pending Dolt state and remotes, creates a Dolt commit only if needed for the authorized publication, and pushes only Beads history.",
+      "expectations": [
+        "Inspects bd-42 before and after changing only its priority to 1.",
+        "Uses bd vc status, not bd dolt status, to determine whether issue-data changes require a commit.",
+        "Accounts for the effective auto-commit policy rather than assuming every write is already committed or always committing again.",
+        "Uses bd dolt push for the authorized publication and does not run git commit, git pull, or git push.",
+        "Does not use force-push or create a remote without separate authorization."
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Add the note 'implementation merged; awaiting release verification' to bd-77. That's all for now.",
+      "expected_output": "Appends or sets the requested note according to clarified intent, verifies the issue, and reports any relevant pending state without completing or publishing the issue.",
+      "expectations": [
+        "Changes only the requested notes content on bd-77.",
+        "Does not close, claim, relabel, reparent, or add a dependency.",
+        "Does not treat the end of the request as authorization to commit, pull, or push Beads or source Git history."
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Audit bd-10 through bd-20 for malformed tracker data. We have not defined phase, size, or epic-label conventions. Do not make changes.",
+      "expected_output": "Performs a read-only, scoped audit against Beads invariants and supplied policy, reports evidence, and avoids inferred workflow repairs.",
+      "expectations": [
+        "Keeps the audit read-only and scoped to bd-10 through bd-20.",
+        "Does not flag missing phase, size, epic, mission, design, parent, or dependency data as defects without a documented rule.",
+        "Treats lint, duplicate, stale, and orphan output as evidence to verify rather than mutation authority.",
+        "Does not auto-fix priorities, labels, graph edges, statuses, or closures."
+      ]
+    }
+  ]
+}

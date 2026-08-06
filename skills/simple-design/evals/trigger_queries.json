@@ -1,0 +1,10 @@
+[
+  {
+    "query": "Review this parser API: callers construct Parser, call configure(schema), call begin(input), repeatedly call step(), then call result(). Calling methods out of order panics. How would you simplify the module without hiding useful errors?",
+    "should_trigger": true
+  },
+  {
+    "query": "Which application layer should own the Postgres repository adapter?",
+    "should_trigger": false
+  }
+]
