@@ -1,0 +1,38 @@
+{
+  "skill_name": "refactoring",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Plan a behavior-preserving Rust refactor of a parser that mixes IO and parsing. Coverage is weak, callers depend on typed errors and stable output ordering, and I am not asking for commits.",
+      "expected_output": "A smell-led, reversible refactoring sequence with characterization tests, explicit behavior surface, Rust-aware mechanics, green checkpoints, and no unsolicited commits.",
+      "files": [],
+      "expectations": [
+        "Positive: establishes a green baseline and characterization tests for typed errors, ordering, and current edge behavior before moving code.",
+        "Names small reversible refactorings and assigns focused checks plus broader green checkpoints instead of demanding the full suite after every edit.",
+        "Preserves Result variants/source semantics and deterministic output, and uses a rollback mechanism without creating commits."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "While renaming the invoice module, also add partial refunds and change the public error response to include a new code.",
+      "expected_output": "A two-hats scope correction that separates behavior-preserving structure work from feature/API changes.",
+      "files": [],
+      "expectations": [
+        "Negative: does not label partial refunds or a changed public error contract as refactoring.",
+        "Separates the work into a green refactoring sequence and a separately tested feature/API migration."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "For speed, replace BTreeMap with HashMap, parallelize iteration, turn panic into Result, extract a Send + Sync trait beside the implementation, and remove pass-through layers. Treat all of this as one refactor.",
+      "expected_output": "A correction that distinguishes unmeasured optimization and behavior/API changes from safe structural refactoring.",
+      "files": [],
+      "expectations": [
+        "Corrected behavior: requires a representative workload, baseline/profile, controlled repeated measurements, and a stated metric before performance edits.",
+        "Flags ordering, tie-breaking, parallel reduction, panic-versus-Result, error variants, and auto-trait bounds as observable behavior or compatibility concerns.",
+        "Places an earned minimal trait with the policy-side consumer and chooses concrete/generic/dyn/enum dispatch from requirements rather than speculative speed.",
+        "Removes a layer only when measured overhead matters and the layer hides no valuable policy."
+      ]
+    }
+  ]
+}

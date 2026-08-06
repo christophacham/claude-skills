@@ -5,7 +5,7 @@ description: Patterns for integrating with third-party code in TDD from Freeman 
 
 # Third-Party Integration
 
-How to integrate external libraries and APIs while maintaining testability and clean design.
+Specialist guidance for the **vendor contract boundary**: discover the assumptions your application relies on, decide whether translation is earned, and verify those assumptions against the real protocol. It does not require a wrapper around every dependency.
 
 ## Only Mock Types That You Own
 
@@ -16,43 +16,48 @@ How to integrate external libraries and APIs while maintaining testability and c
 3. **Tests become complex.** Getting external objects into the right state for testing produces messy tests. The mess is telling you the design is wrong, but you can't fix it.
 4. **Stubbed behavior may drift.** Upgrades to the library can silently invalidate your mocked behavior.
 
-### The Adapter Layer Pattern
+### Decide Whether an Adapter Is Earned
 
-Write a thin layer of adapter objects that bridge between your domain and the external API:
+Start with the vendor SDK/client directly inside a cohesive boundary module when it is already a good fit, its types do not leak into policy, and tests can exercise it cheaply. Add an owned port + adapter when one or more current pressures exist:
+
+- vendor vocabulary/types would leak into domain or application policy
+- the application needs different semantics (idempotency, batching, retries, pagination, error classification)
+- several call sites would otherwise duplicate mapping or vendor quirks
+- a volatile vendor/protocol must be isolated from stable policy
+- a fast deterministic substitute is needed at a meaningful policy/detail seam
+- multiple real providers implement the same application capability
 
 ```
-[Your Domain Code] -> [Port Interface (your terms)] -> [Adapter] -> [Third-Party API]
+[Policy-side client] -> [owned capability, if earned] -> [adapter] -> [vendor]
 ```
 
-**Port interface:** Defined in your domain's vocabulary. Discovered through TDD of your domain code.
-
-**Adapter:** Implements the port interface. Maps between your domain objects and the external API's types. Keep as thin as possible.
+The policy-side client owns the smallest interface it needs; do not mirror the vendor's whole API. The adapter owns translation and boundary policy, but not domain decisions. If it merely forwards every call and type unchanged, remove it until it has knowledge to hide.
 
 **Testing strategy:**
-- **Unit tests** for domain code mock the port interface (which you own)
-- **Integration tests** for adapters verify your understanding of the third-party API
-- Integration tests are fewer than unit tests and may be slower -- that's fine
+- Policy tests use real in-process code and simple fakes/stubs only at an earned owned capability
+- Adapter contract tests exercise the real service sandbox, official emulator, or protocol-level fake server and verify translation
+- A small live smoke suite catches credentials, quotas, and vendor drift that local tests cannot
 
 ```
-Domain Code Tests:              Integration Tests:
-+------------------+            +------------------+
-| Domain Object    |            | Adapter          |
-| mock(Port)       |            | real(ThirdParty)  |
-| verify behavior  |            | verify mapping   |
-+------------------+            +------------------+
+Application policy tests:       Adapter contract tests:
++----------------------+        +------------------+
+| Application service  |        | Adapter          |
+| fake(OwnedPort)      |        | real(ThirdParty)  |
+| verify outcome/state |        | verify mapping   |
++----------------------+        +------------------+
 ```
 
 ### Worked Example (Python)
 
 ```python
-# Port: defined in your domain's vocabulary, discovered through TDD
+# Earned port: application policy needs report storage without S3 vocabulary
 class ReportStore(Protocol):
     def save(self, report: Report) -> None: ...
 
-# Domain code talks only to the port -- unit tests mock ReportStore
-class ReportService:
+# Application orchestration uses the port; domain Report remains provider-free.
+class PublishReport:
     def __init__(self, store: ReportStore): self.store = store
-    def publish(self, report: Report): self.store.save(report)
+    def execute(self, report: Report): self.store.save(report)
 
 # Adapter: thin translation to the third-party API, nothing more
 class S3ReportStore:  # adapts boto3
@@ -66,10 +71,10 @@ class S3ReportStore:  # adapts boto3
 
 ### Benefits
 
-- **Domain vocabulary stays clean.** Technical concepts don't leak into your domain model.
-- **Adapters are swappable.** Change from FTP to HTTP? Replace the adapter, domain code unchanged.
-- **Tests run fast.** Domain tests use mocks; only adapter tests need real external resources.
-- **Upgrade safety.** When the library changes, you update the adapter and its integration tests. Domain tests are unaffected.
+- **Vocabulary stays local.** S3 buckets/keys/errors do not become report policy.
+- **Vendor change has one owner.** Upgrade changes are concentrated where translation and contract tests live.
+- **Policy feedback stays fast.** A small owned fake can exercise report behavior without pretending to be boto3.
+- **Replacement is possible when semantics really match.** Do not promise “swappable providers” unless the owned capability and error/idempotency guarantees are genuinely common.
 
 ## Adapter Callbacks (Event-Based Integration)
 
@@ -79,11 +84,12 @@ When external libraries call *back* into your code (events, callbacks):
 [Third-Party Library] -> [Adapter Callback] -> translates -> [Application Callback]
 ```
 
-1. Your application defines its own callback interface in domain terms
-2. The adapter creates a callback object for the external library
-3. The adapter callback receives external events and translates them for the application callback
+1. Register the vendor callback/webhook in the boundary adapter
+2. Verify signatures/authenticity, parse and validate the external payload, and deduplicate redelivery
+3. Translate to an owned application command/event only when the application semantics differ
+4. Acknowledge according to the vendor's retry contract; keep slow work off the callback thread/request when required
 
-**Testing:** In integration tests, mock the **application callback** (which you own) to verify the adapter translates events correctly. Do NOT mock the third-party callback interface.
+**Testing:** Drive the real callback mechanism, sandbox, captured fixture validated against schema, or a protocol fake server. Observe an owned application sink/handler. Do not mock the third-party callback type and call your own mock setup “integration.” Test duplicates, out-of-order delivery, invalid signatures, retries, and concurrent callbacks when the vendor permits them.
 
 ```
 // Integration test for event adapter (illustrative pseudocode)
@@ -94,13 +100,16 @@ thirdPartyLib.emit("external.event", externalPayload);   // drive the real libra
 oneOf(applicationListener).onDomainEvent(translatedEvent); // expect on the callback you own
 ```
 
-## When Mocking Third-Party Types Is Acceptable
+## Simulating Difficult Vendor Behavior
 
-There are narrow exceptions:
+Do not mock a vendor class merely because a failure is hard to trigger. Prefer, in order:
 
-- **Simulating hard-to-trigger behavior:** e.g., exceptions that are difficult to cause naturally
-- **Testing call sequences:** e.g., verifying a transaction is rolled back on failure
-- These should be **rare** in the test suite
+1. the vendor's sandbox/emulator/fault-injection controls
+2. a local fake HTTP/MQ server that speaks the wire protocol
+3. recorded fixtures replayed below your adapter, with a small live suite guarding drift
+4. an owned transport seam that injects timeout/reset/rate-limit responses
+
+A framework mock of the SDK can be a temporary characterization aid in legacy code, but it proves only how your stub was configured. Keep it out of contract claims and replace it as the boundary becomes testable.
 
 ## Value Types from External Libraries
 
@@ -110,25 +119,40 @@ The adapter pattern applies to services, not values. For value types:
 - Domain-specific external values should often be translated to your own domain types
 - Follow the same isolation principle, but no need for mocking
 
+## Build the Vendor Contract Inventory
+
+Record only assumptions the application depends on, with one test or operational check per risk:
+
+- authentication scopes, tenant/account and endpoint selection
+- request serialization, units, time zones, precision, size limits, and pagination
+- success semantics, partial success, vendor error codes, and retryability
+- timeouts/cancellation, rate limits, backoff hints, quotas, and circuit behavior
+- idempotency keys, duplicate requests, webhook/message IDs, ordering, and replay windows
+- concurrency/thread-safety and callback execution model
+- API/schema version, deprecation signal, SDK version, and upgrade smoke test
+
+Keep this inventory beside the adapter tests or runbook, not as a copy of all vendor documentation. Unknown assumptions become a learning test or explicit spike before production policy depends on them.
+
 ## Integration Testing Heuristics
 
 | Question | Guidance |
 |----------|----------|
-| How many integration tests? | Far fewer than unit tests. Cover key behaviors and edge cases of the external API. |
-| What do they test? | Your understanding of how the API works. Configuration. Error handling. |
-| How fast should they be? | Slower is acceptable. Don't let them block the fast feedback loop of unit tests. |
-| Where do threading issues appear? | Often at the adapter layer. Third-party libraries may use background threads. Design synchronization into adapter layer explicitly. |
+| How many contract tests? | Enough to cover every material assumption and high-cost failure; count follows risk, not a fixed pyramid ratio. |
+| What do they test? | Real boundary behavior and your translation: config/auth, mapping, errors, pagination, retry/idempotency, callbacks, and version drift. |
+| Where do they run? | Fast protocol/emulator tests in CI; sandbox/live smoke tests at a reliable cadence with isolated tenant/data and bounded cost. |
+| How do failures stay diagnosable? | Capture sanitized request IDs/status/headers, distinguish product failure from vendor outage, and never log secrets. |
+| Where do threading issues appear? | Often in SDK callbacks/background workers; test synchronization and shutdown at the adapter boundary rather than sleeping. |
 
 ## Decision Checklist
 
 When working with third-party code:
 
-1. **Define the interface you wish you had** in your domain's terms (the port)
-2. **Write domain code** against that interface using mocks
-3. **Implement the adapter** to bridge to the real API
-4. **Write integration tests** to verify the adapter works with the real library
-5. **Keep the adapter thin** -- no business logic, just translation
-6. **Don't mock the third-party API** in domain tests -- mock the port instead
-7. **Handle threading and async** explicitly in the adapter layer
+1. **List the vendor assumptions** the feature depends on and learn unknown behavior against the real contract.
+2. **Choose the smallest boundary:** direct SDK use inside a cohesive module, a translation adapter, or an owned port + adapter when current pressures earn it.
+3. **Keep vendor types and errors out of business policy** when their semantics do not belong there; map retryability, partial success, and idempotency explicitly.
+4. **Test at two speeds:** fast policy tests using an owned substitute only when needed, plus adapter contract tests against the protocol/emulator/sandbox.
+5. **Design operational behavior:** deadlines, cancellation, retries/backoff, rate limits, observability, credential redaction, and shutdown/threading.
+6. **Guard upgrades:** pin versions as appropriate, run contract/smoke tests, read deprecations, and canary high-risk changes.
+7. **Do not claim substitutability or universal wrappers:** a shallow pass-through adds maintenance without isolating meaning.
 
-See also: the `testing-tdd` skill for the TDD workflow used to discover the port interface and drive the domain code.
+See `testing-tdd` for cycle/test-design mechanics and `architecture-design` for application-level port placement. This skill owns the vendor-contract decision and verification details.

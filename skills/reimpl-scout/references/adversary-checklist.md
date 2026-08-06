@@ -9,9 +9,11 @@ Run at end of **full**, **topic**, and **audit** modes. Write results to
 |-------|----------------|
 | Pack prefix | All top-level scout md match required prefix |
 | Listed docs exist | Index links resolve; non-empty |
-| Isolation | No foreign product comparison sections |
+| Analytical isolation | No foreign product comparison sections; no claim that isolation proves clean-room provenance |
 | Path citations | Major claims have path:symbol (or explicit PARTIAL) |
-| Scorecard honesty | % tied to artifacts; no “DONE wave ⇒ high %” |
+| Scope reconciliation | Stable unit IDs map one-to-one to manifest units; exact missing/duplicate list |
+| Scorecard honesty | Evidence state + found/expected counts + method + gaps; no “DONE wave ⇒ high score” |
+| Review independence | Separate reviewer named, or `REVIEW_INDEPENDENCE=SELF_REVIEW` limitation recorded |
 
 ## Full library scout
 
@@ -20,7 +22,7 @@ Run at end of **full**, **topic**, and **audit** modes. Write results to
 | Surface inventory | `_surface_list.txt` (or equiv) count == disk glob; 0 missing / 0 extra |
 | Host imports/includes canonical | One machine file; HOST_SURFACE count matches |
 | No dual stats | Delete or regen stale include/import stats JSON |
-| by-header / deep decls | Prefer **100% of host-referenced** before “freeze”; report % |
+| by-header / deep decls | Every host-referenced manifest unit is deepened or named as a blocking gap before “freeze”; report found/expected counts |
 | Mutation cards | All required core types that exist; list absences as FAIL |
 | Pipeline owners | Primary pipeline steps have owners; spot-check 2–3 lines in tree |
 | Use graph | Facades depth ≥1 or no-callers; note indirect dispatch |
@@ -40,17 +42,19 @@ Run at end of **full**, **topic**, and **audit** modes. Write results to
 | Verdict files | Feature ABSENT/PARTIAL/IMPLEMENTED with search method |
 | Backend matrix | Every host backend file registered or explained |
 
-## Score cut guidance (typical)
+## Evidence-state guidance
 
-When evidence is weak, cut rather than average up:
+Do not average weak evidence into a percentage. Assign the least-complete state
+supported by artifacts and list the concrete gate:
 
-| Symptom | Cut |
-|---------|-----|
-| Inventory only, shallow decls | A-decls ≤60–70% |
-| Host list OK, &lt;25% host deep surface | A-host freeze-ready ≤75% list / low depth |
-| Facade method sample 35–50% | C ≤50% |
-| Missing half of core mutation types | D ≤65% |
-| Pipeline owners good, algorithms named only | B ~75–85% overall |
+| Symptom | Required judgment |
+|---------|-------------------|
+| Inventory exists, declarations shallow | A = `PARTIAL`; list undeepened unit IDs |
+| Host list exists, host units not all deepened | A-host = `PARTIAL`; exact missing host units block freeze |
+| Facade methods sampled rather than manifest-reconciled | C = `PARTIAL`; list unsampled facades/caller depths |
+| Any required core mutation type lacks a card | D = `PARTIAL`; list missing cards; freeze blocked |
+| Pipeline owners known, algorithm contracts only named | B/E = `PARTIAL`; list owner/contract evidence gaps |
+| Deterministic manifest or independent judgment absent | Pack = `SCAFFOLD`; cannot claim freeze-ready |
 
 ## FIX list format
 
@@ -68,5 +72,5 @@ Ordered, actionable:
 ## Executive verdict
 Pack is a **scaffold | freeze-ready | failed run**.
 Critical gaps: N.
-Trust prior high % only if re-proven on disk.
+Replace prior percentages with re-proven states, exact counts, methods, and gaps.
 ```

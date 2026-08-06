@@ -29,7 +29,7 @@ For any non-trivial module, sketch two **radically different** approaches (actua
 
 ### Modifying existing code
 
-Finish each change so the system has the structure it *would have had* if designed from the start with that change in mind. If you aren't making the design better, you're probably making it worse. Increments should be **abstractions, not features** — once you need an abstraction, design it completely and somewhat general-purpose from the start. Don't let agile or TDD become an excuse for "tests first, design later."
+Leave touched code coherent rather than piling a special case on top. That does not mean predicting the final architecture: extract an abstraction only when current knowledge, volatility, or client needs reveal a stable concept. Design the smallest complete interface for the cases you actually understand, and let later evidence deepen or replace it. Agile and TDD do not excuse design neglect; neither do they justify speculative frameworks.
 
 ## 2. Deep Modules
 
@@ -50,6 +50,12 @@ Small modules tend to be shallow — the "classes should be small" dogma ("class
 5. **Eliminate special cases** — design the normal case so edge conditions need no extra code (§4).
 
 Other shallowness causes: over-specialized methods, exposing internals via getters/setters or returning internal data structures, pass-through methods that delegate without adding value.
+
+### Abstraction ownership
+
+An abstraction belongs with the client/policy whose need it expresses, not automatically with the implementation and not automatically in a global `interfaces` package. A client-owned interface can shield policy from a volatile detail; an implementation-owned interface often just mirrors the implementation. One caller can justify an abstraction when it hides substantial knowledge or volatility, while five callers do not justify one if they merely duplicate a trivial expression. Judge by hidden knowledge, co-change, and substitutability—not usage count.
+
+Keep the contract narrower than the implementation. If every implementation method appears on the interface, or callers downcast to recover missing vendor features, the boundary is in the wrong place. If there is no meaningful policy/detail seam, use the concrete module.
 
 ## 3. Information Hiding
 
@@ -74,6 +80,8 @@ Good: HttpRequest                    (reads AND parses; HTTP knowledge in one pl
 ```
 
 Order will be reflected somewhere in the code, but it should not drive module structure. Focus on **what knowledge is needed to perform each task**.
+
+**Temporal coupling** is a related API smell: callers must remember `configure()` before `start()`, or `read()` before `result()`, with invalid intermediate states exposed. Prefer one operation that accepts everything required, a builder that can only produce a valid object, or a type/state transition when the protocol is genuinely staged. Do not add typestate ceremony for a private two-line sequence; first see whether the module can own the sequence entirely.
 
 Don't take hiding too far: information genuinely needed outside the module must be exposed. The goal is to *minimize* what the outside must know, not to hide at all costs.
 
@@ -110,16 +118,16 @@ Special cases breed if-statement spaghetti. Make the normal case handle them: a 
 
 ## 5. Error Handling
 
-Exception handling is one of the worst sources of complexity: handler code is harder than normal-case code, handlers rarely execute (so their bugs go undetected), and exceptions are part of a module's interface — a module that throws many has a complex interface. Don't punt an exception upward just because you don't know what to do — the caller probably doesn't either.
+Failures are part of a module's interface. Complexity comes from exposing conditions callers cannot act on, losing distinctions they do need, and duplicating recovery everywhere. Design the error contract with the success contract.
 
-### Four techniques, in order of preference
+### Four techniques, chosen by semantics
 
-1. **Define errors out of existence (best).** Redefine semantics so the exceptional case is normal: Tcl `unset` is "ensure this variable doesn't exist" — already true, so a no-op success; `substring` beyond the end returns what exists instead of throwing.
-2. **Mask at a low level.** Handle the condition internally so higher layers never learn of it: TCP retransmits lost packets; NFS retries a dead server until it returns.
-3. **Aggregate handlers.** Replace many near-identical handlers with one at a higher level — one handler around the whole request dispatch, not a try/catch per parameter.
-4. **Just crash.** For rare, genuinely unhandleable errors (out of memory, internal inconsistency), print diagnostics and abort — e.g. a malloc wrapper so callers never check for NULL. Not for frequent or recoverable errors.
+1. **Define non-errors out of existence.** Make idempotent operations and ordinary absence normal when doing so is truthful: `ensure_absent()` can succeed when already absent. Do not redefine permission denial, corruption, or a failed payment as success.
+2. **Handle where policy exists.** A lower layer may retry or substitute only when it has a bounded policy: deadline, backoff, cancellation, retry-safe operation, and observable exhaustion. Infinite masking turns a failure into a hang.
+3. **Translate and aggregate at a boundary.** Map detailed causes to a small set the next caller can act on; preserve the original cause for diagnostics. One request-level handler can render many application failures consistently.
+4. **Fail fast on broken invariants.** Panic/abort is for programmer errors or process states where continuing is unsafe, not for expected input, resource exhaustion, or recoverable dependency failure.
 
-Decision order: define away → mask → aggregate → crash → expose as exception (last resort). Defining away or masking applies only when the error's information isn't needed outside the module: **unimportant things hidden; important things exposed.**
+Expose an error when a caller can choose a meaningful response. Otherwise contain it behind a documented policy. Preserve cancellation, timeout, retryability, and partial-success semantics; a shorter error enum that erases those distinctions is not a simpler interface.
 
 ## 6. Comments and Naming
 
@@ -144,7 +152,7 @@ Decision order: define away → mask → aggregate → crash → expose as excep
 
 ## 8. Do Not Reach For
 
-- **No abstraction for a single caller.** Two uses, consider; three, act.
+- **No abstraction by repetition count alone.** Extract when it gives one owner to shared knowledge, hides a volatile detail, or names a real client role. Keep a concrete call when duplication is trivial or the common concept is still unclear.
 - **Strategic ≠ speculative.** Investing in generality for change you cannot name is tactical programming in disguise — "somewhat general-purpose," never maximally general.
 - **Name the red flag before proposing structure.** If you can't point at a smell in the code *as it is*, don't add structure.
 - **Depth before breadth.** One deep module beats three shallow ones; never split a module because "classes should be small."
@@ -162,7 +170,7 @@ When you spot a flag, stop and look for a design that eliminates it; the first a
 | 4 | Information leakage | One design decision known by multiple modules → merge or extract; apply the "change X" test (§3) |
 | 5 | Temporal decomposition | Structure follows execution order, not knowledge → reorganize around what each module must know (§3) |
 | 6 | Special-general mixture | General mechanism contains use-case-specific code → push specialization up or down (§4) |
-| 7 | Repetition | Nontrivial code repeated → factor it out; the right abstraction hasn't been found yet (§2) |
+| 7 | Repetition | Nontrivial knowledge repeated and co-changing → give it one owner; duplicated syntax alone may be cheaper than a false abstraction (§2–3) |
 | 8 | Conjoined methods | Can't understand one without the other → combine, decouple, or redesign the interface (§2) |
 | 9 | Nonobvious code | Reader's first guess is wrong → better names, consistency, strategic comments (§6, §7) |
 | 10 | Comment repeats code | Adds no information → comment at a different level: more precise or more abstract (§6) |
@@ -170,5 +178,6 @@ When you spot a flag, stop and look for a design that eliminates it; the first a
 | 12 | Vague name | Could mean many things → choose a name that creates a clear image (§6) |
 | 13 | Hard to pick a name | No precise, intuitive name exists → design problem; try alternative factorings (§6) |
 | 14 | Hard to describe | The comment must be long to be complete → simplify the design (§6) |
+| 15 | Temporal coupling | Callers must remember an undocumented order or maintain invalid intermediate state → move the sequence inside, require complete input, or model a genuine staged protocol (§3) |
 
 **Review loop:** name the flag, state why it increases complexity (cognitive load, dependencies, obscurity), propose the smallest design change that removes it. On each visit to a piece of code, fix whatever flags you can — continual small improvements are the strategic approach (§1).

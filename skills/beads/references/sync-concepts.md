@@ -1,49 +1,88 @@
-# Sync Concepts
+# Dolt Storage and Sync Concepts
 
-Beads issue data lives in Dolt. The local Dolt database is the source of truth for `bd list`, `bd show`, `bd ready`, and every write command.
+Read this when a Beads task involves storage identity, pending changes, commits, remotes, bootstrap, or JSONL exports.
 
-## The Wire Format
+## Authoritative state
 
-Cross-machine sync uses Dolt remotes:
+Current Beads supports Dolt as its storage backend. The active Dolt database—not a JSONL file—is authoritative for `bd list`, `bd show`, `bd ready`, and mutations. Legacy SQLite and `no-db` instructions do not describe current behavior; use the installed `bd init --help` or `bd migrate --help` for migration guidance.
+
+Do not assume the database is always a particular directory under the current checkout. Beads can use redirects, embedded Dolt, or a configured server. Resolve the effective workspace first:
 
 ```bash
-bd dolt push
-bd dolt pull
+bd where
+bd context       # when backend/repository identity also matters
+bd dolt show     # Dolt configuration and connectivity
 ```
 
-For normal git-hosted projects, the Dolt remote can be the same `origin` URL used for source code. Dolt stores issue history under `refs/dolt/data`, separate from source branches such as `refs/heads/main`.
+`bd dolt status` reports Dolt engine/server health. It does **not** report pending issue-data changes. Use `bd vc status` for the current Dolt branch and uncommitted working-set changes.
 
-On new projects, `bd init` auto-detects `git remote get-url origin` and configures a Dolt remote named `origin`. The first `bd dolt push` publishes `refs/dolt/data`. Fresh clones should run `bd bootstrap` to clone that Dolt history. When bootstrap finds `refs/dolt/data` on git origin, it also wires that origin as the Dolt remote for future `bd dolt push` and `bd dolt pull`.
+## JSONL is an optional export
 
-## What JSONL Is For
+`.beads/issues.jsonl` may be produced when `export.auto` is enabled. It supports viewers, interchange, and issue-level migration; it is not the normal cross-machine sync channel or a backup of Dolt history.
 
-`.beads/issues.jsonl` is an export. It exists for viewers, interchange, migration, and backup. It is not the canonical cross-machine sync channel.
+Do not use routine `bd import .beads/issues.jsonl` as a substitute for `bd dolt pull`. JSONL import cannot represent all history semantics and cannot determine whether an absent record was deleted, omitted, or never exported.
 
-Do not use routine `bd import .beads/issues.jsonl` as a replacement for `bd dolt pull`. JSONL import is upsert-only; it cannot infer that records absent from an export were deleted, pruned, or simply never exported.
+Confirm effective export settings rather than assuming hooks or auto-staging:
 
-## Hooks
+```bash
+bd config get export.auto
+bd config get export.git-add
+bd config show
+```
 
-The pre-commit hook refreshes `.beads/issues.jsonl` when `export.auto=true`. That keeps the export current for tools, but it does not push Dolt history.
+## Working set and commits
 
-The post-merge and post-checkout hooks skip JSONL import when `sync.remote` is configured. For old projects with no Dolt remote, they may import JSONL as a compatibility fallback and print a warning that this is not durable sync.
+A successful write can be durable in the local Dolt working set without yet being a Dolt commit. The effective `dolt.auto-commit` policy controls commit timing:
 
-## Repair
+- `on` commits each write.
+- `batch` accumulates writes for `bd dolt commit`.
+- `off` leaves writes uncommitted until an explicit commit; this is the CLI default unless configuration overrides it.
 
-For projects initialized before automatic git-origin remote wiring, pick the machine with the authoritative local Dolt database first. Then run:
+Inspect before committing:
+
+```bash
+bd vc status
+bd dolt commit -m "Describe the issue-data changes"
+# bd vc commit offers additional commit-message input options
+```
+
+Do not change the auto-commit policy or create a commit merely because an issue was mutated. Commit only when the governing user request authorizes it; repository workflow may define the procedure but cannot create consent. If authorized to publish pending requested Beads changes, inspect the status, disclose what the commit includes, and then create the necessary non-destructive Dolt commit.
+
+Dolt commits are independent of source Git commits. Neither operation implies authorization for the other.
+
+## Remotes and cross-machine sync
+
+Dolt remotes are optional. Inspect configuration before pull or push:
 
 ```bash
 bd dolt remote list
-bd export -o .beads/issues.pre-remote.jsonl   # optional issue audit export
-bd dolt remote add origin <git-origin-url>
-bd dolt push
+bd config validate
 ```
 
-Use the Dolt-compatible git URL form when needed. For example, `git+ssh://git@github.com/org/repo.git` or `git+https://github.com/org/repo.git`. `bd dolt remote add origin ...` persists `sync.remote` into `.beads/config.yaml`; commit and push that config change so fresh clones can run `bd bootstrap`.
-
-Other machines should then run:
+When a remote is configured, cross-machine issue-data synchronization uses:
 
 ```bash
 bd dolt pull
-# or, if the local database is stale or missing:
-bd bootstrap
+bd dolt push
 ```
+
+Pull and push change shared state. Run them only when the governing user request explicitly authorizes them; documented repository policy may define how, not whether, to do so. A request to create, update, claim, or close an issue is not implicit sync permission. Never use force-push merely to make a rejected push succeed.
+
+Source Git and Dolt remotes may share hosting, but their histories remain separate: `git push` does not publish issue-data commits, and `bd dolt push` does not publish source branches.
+
+## Fresh clones and recovery
+
+Use `bd bootstrap` only when setting up or repairing a checkout and only after inspecting its help and the intended remote. Do not assume every repository publishes Dolt history or that a remote named `origin` is configured.
+
+For diagnosis, prefer read-only discovery first:
+
+```bash
+bd where
+bd doctor
+bd dolt show
+bd dolt remote list
+bd vc status
+bd bootstrap --help
+```
+
+Remote creation, pull, bootstrap, reinitialization, history replacement, and force operations can affect shared or local history. Explain the intended source of truth and obtain explicit authorization before performing them.

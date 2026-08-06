@@ -1,92 +1,127 @@
 ---
 name: dynamic-context-injection
-description: Audit and teach the dynamic-context-injection pattern (load-time shell commands inlined into skill content) in Agent Skills. Use when reviewing skills for context efficiency, checking whether existing injections are correct, converting "run this command" skill instructions into load-time injection, or learning how the pattern works with examples. Not for writing whole skills from scratch (use skill-creator) or for tool-call tuning unrelated to context cost.
-argument-hint: [skill-dir-or-empty-for-all]
+description: Audit and teach Claude Code dynamic context injection (load-time shell output embedded in skill content). Use when reviewing a skill's injected commands, replacing avoidable read-only setup calls, or checking argument safety, shell behavior, failure guards, and context cost. Not for writing a complete skill (use skill-creator), runtime tool-call tuning, or portable Agent Skills clients that do not implement Claude Code injection.
+compatibility: Claude Code; this skill documents Claude Code-only load-time shell preprocessing.
+argument-hint: "[skill-dir-or-empty-for-all]"
 ---
 
-# Dynamic context injection — audit & teach
+# Dynamic context injection — audit and teach
 
-Context is treasure. Every `Bash(...)` tool call a skill makes just to *read*
-state costs the model context three times: the tool_use block, the tool_result
-envelope, and the model's reasoning about whether to call. An injection (a
-line whose `!` sits at line start or after whitespace, followed by a backtick
-command) runs the command when the skill loads and inlines the output as
-plain content — the model simply reads the result. Same data, no system-call
-noise. This skill audits skills for correct use of that pattern and finds
-conversions.
+Dynamic context injection is a Claude Code extension, not part of portable Agent
+Skills. Claude Code renders a skill before the model sees it: each active
+placeholder runs in the configured shell and its stdout is inserted into the
+skill body. Use it only for small, trusted, read-only state that every invocation
+needs.
 
-**Writing examples of this pattern is itself dangerous:** the preprocessor
-scans the whole SKILL.md including fenced code blocks, and an example that
-matches the syntax EXECUTES at load. All literal before/after examples live
-in [references/injection-examples.md](references/injection-examples.md) —
-reference files are read on demand and never preprocessed. In SKILL.md
-prose, keep a non-whitespace character in front of any `!` (e.g. `KEY=!`…``)
-so it stays literal.
+Literal examples are dangerous in `SKILL.md`: Claude Code preprocesses fenced
+examples too. This file uses `KEY=!`…`` when naming the inline form so the `!`
+is not active. Exact examples live in
+[references/injection-examples.md](references/injection-examples.md), which is
+read on demand and is not skill-preprocessed.
 
-## The rules (every audit checks these)
+## Safety contract
 
-1. **Read-only only.** Injected commands run unconditionally at load, even if
-   the model never acts. Never inject mutations (`bd update`, `git commit`,
-   `bd dep add`, file writes). Mutations stay tool calls.
-2. **Single pass.** Substitution runs once over the original file; command
-   output is NOT re-scanned. A command cannot emit a placeholder for a later
-   pass — no chaining.
-3. **No invocation text in shell source.** Inject only trusted static commands
-   and trusted environment-provided paths such as the bundled skill directory. Invocation
-   arguments are preprocessor paste-text, not safely escaped argv; keep them in
-   ordinary prompt content, validate them, then use a normal tool call. Commands
-   depending on prior output likewise stay tool calls.
-4. **Syntax:** the `!` must be at line start or directly after whitespace.
-   `KEY=!`cmd`` is literal and never runs. Multi-line commands use a fenced
-   block opened with three backticks + `!`.
-5. **Cheap, non-interactive, cwd-safe.** It runs on every load, including
-   accidental triggers. User-level skills load in ANY repo — an injected
-   `bd ...` there must be guarded (append `2>/dev/null || echo "…"`) or it
-   pollutes context with error text instead of saving it.
-6. **Failure pollutes.** A failing injected command dumps its error into
-   context — worse, an unparseable one can abort the whole skill load.
-   Guard anything that can legitimately fail.
-7. **Policy kill-switch:** `"disableSkillShellExecution": true` in settings
-   replaces each command with `[shell command execution disabled by policy]`
-   — skill bodies must still make sense with that placeholder.
-8. **Self-execution hazard.** A skill TEACHING this pattern must not contain
-   literal trigger syntax in SKILL.md — put examples in a references/ file.
+1. **Read-only and unconditional.** Rendering occurs before the model can decide
+   whether a command is appropriate. Do not inject claims, installs, writes,
+   commits, network requests, or other mutations. Keep those as normal tool
+   calls with ordinary permission and error handling.
+2. **Invocation text is data, never shell source.** Claude Code substitutes
+   all-arguments, indexed, and named argument placeholders before starting the
+   shell. Quoting a placeholder inside the command does not turn textual
+   substitution into safe argv passing. Do not put invocation arguments in an
+   injection. Show them in prompt content, validate them, then use a tool call.
+3. **Trusted platform paths are allowed.** The skill and project directory
+   substitutions are platform-provided paths, but quote them in shell source.
+   Session and effort substitutions are also trusted metadata; do not confuse
+   them with user arguments.
+4. **Do not expose secrets.** Inject only presence/status, never environment
+   variable values, tokens, settings contents, credentials, or unredacted
+   command output that may contain them. Inserted output becomes model context.
+5. **Bound cost.** Commands must be local, quick, non-interactive, and bounded
+   (`--limit`, a small file slice, or a concise summary). An injection is paid on
+   accidental triggers too.
+
+## Renderer and shell semantics
+
+- The inline marker is recognized when `!` starts a line or follows whitespace;
+  `KEY=!`cmd`` remains literal. A multi-line injection is one fenced shell
+  script opened by a fence whose info string is `!`.
+- Rendering scans the original skill once. Inserted stdout is plain text and is
+  not scanned for new injection markers.
+- Normal shell evaluation still happens *inside one injection*. Shell variables,
+  pipelines, conditionals, and command substitution such as `$(...)` work. This
+  is unrelated to the renderer's single pass.
+- Treat separate placeholders as independent and unordered: implementations may
+  execute them concurrently, and they do not share shell variables, working
+  directory changes, or exit status. Put dependent reads in one fenced block;
+  commands in that block run sequentially in one shell.
+- `shell: bash` is the default. `shell: powershell` selects PowerShell only where
+  Claude Code's PowerShell tool is enabled. Do not write a block that assumes
+  both syntaxes.
+- With `disableSkillShellExecution: true`, user/project/plugin injections are
+  replaced by a policy placeholder. Bundled and managed skills are exempt. The
+  surrounding instructions must remain useful when live state is unavailable.
+
+## Failure and guard semantics
+
+An injected failure is rendered before the model has a tool-result recovery
+path. Stderr and failure text can pollute the prompt, and a malformed block may
+leave the skill without useful state. Handle expected absence inside the same
+injection and emit one short status line.
+
+Guard the operation that can fail, not a later pipeline stage:
+
+- In Bash, `cmd 2>/dev/null | head ... || fallback` is not a reliable guard
+  without `pipefail`: `head` may succeed after `cmd` failed. Prefer an `if`
+  around command substitution, then bound the captured output.
+- An `|| fallback` at the end of a multi-line block guards only the immediately
+  preceding command. Handle each expected failure or use an explicit block-level
+  conditional.
+- In PowerShell, use `try`/`catch`, `Get-Command`, and `-ErrorAction Stop` where
+  absence is expected. Native command nonzero exits require checking
+  `$LASTEXITCODE`; they are not automatically PowerShell exceptions.
+- Redirect expected diagnostic stderr, but keep an informative stdout fallback.
+  Unexpected failures should say the state is unavailable, not fabricate it.
 
 ## Audit procedure
 
-Target: the skill's first argument — a skill directory, or empty = audit
-all skills in `.claude/skills/` (project) and `~/.claude/skills/` (user).
+Target the first skill argument. With no argument, inspect project and personal
+Claude Code skill directories. For each `SKILL.md`:
 
-For each `SKILL.md`:
+1. Parse frontmatter first. Portable mode has no injection. In Claude Code mode,
+   record `shell`, `arguments`, invocation control, and skill scope.
+2. Find every active inline marker and fenced injection, including markers in
+   Markdown examples. A marker may appear after prose whitespace, not only at
+   column zero.
+3. For each injection, verify: read-only; no invocation placeholders; no secret
+   output; local/bounded/non-interactive; independent of sibling injections; and
+   guarded where repository/tool/file absence is normal.
+4. Check multi-line logic as shell code. Distinguish valid shell `$(...)`
+   substitution within a block from invalid cross-placeholder dependency.
+5. Find conversion candidates: instructions that always run a trusted static
+   read solely to place bounded output in context. Leave mutations, user-derived
+   arguments, conditional/slow/network work, and dependent runtime decisions as
+   normal tool calls.
+6. Run `../skill-creator/scripts/validate_skill.py <skill-dir> --mode
+   claude-code --format text` when that relative layout exists. Treat validator
+   output as a floor; manually review command meaning and possible secret output.
 
-1. **Existing injections** — find every injection line and fenced-`!` block;
-   check against rules 1–8. Common violations: mutations injected, args from
-   prior output, unguarded cross-repo commands, `!` examples that execute.
-2. **Conversion candidates** — find instructions telling the model to run a
-   read-only command purely to consume its output before acting. Signals:
-   imperative "run X", "check X", "read X via command", bash blocks whose
-   only purpose is to feed the next instruction. For each, judge: is every
-   input trusted static/environment state (rule 3)? Is it read-only (rule 1)?
-   Is it cwd-safe at this skill's scope (rule 5)? All three → candidate.
-3. **Leave-alone** — mutations, dependent-step commands, interactive or slow
-   commands, and commands the model must decide *whether* to run.
-
-## Report format
+## Report
 
 | skill | line | verdict | detail |
 |-------|------|---------|--------|
-| … | … | VIOLATION / CONVERT / OK | rule cited, proposed replacement |
+| … | … | VIOLATION / CONVERT / OK | rule, failure mode, exact replacement |
 
-Sort VIOLATIONs first. For each CONVERT, show the exact before/after diff
-snippet (patterns: [references/injection-examples.md](references/injection-examples.md)).
-End with the count of tool calls per typical invocation the conversions
-would eliminate.
+Sort violations first. For each conversion, show a minimal before/after snippet
+using the patterns in
+[references/injection-examples.md](references/injection-examples.md). End with
+how many routine tool round-trips the conversions remove and note any state that
+remains a runtime tool call.
 
-## Examples and reference
+## Reference loading
 
-- Worked before/after examples, including the classic violations (mutation
-  injected, chained args, unguarded user-level scope):
-  [references/injection-examples.md](references/injection-examples.md)
-- Full platform semantics (substitution variables, kill-switch, `shell:
-  powershell`): `../skill-creator/references/claude-code-skills.md` (or `~/.claude/skills/skill-creator/references/claude-code-skills.md`)
-  — section "Dynamic context injection".
+- Read [references/injection-examples.md](references/injection-examples.md) for
+  exact syntax, independent-versus-dependent examples, and Bash/PowerShell
+  guards.
+- Read `../skill-creator/references/claude-code-skills.md` for the current Claude
+  Code field and substitution table when platform behavior is in question.

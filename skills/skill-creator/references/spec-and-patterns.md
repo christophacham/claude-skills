@@ -1,124 +1,138 @@
-# Agent Skills specification details and eval workflows
+# Agent Skills specification and eval workflows
 
-Load this when you need frontmatter field details, scoping guidance, concrete pattern examples, or the full trigger/output evaluation workflows. The core rules are in `SKILL.md`.
+Load this for frontmatter profile details, scoping, trigger evaluation, or output
+eval design. The creation workflow is in `SKILL.md`; current Claude Code
+extensions are in `claude-code-skills.md`.
 
-## Frontmatter fields
+## Validation profiles
 
-`SKILL.md` must start with YAML frontmatter followed by Markdown instructions.
+### Portable
 
-Required:
+Portable package/upload frontmatter permits exactly:
 
-- `name`: 1-64 chars; lowercase `a-z`, `0-9`, hyphens; no leading/trailing hyphen; no consecutive hyphens; should match parent directory for cross-client compatibility.
-- `description`: 1-1024 chars; describes what the skill does and when to use it.
+| Field | Type | Rule |
+|---|---|---|
+| `name` | string | required; 1–64 lowercase letters/numbers/single hyphens; match directory for broad compatibility |
+| `description` | string | required; 1–1024 characters; what + when |
+| `license` | string | optional, non-empty |
+| `compatibility` | string | optional, non-empty, max 500 characters |
+| `metadata` | mapping | optional free-form data map |
+| `allowed-tools` | string | optional portable tool grant syntax |
 
-Optional:
+Portable validation rejects Claude Code extension fields rather than assuming an
+upload client will ignore them.
 
-- `license`: short license name or bundled license file.
-- `compatibility`: max 500 chars; include only for specific environment requirements.
-- `metadata`: arbitrary key-value map.
-- `allowed-tools`: experimental space-separated pre-approved tools string.
+### Claude Code
 
-## Scoping
+Claude Code accepts all portable fields plus `when_to_use`, `argument-hint`,
+`arguments`, `disable-model-invocation`, `user-invocable`, `disallowed-tools`,
+`model`, `effort`, `context`, `agent`, `background`, `hooks`, `paths`, and
+`shell`. It permits string/YAML-list forms for arguments, tool lists, and paths;
+booleans accept true/false, yes/no, on/off, and 1/0.
 
-A skill should cover one coherent unit of work. Too narrow means multiple skills activate for one task. Too broad means imprecise triggering and bloated context.
+Field combinations matter:
 
-Prefer moderate detail: concise stepwise guidance plus one concrete example usually beats exhaustive documentation.
+- `context` currently supports `fork`.
+- `agent` and `background` only apply with `context: fork`.
+- `effort` is low/medium/high/xhigh/max.
+- `hooks` and `metadata` are mappings.
+- `shell` is bash/powershell.
 
-## Grounding sources
+Claude Code can derive a name/description when omitted. This repository still
+keeps explicit portable identities so the same skill can be cataloged and
+validated consistently.
 
-Good skills are grounded in real expertise:
+## Conservative YAML
 
-- Corrections users gave during real tasks.
-- Internal runbooks, style guides, API specs, schemas, and config files.
-- Code review comments, issue trackers, or repeated failure fixes.
-- Existing scripts or manual procedures that should become repeatable.
+`scripts/validate_skill.py` parses a typed data-only subset sufficient for this
+repository: mappings, sequences, quoted/plain scalars, booleans/numbers,
+flow collections, and literal/folded block strings. It rejects duplicate keys,
+tabs for indentation, anchors, aliases, tags, merge keys, directives, and
+ambiguous unsupported syntax. Quote a scalar containing YAML-significant text
+instead of relying on parser-specific coercion.
+
+## Skill scope
+
+One skill should own one coherent judgment/workflow. Combine steps that normally
+activate together and share expertise. Split when activation, authority,
+permissions, or support material differs. A directory full of generic reminders
+is not expertise; a script with no judgment may be better exposed directly.
+
+Ground skills in actual corrections, runbooks, schemas, source code, API docs,
+review findings, or repeated failure transcripts. State the current contract,
+not the history of how it was discovered.
 
 ## Trigger evaluation
 
-The `description` determines whether a skill triggers. To evaluate it:
+Build realistic train and validation sets. Include:
 
-1. Create ~20 realistic queries: 8-10 should trigger, 8-10 should not. Include near-misses, casual language, paths, typos, and buried subtasks.
-2. Run each query multiple times if possible and record trigger rate.
-3. Revise from train-set failures; pick the best description by validation-set pass rate.
+- direct and indirect should-trigger requests;
+- buried subtasks and file paths;
+- casual wording and typos;
+- near misses sharing domain keywords; and
+- requests that belong to the adjacent skill named in the boundary.
 
-## Output quality evaluation
+Revise the description from train failures and select using held-out validation
+results. Do not append every missed phrase; generalize the intent category.
+`assets/TRIGGER_EVAL_QUERIES_TEMPLATE.json` is a compact input shape for this
+work, separate from output evals.
 
-For important skills, create `evals/evals.json`:
+## Output eval schema
+
+The repository output-eval file is `<skill>/evals/evals.json` and follows the
+official skill-creator plugin schema:
 
 ```json
 {
   "skill_name": "my-skill",
   "evals": [
     {
-      "id": "example",
+      "id": 1,
       "prompt": "Realistic user prompt",
-      "expected_output": "Human-readable success criteria",
-      "files": ["evals/files/input.ext"],
-      "assertions": [
-        "Specific observable requirement"
+      "expected_output": "Human-readable successful outcome",
+      "files": [],
+      "expectations": [
+        "Observable requirement with concrete pass/fail evidence"
       ]
     }
   ]
 }
 ```
 
-Run each eval with the skill and against a baseline (no skill or previous version). Capture outputs, timing/tokens when available, grade assertions with concrete evidence, then iterate from failed assertions, human feedback, and execution transcripts.
+Rules enforced by the validator:
 
-## Instruction pattern examples
+- root is an object; `skill_name` equals frontmatter `name`;
+- `evals` is non-empty and positive integer IDs are unique;
+- `prompt` and `expected_output` are non-empty strings;
+- `expectations` is a non-empty string array; and
+- `files` is a string array of existing paths confined within the skill root
+  (use `[]` when no fixture is needed).
 
-### Gotchas
+Expectations should grade outputs/actions, not hidden reasoning. Prefer mechanical
+evidence (command exit, schema, required section, named invariant) and use human
+judgment only for criteria that are genuinely qualitative. Run each eval with
+the skill and a baseline/previous version; preserve raw output and expectation
+evidence so a change can be attributed.
 
-Use for concrete facts that defy reasonable assumptions:
+## Useful instruction patterns
+
+Use exact ordered steps for fragile operations, not for ordinary judgment.
+Include a validation loop when a concrete checker exists. Put long reference
+material off the activation path. Give one default with a reason and one escape
+hatch only when a real exception exists. Include an output template only when
+format is contractual.
+
+Concrete gotchas beat generic advice:
 
 ```markdown
 ## Gotchas
 
-- The `users` table uses soft deletes; include `WHERE deleted_at IS NULL`.
-- `/health` only checks the web server. Use `/ready` for database readiness.
+- The `users` table uses soft deletes; active-user queries include
+  `WHERE deleted_at IS NULL`.
+- `/health` checks only the process. Deployment readiness uses `/ready`.
 ```
 
-### Checklists
-
-Use when steps have dependencies:
-
-```markdown
-Progress:
-- [ ] Inspect inputs
-- [ ] Create plan
-- [ ] Validate plan
-- [ ] Execute
-- [ ] Verify outputs
-```
-
-### Validation loops
-
-Use when outputs can be checked:
-
-```markdown
-1. Make the change.
-2. Run `scripts/validate.sh`.
-3. If it fails, fix the reported issue and rerun.
-4. Proceed only when validation passes.
-```
-
-### Plan-validate-execute
-
-Use for destructive or batch work. Create an intermediate plan, validate against source-of-truth data, then execute.
-
-### Output templates
-
-Provide exact structure when formatting matters. Keep short templates inline; move long templates to `assets/`.
-
-## Script design extras
-
-Beyond the rules in `SKILL.md`:
-
-- Error messages should state what went wrong and what to try next.
-- Keep output size predictable; support `--limit`, `--offset`, or `--output` for large results.
-
-Common runners:
-
-- Python: `uv run scripts/tool.py` with PEP 723 inline dependencies.
-- Node: `npx package@version ...` for one-off tools.
-- Deno: `deno run --allow-read scripts/tool.ts` with explicit permissions.
-- Bun: `bun run scripts/tool.ts` when Bun is known to be available.
+A script should state what it reads/writes, accept non-interactive inputs, bound
+large output, and return meaningful status. Dynamic context injection has a
+stricter contract because it runs before model judgment; use the dedicated skill
+and Claude Code validator mode to audit it.

@@ -1,30 +1,51 @@
-# Merged Anti-Patterns
+# Mission-Planning Anti-Patterns
 
-The full anti-pattern list for mission planning, grouped by the framework each one corrupts. Individual sections of `SKILL.md` call out the highest-frequency ones inline; load this file when reviewing a finished OPORD, auditing a running initiative, or when a plan "feels off" and the inline lists didn't catch it.
+Load this when reviewing a completed mission artifact, auditing an initiative in flight, or checking whether the doctrine is improving decisions rather than adding ceremony. Apply each item in context; absence of a framework is not itself a defect.
 
-## OPORD and intent
+## Mission artifact and intent
 
-- **OPORD-as-Gantt** — §3 becomes a week-by-week task list; intent and decision rights belong in the OPORD, scheduling in beads.
-- **OPORD-as-contract** — treating the document as immutable; plans modify on contact with reality — edit it, bump the date, note what changed.
-- **Skipping the backbrief** — writing the OPORD alone and assuming agreement; misalignment caught in week 3 costs weeks.
-- **Commander writing §3 / team writing §2** — the first kills the team's autonomy to adapt, the second lets the *why* drift from business reality.
-- **Mission as todo list** — "build the cache, hook it up, ship" is an execution plan; push back to the *outcome*.
-- **Unfalsifiable intent** — "delight users," "raise the bar"; the team can't trade off against aspirations an external observer couldn't verify.
+- **Plan-as-Gantt** — the artifact becomes a dated task list. Keep intent, assumptions, decision rights, and rationale in the artifact; keep live status in the selected execution tracker, if any.
+- **Plan-as-contract** — the document is treated as immutable after evidence changes. Record material changes while preserving enough history to explain the decision.
+- **Ceremonial backbrief** — everyone repeats the document but no interpretation, assumption, or authority is tested.
+- **Unacknowledged handoff risk** — another team owns consequential execution, interpretations can diverge, and no backbrief or equivalent alignment evidence exists.
+- **Rigid commander/team split** — role labels override real architecture, security, regulatory, or release governance. Map decision rights to the organization that exists.
+- **Mission as todo list** — "build the cache, hook it up, ship" describes outputs without a verifiable external outcome.
+- **Unfalsifiable intent** — "delight users" or "raise the bar" supplies no evidence or accountable judgment for trade-offs.
+- **Path cargo cult** — a new `docs/opords/` hierarchy or fixed heading scheme is imposed despite an established RFC or planning convention.
 
 ## PACE and resilience
 
-- **Predictive PACE** — tiers nobody thought through; "we'll figure it out if it happens" is a missing plan, not a Contingency.
-- **Diagram theatre** — four boxes drawn, none drilled; the diagram lies, the drill tells the truth.
-- **Failover that needs the thing that's down** — the Alternate must not share Primary's failing dependency; trace implicit dependencies.
-- **Skipping verification because Primary is reliable** — you'll discover Alternate is broken at the worst possible time; drill on schedule regardless.
+- **Four-tier theater** — four names are present, but retained options are unaffordable, share the same failure mode, or have no operational evidence.
+- **Predictive PACE** — fallback detail is invented beyond what the system's risks justify; uncertainty is hidden instead of labeled.
+- **Failover through the failed dependency** — an Alternate or Contingency relies on the same component, credentials, control plane, or people as Primary.
+- **Unproven availability** — a tier is described as ready although it has never been exercised or its evidence expired.
+- **Calendar cargo cult** — quarterly or annual drills are copied without considering consequence, system change rate, evidence decay, or validation cost.
+- **Missing return path** — fallback is planned, but accumulated state, reconciliation, and return to Primary are not.
 
-## Rhythm and cycles
+## Recon, execution, and sustainment
 
-- **Spike-becomes-feature** — recon drifting into building; declare maneuver instead of bending the cycle definition.
-- **Permanent maneuver** — never recon ("we know what to build"), never sustain ("no time"); by month 6 velocity degrades through invisible unknowns and accumulated debt.
-- **Sustainment as the rest cycle** — no named items, no restored capacity, just low energy.
+- **Research without a decision** — recon has no named uncertainty, decision, timebox, or stopping rule.
+- **Certainty gate** — maneuver is blocked until every unknown is retired, including low-value or irreducible uncertainty.
+- **Spike-becomes-feature** — prototype work enters production without an explicit change in scope, quality bar, or ownership.
+- **Permanent maneuver** — delivery continues while material assumptions, feedback, reliability, or team capacity degrade; the issue is lack of reorientation, not failure to follow a fixed rotation.
+- **Sustainment as unnamed rest** — the mode has no capacity or risk target. Rest may still be necessary, but should be named honestly rather than disguised as technical work.
+- **Forced generalism** — specialists rotate through every mode for symmetry even when that increases handoffs and reduces quality.
+- **Specialist silo** — recon or sustainment evidence stays with a specialist and never reaches the owners making execution decisions.
+- **Cadence cargo cult** — fixed sprint lengths or recon/maneuver/sustainment ratios persist despite different feedback latency or operational load.
 
 ## OODA and feedback
 
-- **Loop on Decide** — the same decision rehashed in three meetings; pre-commit it via a trigger or accept that deliberation now costs more than a wrong answer.
-- **Observe theatre** — wall-of-graphs dashboards nobody consults; if nobody looks, it isn't observation.
+- **Preset diagnosis** — the team assumes Observe or Orient is always slow and invests before locating the actual bottleneck.
+- **Observe theater** — dashboards exist, but nobody uses them for a decision and no relevant change reaches an owner.
+- **Orient monoculture** — every signal is interpreted through one stale model or one specialist with no challenge path.
+- **Loop on Decide** — the same predictable decision is repeatedly debated because authority, required evidence, or a useful trigger is missing.
+- **Trigger theater** — a condition has no authorized response, owner, evidence source, or expiry appropriate to the case.
+- **Act without observation** — work ships without a practical way to learn whether the intended outcome changed.
+
+## Tracker projection
+
+- **Tracker capture** — the mission artifact is written around one tracker's fields and becomes unusable when the tracker changes.
+- **Unrequested projection** — planning silently creates, relabels, closes, commits, or publishes tracker state.
+- **Vocabulary imposition** — `pace:*`, `cycle:*`, or other military-derived labels are added without a query need or project agreement.
+- **Dual status** — task state is maintained in both the mission artifact and tracker, then diverges.
+- **Inferred graph** — dependencies or hierarchy are generated from prose or title similarity without an explicit execution mapping.

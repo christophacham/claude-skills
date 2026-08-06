@@ -22,76 +22,86 @@ Load conditions are listed in `SKILL.md`. Everything here expands a pattern the 
 
 ### Port interfaces
 
-Ports are the contracts between application and outside world — traits defined in `application/`, implemented in `infrastructure/`.
+Ports invert a dependency when policy must call a detail without depending on it. The policy-side client owns the smallest capability it needs; the adapter depends inward and implements it. Most driven ports belong in `application/`, but a repository-like collection that is genuinely part of the domain language may belong with the domain model. A trait beside its only adapter, created solely to satisfy a layer diagram, inverts nothing.
 
-**Output ports (driven) — what the application needs:**
+**Driven port — what this application policy needs:**
 
 ```rust
-// application/ports.rs
-pub trait OrderRepository: Send + Sync {
-    fn save(&self, order: &Order) -> Result<(), RepositoryError>;
-    fn find_by_id(&self, id: Uuid) -> Result<Option<Order>, RepositoryError>;
-    fn find_by_customer(&self, email: &Email) -> Result<Vec<Order>, RepositoryError>;
-    fn find_by_status(&self, status: OrderStatus) -> Result<Vec<Order>, RepositoryError>;
-}
-
-pub trait EventBus: Send + Sync {
-    fn publish(&self, events: Vec<DomainEvent>) -> Result<(), EventBusError>;
-}
-
-pub trait EmailService: Send + Sync {
-    fn send_order_confirmation(&self, order: &Order) -> Result<(), EmailError>;
-    fn send_order_cancellation(&self, order: &Order, reason: &str) -> Result<(), EmailError>;
+// application/order_store.rs
+pub trait OrderStore {
+    fn load(&self, id: OrderId) -> Result<Option<Order>, StoreFailure>;
+    fn recorded_result(
+        &self,
+        command_id: CommandId,
+    ) -> Result<Option<SubmitOrderResult>, StoreFailure>;
+    fn save_submission(
+        &self,
+        command_id: CommandId,
+        result: &SubmitOrderResult,
+        order: &Order,
+        events: &[DomainEvent],
+    ) -> Result<(), StoreFailure>;
 }
 ```
 
-**Input ports (driving) — how the outside calls in:**
+`save_submission` represents the atomic capability the use case requires: commit
+aggregate state, durable outbox records, and the idempotent command result in one
+transaction. It does not expose SQL, transactions, or a generic CRUD surface. A
+dispatcher port may be useful for the outbox worker, but direct broker publication
+is not part of the state transaction.
+
+**Driving port — only when callers need a stable use-case contract:**
 
 ```rust
-pub trait SubmitOrder: Send + Sync {
-    type Output;
-    fn execute(&self, order_id: Uuid) -> Self::Output;
+pub trait SubmitOrder {
+    fn execute(&self, command: SubmitOrderCommand) -> Result<SubmitOrderResult, SubmitOrderError>;
 }
 ```
+
+A public method is often sufficient; do not create an input trait until multiple driving adapters, decoration, or a framework seam needs one.
 
 **Port design guidelines:**
 
-- One trait per concern — never mix persistence and messaging in one port
-- `Send + Sync` bounds — use cases are shared across threads
-- Methods return `Result` with port-specific error types
-- Name after the capability, not the implementation: `OrderRepository`, not `PostgresOrderStore`
+- Own the abstraction on the side whose policy it expresses, not beside the implementation
+- Shape methods around client capabilities, not the vendor API or generic CRUD
+- Add `Send`, `Sync`, `'static`, async, or object-safety constraints only when the chosen runtime and sharing model require them
+- Return failures in a vocabulary the policy can classify; adapters retain the vendor cause for diagnostics
+- Name after the capability (`OrderStore`), not the implementation (`PostgresOrderStore`)
 
 ### Use cases
 
-One struct per business action, generic over port traits. Orchestrate; never contain business rules.
+Organize use cases around business actions when that makes the application contract clearer. They may contain **application policy**: authorization, idempotency, transaction selection, sequencing, cross-aggregate coordination, and deciding which external effects to request. They must not duplicate invariants intrinsic to the aggregate.
 
-The struct and `execute` body match SKILL.md §2, extended with a third port for notifications — an extra generic parameter, field, and one best-effort step after publishing:
+A durable submit flow is:
 
 ```rust
-pub struct SubmitOrderUseCase<R: OrderRepository, E: EventBus, M: EmailService> {
-    repository: Arc<R>,
-    event_bus: Arc<E>,
-    email_service: Arc<M>,
+pub struct SubmitOrder<S> {
+    store: S,
 }
 
-// inside execute(), after self.event_bus.publish(events.clone())?:
-let _ = self.email_service.send_order_confirmation(&order); // 6. best-effort notify
+// execute(command):
+// 1. return store.recorded_result(command.id) when it exists
+// 2. load the aggregate
+// 3. call order.submit(command.occurred_at) so the aggregate enforces invariants
+// 4. inspect order.pending_events() without removing them
+// 5. derive the result, then atomically call store.save_submission(
+//        command.id, &result, &order, order.pending_events())
+// 6. call order.mark_events_committed() only after the transaction succeeds
+// 7. return the same recorded result on every retry
 ```
 
-**Execution order:** fetch → aggregate method → take events → **persist before side effects** → publish/notify → return. Persisting first means a down event bus loses nothing; the publish can be retried.
+A separate worker claims outbox rows, maps internal domain events to public integration messages, publishes them, and marks them delivered. Publication is normally **at least once**: a crash after publish but before acknowledgement can duplicate a message, so message identity and consumer idempotency are part of the contract. If a notification is explicitly best-effort, direct post-commit delivery can be simpler—name the accepted loss instead of implying the database makes it reliable.
 
 ### Error mapping
 
-Each layer defines its own error types; use cases map upward with `#[from]`:
+Translate failure semantics where a caller crosses a boundary; do not mechanically create one wrapper enum per folder.
 
-The enum matches SKILL.md §2 (`OrderNotFound`, `Domain`, `Repository`), plus one more variant for the event bus:
+- Domain failures describe violated business rules (`EmptyOrder`, `AlreadySubmitted`).
+- The use-case contract exposes actionable outcomes (`NotFound`, `Conflict`, `Denied`, `TemporarilyUnavailable`) and can embed a domain failure when the caller understands that vocabulary.
+- A driven adapter maps database, broker, SDK, and timeout failures to the classifications promised by its port while retaining the original source for logs/traces.
+- An HTTP/CLI/UI adapter maps use-case outcomes to its transport contract.
 
-```rust
-#[error("Failed to publish events: {0}")]
-EventBus(#[from] EventBusError),
-```
-
-Why per layer: domain errors speak business language (`EmptyOrder`), application errors add orchestration concerns (`OrderNotFound`), infrastructure errors add I/O detail (`ConnectionTimeout`) — and each layer can evolve independently.
+Rust `#[from]` is appropriate only when the conversion is semantically lossless. A blanket `Repository(#[from] sqlx::Error)` in an application error leaks a vendor type and makes transient, conflict, and corruption failures indistinguishable. Prefer an explicit `map_err` at the adapter boundary when classification matters.
 
 ### Repository implementations
 
@@ -121,7 +131,7 @@ Real infrastructure implements the same trait — `PostgresOrderRepository { poo
 
 ### API controllers
 
-Thin translators: transport format → use case input, use case output → transport response. No business logic.
+Thin translators: transport format → use-case input, use-case outcome → transport response. They own transport policy such as status-code mapping and redaction, but no domain invariants.
 
 ```rust
 // infrastructure/api.rs
@@ -134,7 +144,11 @@ impl OrderController {
                 total: format!("{}", result.order.total().amount()),
                 events_published: result.events.len(),
             }),
-            Err(e) => ApiResponse::error(e.to_string()),
+            Err(SubmitOrderError::NotFound) => ApiResponse::not_found(),
+            Err(SubmitOrderError::Conflict(reason)) => ApiResponse::conflict(reason.public_message()),
+            Err(SubmitOrderError::Denied) => ApiResponse::forbidden(),
+            Err(SubmitOrderError::TemporarilyUnavailable) => ApiResponse::unavailable(),
+            Err(SubmitOrderError::InvalidOrder(reason)) => ApiResponse::unprocessable(reason.public_message()),
         }
     }
 }
@@ -185,7 +199,7 @@ impl OrderView {
 Wiring — same use case, two adapters:
 
 ```rust
-let submit_use_case = Arc::new(SubmitOrderUseCase::new(Arc::clone(&repo), event_bus, email_service));
+let submit_use_case = Arc::new(SubmitOrderUseCase::new(Arc::clone(&store)));
 let api = OrderController::new(submit_use_case.clone());  // HTTP
 let view = OrderView::new(submit_use_case);               // GUI
 ```
@@ -215,21 +229,20 @@ What changes when adding a new adapter:
 
 ### Composition root
 
-The single place all dependencies are wired — the **only** code that knows concrete implementations:
+The application bootstrap owns the top-level object graph and bindings across architectural boundaries:
 
 ```rust
 // main.rs
-let repository = Arc::new(InMemoryOrderRepository::new());
-let event_bus = Arc::new(LoggingEventBus::new());
-let email_service = Arc::new(LoggingEmailService::new());
-
-let create_order = CreateOrderUseCase::new(Arc::clone(&repository));
-let submit_order = SubmitOrderUseCase::new(Arc::clone(&repository), event_bus, email_service);
+let store = Arc::new(PostgresOrderStore::new(pool));
+let create_order = CreateOrderUseCase::new(Arc::clone(&store));
+let submit_order = SubmitOrderUseCase::new(Arc::clone(&store));
+let outbox_worker = OutboxWorker::new(Arc::clone(&store), broker);
 
 let controller = OrderController::new(OrderService { create_order, submit_order, .. });
+let worker = WorkerProcess::new(outbox_worker);
 ```
 
-Guidelines: lives in `main.rs` or a dedicated wiring module; swapping an implementation is a one-line change here; tests substitute mocks at this seam.
+Guidelines: keep the top-level root in `main.rs`, framework bootstrap, or a dedicated wiring module; allow cohesive modules and adapter factories to build local subgraphs; keep business branching and runtime work out of the root. Tests may assemble smaller roots with fakes at earned ports. Swapping a detail should change bindings, but a changed capability may legitimately change policy and its port.
 
 ---
 
@@ -263,36 +276,36 @@ fn test_money_prevents_cross_currency() {
 
 #[test]
 fn test_order_lifecycle() {
-    let mut order = Order::create(Email::new("t@t.com").unwrap());
+    let mut order = test_order();
     assert_eq!(order.status(), OrderStatus::Draft);
-    order.add_item(test_item()).unwrap();
-    order.submit().unwrap();
+    order.add_item(test_item(), test_time()).unwrap();
+    order.submit(test_time()).unwrap();
     assert_eq!(order.status(), OrderStatus::Pending);
-    order.cancel("changed mind").unwrap();
+    order.cancel("changed mind", test_time()).unwrap();
     assert_eq!(order.status(), OrderStatus::Cancelled);
 }
 
 #[test]
 fn test_cannot_submit_empty_order() {
-    let mut order = Order::create(Email::new("t@t.com").unwrap());
-    assert!(matches!(order.submit(), Err(OrderError::EmptyOrder)));
+    let mut order = test_order();
+    assert!(matches!(order.submit(test_time()), Err(OrderError::EmptyOrder)));
 }
 
 #[test]
 fn test_cannot_add_item_after_submit() {
-    let mut order = Order::create(Email::new("t@t.com").unwrap());
-    order.add_item(test_item()).unwrap();
-    order.submit().unwrap();
-    assert!(order.add_item(test_item()).is_err());
+    let mut order = test_order();
+    order.add_item(test_item(), test_time()).unwrap();
+    order.submit(test_time()).unwrap();
+    assert!(order.add_item(test_item(), test_time()).is_err());
 }
 
 #[test]
 fn test_submit_records_order_placed_event() {
-    let mut order = Order::create(Email::new("t@t.com").unwrap());
-    order.add_item(test_item()).unwrap();
-    let _ = order.take_events();          // clear ItemAdded
-    order.submit().unwrap();
-    let events = order.take_events();
+    let mut order = test_order();
+    order.add_item(test_item(), test_time()).unwrap();
+    order.mark_events_committed();        // test setup: prior ItemAdded was persisted
+    order.submit(test_time()).unwrap();
+    let events = order.pending_events();
     assert_eq!(events.len(), 1);
     assert!(matches!(events[0], DomainEvent::OrderPlaced(_)));
 }
@@ -307,46 +320,31 @@ fn test_state_machine_transitions() {
 }
 ```
 
-### Application tests — mocked ports
+### Application tests — controlled substitutes at earned ports
+
+Use a fake at the application-owned store capability and assert the durable
+request, not an immediate broker call:
 
 ```rust
-struct MockOrderRepository { orders: Mutex<Vec<Order>> }
-
-impl OrderRepository for MockOrderRepository {
-    fn save(&self, order: &Order) -> Result<(), RepositoryError> {
-        self.orders.lock().unwrap().push(order.clone());
-        Ok(())
-    }
-    fn find_by_id(&self, id: Uuid) -> Result<Option<Order>, RepositoryError> {
-        Ok(self.orders.lock().unwrap().iter().find(|o| o.id() == id).cloned())
-    }
-}
-
-struct MockEventBus { published: Mutex<Vec<DomainEvent>> }
-
-impl EventBus for MockEventBus {
-    fn publish(&self, events: Vec<DomainEvent>) -> Result<(), EventBusError> {
-        self.published.lock().unwrap().extend(events);
-        Ok(())
-    }
-}
-
 #[test]
-fn test_submit_order_publishes_events() {
-    let repo = Arc::new(MockOrderRepository::new());
-    let event_bus = Arc::new(MockEventBus::new());
-    let mut order = Order::create(Email::new("t@t.com").unwrap());
-    order.add_item(test_item()).unwrap();
-    let order_id = order.id();
-    repo.save(&order).unwrap();
+fn submit_records_state_outbox_and_result_atomically() {
+    let store = RecordingOrderStore::with_order(submittable_order());
+    let uc = SubmitOrderUseCase::new(&store);
+    let command = test_submit_command();
 
-    let uc = SubmitOrderUseCase::new(repo, event_bus.clone(), mock_email());
-    let result = uc.execute(order_id).unwrap();
+    let result = uc.execute(command.clone()).unwrap();
+    let saved = store.only_submission();
 
-    assert!(result.events.iter().any(|e| e.event_type() == "OrderPlaced"));
-    assert_eq!(event_bus.published.lock().unwrap().len(), 2); // ItemAdded + OrderPlaced
+    assert_eq!(saved.command_id, command.id);
+    assert_eq!(saved.result, result);
+    assert!(saved.events.iter().any(|event| matches!(event, DomainEvent::OrderPlaced(_))));
+    assert_eq!(store.recorded_result(command.id).unwrap(), Some(result));
 }
 ```
+
+A separate adapter/integration test runs the real transaction and proves aggregate
+state, outbox rows, and command result commit or roll back together. The outbox
+worker's own tests cover at-least-once broker publication and idempotent delivery.
 
 ### Integration tests — real infrastructure
 
@@ -355,7 +353,7 @@ fn test_submit_order_publishes_events() {
 async fn test_postgres_repository_roundtrip() {
     let pool = test_pool().await;
     let repo = PostgresOrderRepository::new(pool);
-    let order = Order::create(Email::new("t@t.com").unwrap());
+    let order = test_order();
     repo.save(&order).unwrap();
     assert!(repo.find_by_id(order.id()).unwrap().is_some());
 }
@@ -434,9 +432,10 @@ Child entity within the Order aggregate:
 ```rust
 #[derive(Debug, Clone)]
 pub struct OrderLineItem {
-    pub sku: Sku,          // value object
+    pub id: OrderLineItemId, // child-entity identity within the aggregate
+    pub sku: Sku,            // value object
     pub product_name: String,
-    pub unit_price: Money, // value object
+    pub unit_price: Money,   // value object
     pub quantity: u32,
 }
 
@@ -461,11 +460,11 @@ pub struct Order {
 }
 
 impl Order {
-    /// Factory — the only way to create an Order; always starts Draft
-    pub fn create(customer_email: Email) -> Self {
-        let now = Utc::now();
+    /// Factory — the only way to create an Order; always starts Draft.
+    /// The application supplies volatile identity/time inputs for deterministic replay.
+    pub fn create(id: Uuid, customer_email: Email, now: DateTime<Utc>) -> Self {
         Self {
-            id: Uuid::new_v4(),
+            id,
             customer_email,
             status: OrderStatus::Draft,
             items: Vec::new(),
@@ -481,7 +480,7 @@ impl Order {
     pub fn items(&self) -> &[OrderLineItem] { &self.items }
 
     /// Command: add item — INVARIANT: only to Draft orders
-    pub fn add_item(&mut self, item: OrderLineItem) -> Result<(), OrderError> {
+    pub fn add_item(&mut self, item: OrderLineItem, occurred_at: DateTime<Utc>) -> Result<(), OrderError> {
         if self.status != OrderStatus::Draft {
             return Err(OrderError::InvalidStateTransition {
                 from: self.status,
@@ -491,18 +490,18 @@ impl Order {
         let sku = item.sku.as_str().to_string();
         let quantity = item.quantity;
         self.items.push(item);            // mutate first
-        self.updated_at = Utc::now();
+        self.updated_at = occurred_at;
         self.pending_events.push(DomainEvent::ItemAddedToOrder(ItemAddedToOrder {
             order_id: self.id,
             sku,
             quantity,
-            occurred_at: Utc::now(),
+            occurred_at,
         }));                              // then record the event
         Ok(())
     }
 
     /// Command: submit — INVARIANTS: not empty, valid transition
-    pub fn submit(&mut self) -> Result<(), OrderError> {
+    pub fn submit(&mut self, occurred_at: DateTime<Utc>) -> Result<(), OrderError> {
         if self.items.is_empty() {
             return Err(OrderError::EmptyOrder);
         }
@@ -513,18 +512,18 @@ impl Order {
             });
         }
         self.status = OrderStatus::Pending;
-        self.updated_at = Utc::now();
+        self.updated_at = occurred_at;
         self.pending_events.push(DomainEvent::OrderPlaced(OrderPlaced {
             order_id: self.id,
             customer_email: self.customer_email.as_str().to_string(),
             total_amount: self.total().amount(),
-            occurred_at: Utc::now(),
+            occurred_at,
         }));
         Ok(())
     }
 
     /// Command: cancel — INVARIANT: only Draft or Pending
-    pub fn cancel(&mut self, reason: impl Into<String>) -> Result<(), OrderError> {
+    pub fn cancel(&mut self, reason: impl Into<String>, occurred_at: DateTime<Utc>) -> Result<(), OrderError> {
         if !matches!(self.status, OrderStatus::Draft | OrderStatus::Pending) {
             return Err(OrderError::InvalidStateTransition {
                 from: self.status,
@@ -532,11 +531,11 @@ impl Order {
             });
         }
         self.status = OrderStatus::Cancelled;
-        self.updated_at = Utc::now();
+        self.updated_at = occurred_at;
         self.pending_events.push(DomainEvent::OrderCancelled(OrderCancelled {
             order_id: self.id,
             reason: reason.into(),
-            occurred_at: Utc::now(),
+            occurred_at,
         }));
         Ok(())
     }
@@ -548,8 +547,13 @@ impl Order {
             .fold(Money::usd(Decimal::ZERO), |acc, m| acc.add(&m).unwrap())
     }
 
-    pub fn take_events(&mut self) -> Vec<DomainEvent> {
-        std::mem::take(&mut self.pending_events)
+    pub fn pending_events(&self) -> &[DomainEvent] {
+        &self.pending_events
+    }
+
+    /// Call only after state, outbox rows, and any idempotent result commit.
+    pub fn mark_events_committed(&mut self) {
+        self.pending_events.clear();
     }
 }
 ```
@@ -619,7 +623,7 @@ Enum vs trait object:
 | Concern | Enum | `Box<dyn …>` |
 |---------|------|--------------|
 | Serialize | Derive | Not object-safe |
-| Send + Sync | Automatic | Must be proven |
+| Send + Sync | Auto-derived only if every payload qualifies | Trait object must include/prove the required bounds |
 | Clone | Derive | Can't derive |
 | Exhaustive matching | Yes | No |
 | Heap allocation | None | Box per event |
@@ -627,7 +631,7 @@ Enum vs trait object:
 
 Use trait objects only when events cross bounded-context boundaries and the set must stay open; within one context, enums win in Rust.
 
-Naming: always past tense — `OrderPlaced`, not `PlaceOrder`. Events record what happened; commands request what should happen.
+Naming: use past tense — `OrderPlaced`, not `PlaceOrder`. Events record what happened; commands request what should happen. Keep domain events inside the bounded context. Before crossing a process/context boundary, map them to an integration-event contract that contains only stable public facts, carries an event/message identity and schema version when needed, and is emitted through an outbox if delivery must survive a crash.
 
 ### Business invariants
 
@@ -659,11 +663,11 @@ impl PricingService {
 
 Use one when the operation spans multiple aggregates, belongs to no single entity, and expresses a domain (not infrastructure) concept. If it could be a method on an aggregate, put it there.
 
-### Repositories as a domain concept
+### Repositories and aggregate persistence
 
-The repository interface is part of the model; the implementation is infrastructure.
+A repository is useful when policy needs collection-like access to aggregate roots and the domain language benefits from naming that collection. Its abstraction belongs with the client whose policy it serves—domain or application—not automatically in either layer.
 
-Rules: one repository per aggregate root (not per entity); return whole aggregates, never fragments; the domain doesn't know how persistence works.
+Prefer operations that load and save a consistency boundary or answer a use-case-specific query. Do not create one repository per entity, promise a repository for every aggregate, or expose generic CRUD merely for symmetry. Read models may return projections rather than reconstructing aggregates; command-side persistence should not return partially valid aggregate fragments.
 
 ### State machines
 
@@ -690,12 +694,12 @@ Draft ──→ Pending ──→ Confirmed ──→ Shipped ──→ Delivere
 
 ### Bounded contexts
 
-A boundary within which a model is defined and applicable. The same real-world concept has different representations per context:
+A bounded context is a boundary of language, rules, and model applicability. It is discovered from semantic differences and team/change ownership, not inferred from a directory or deployment diagram. The same real-world concept can have different representations:
 
 ```
 ┌─────────────────────┐    ┌─────────────────────┐
 │  Order Context      │    │  Shipping Context   │
-│  Customer:          │    │  Customer:          │
+│  Customer:          │    │  Recipient:         │
 │  - email            │    │  - address          │
 │  - payment_method   │    │  - delivery_prefs   │
 │  Order:             │    │  Shipment:          │
@@ -704,24 +708,32 @@ A boundary within which a model is defined and applicable. The same real-world c
 └─────────────────────┘    └─────────────────────┘
 ```
 
-In Rust, bounded contexts map to separate workspace crates or modules with hard boundaries — different types for the same real-world concept, no sharing between contexts.
+A context can live in one module, several packages, or its own deployable; choose physical enforcement according to team scale and recurring violations. Separate types when semantics differ. Sharing identity/value primitives or an explicitly published contract can be fine; sharing mutable domain entities or one canonical model across contexts erases the boundary.
 
 ### Anti-corruption layer
 
-Translate at the boundary; never leak one context's internals into another:
+Translate at the boundary; never make one context compile against another context's internal model:
 
 ```rust
-// In the shipping context — take only what shipping needs
-impl From<order_context::OrderPlaced> for ShipmentRequest {
-    fn from(event: order_context::OrderPlaced) -> Self {
-        ShipmentRequest { order_id: event.order_id, .. }
+// Published integration contract at the boundary.
+pub struct OrderPlacedV1 { pub event_id: EventId, pub order_id: OrderId }
+
+// Shipping owns this translation into its own language.
+impl TryFrom<OrderPlacedV1> for CreateShipment {
+    type Error = ContractError;
+    fn try_from(message: OrderPlacedV1) -> Result<Self, Self::Error> {
+        Ok(CreateShipment { source_event: message.event_id, order: message.order_id })
     }
 }
 ```
 
+The anti-corruption layer may be a function, adapter, or module; it need not be a service. Validate compatibility and deduplicate at this boundary when messages can be redelivered.
+
 ---
 
 ## Rust Modeling Patterns
+
+These are Rust implementation options, not layer requirements. Add `Arc`, locks, `Send + Sync`, async traits, and `'static` only when the actual executor/threading model needs them. Prefer passing clocks, ID generators, and transaction boundaries explicitly when determinism or ownership matters; a single-threaded CLI should not inherit server-runtime constraints.
 
 ### Newtype for IDs — zero-cost type safety
 
@@ -730,12 +742,14 @@ impl From<order_context::OrderPlaced> for ShipmentRequest {
 pub struct CustomerId(Uuid);
 
 impl CustomerId {
-    pub fn new() -> Self { Self(Uuid::new_v4()) }
+    pub fn from_uuid(value: Uuid) -> Self { Self(value) }
     pub fn as_uuid(&self) -> Uuid { self.0 }
 }
 ```
 
-`CustomerId` and `OrderId` are both `Uuid` underneath but can't be mixed up.
+`CustomerId` and `OrderId` are both `Uuid` underneath but cannot be mixed up.
+The application boundary chooses or generates the raw UUID and passes it into the
+domain type; replayable domain logic does not call a global RNG implicitly.
 
 ### Builder for complex construction
 
@@ -860,7 +874,7 @@ pub struct Order {
 
 // RIGHT: logic lives on the entity
 impl Order {
-    pub fn submit(&mut self) -> Result<(), OrderError> { .. }
+    pub fn submit(&mut self, occurred_at: DateTime<Utc>) -> Result<(), OrderError> { .. }
 }
 ```
 
@@ -886,7 +900,7 @@ fn execute(&self, order_id: Uuid) -> Result<..> {
 }
 
 // RIGHT: domain enforces invariants
-order.submit()?;
+order.submit(now)?;
 ```
 
 ### 4. Fat controllers
@@ -924,19 +938,23 @@ pub struct SubmitOrderUseCase<R: OrderRepository> {
 }
 ```
 
-### 6. Event bus in the critical path
+### 6. Database-to-broker dual write
 
 ```rust
-// WRONG: side effects before persistence
-order.submit()?;
-event_bus.publish(events)?;  // what if the bus is down?
-repo.save(&order)?;          // order state is lost!
-
-// RIGHT: persist first, publish after
-order.submit()?;
+// WRONG: either order leaves a crash gap
+order.submit(now)?;
 repo.save(&order)?;
-event_bus.publish(events)?;  // retryable if this fails
+event_bus.publish(events)?; // crash after save can lose the message
+
+// RIGHT when delivery and idempotent retry are required: one local transaction
+order.submit(now)?;
+let result = SubmitOrderResult::from(&order);
+unit_of_work.save_submission(command.id, &result, &order, order.pending_events())?;
+order.mark_events_committed();
+// A dispatcher later publishes claimed outbox rows at least once.
 ```
+
+Direct post-commit publication is simpler only when message loss is explicitly acceptable. Otherwise persist event identity/payload in the same transaction, retain/mark aggregate events according to commit outcome, and make consumers idempotent.
 
 ### 7. Bypassing aggregates
 
@@ -1037,7 +1055,7 @@ src/
 │   └── events.rs                     # DomainEvent enum + event structs
 ├── application/
 │   ├── mod.rs
-│   ├── ports.rs                      # OrderRepository, EventBus, EmailService traits
+│   ├── ports.rs                      # OrderStore and other earned application capabilities
 │   └── use_cases.rs                  # one struct per business action
 └── infrastructure/
     ├── mod.rs
@@ -1270,7 +1288,7 @@ impl core::MlPredictor for ExperimentalModel { .. }
 
 ### SAP — the main sequence
 
-A crate should be as abstract as it is stable. Stable + concrete = Zone of Pain (rigid); unstable + abstract = Zone of Uselessness. The formulas (abstractness `A`, instability `I`, distance `D`) and zone analysis live in `distributed-architecture/references/reference.md` — Codebase Health Metrics; the pattern here is the Rust application.
+A stable component that many others depend on needs deliberate extension seams where its policy varies; an unstable leaf usually needs concrete implementation, not abstract surface. The main-sequence metrics are diagnostic, not a target to game by adding traits. Stable + concrete (`A≈0, I≈0`) is the Zone of Pain; abstract + unstable (`A≈1, I≈1`) is the Zone of Uselessness. Formulas and interpretation live in `distributed-architecture/references/reference.md` — Codebase Health Metrics.
 
 ```rust
 // VIOLATION: Zone of Pain — widely depended on, fully concrete
@@ -1279,13 +1297,14 @@ pub struct DataStore {
     db: PgConnection,  // concrete, no extension point
 }
 
-// FIX: make it as abstract as it is stable (A near 0.95)
-// crate core:
+// FIX only if callers need storage policy to vary: the policy-side client owns
+// the narrow capability and concrete adapters move to leaf crates.
 pub trait DataStore {
     fn get(&self, key: &str) -> Option<Value>;
     fn put(&self, key: &str, value: Value);
 }
-// concrete implementations move to leaf crates
+// If no variation or policy/detail seam exists, keep the concrete module and
+// reduce incoming coupling instead of manufacturing abstraction for the metric.
 ```
 
 ### Diagnostic commands

@@ -1,0 +1,10 @@
+[
+  {
+    "query": "Our Rust order use case calls Postgres and Kafka directly. Submission must enforce order invariants, reject duplicate commands, and never lose OrderPlaced after the database commits. Show where the code and interfaces should live.",
+    "should_trigger": true
+  },
+  {
+    "query": "Should this parser method return an iterator or a collected Vec, and is the public API too shallow?",
+    "should_trigger": false
+  }
+]

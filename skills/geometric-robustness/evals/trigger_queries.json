@@ -1,0 +1,10 @@
+[
+  {
+    "query": "Review this Rust segment intersection: it branches on a raw f64 cross product, computes the point, clamps t into [0,1], and later decides endpoint identity with distance < 1e-6. Recommend the smallest robust redesign.",
+    "should_trigger": true
+  },
+  {
+    "query": "Rename this ordinary string helper and simplify its error message.",
+    "should_trigger": false
+  }
+]

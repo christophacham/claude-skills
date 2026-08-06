@@ -1,173 +1,212 @@
 ---
 name: skill-creator
-description: Create, improve, review, or package Agent Skills. Use when the user asks to make a new skill, edit a SKILL.md, write skill metadata or descriptions, add scripts/references/assets, validate skills, evaluate or optimize skill triggering and output quality, or package a skill collection as an npm package with a Node-native npx/bunx install and uninstall CLI. Not for general npm publishing unrelated to Agent Skills.
-compatibility: Agent Skills-compatible clients. Optional validator script requires Python 3.
+description: Create, improve, review, validate, evaluate, or package Agent Skills. Use when writing SKILL.md metadata/instructions, adding scripts/references/assets/evals, choosing portable versus Claude Code features, auditing dynamic injection, or working on this repository's Node installer. Not for general npm publishing or unrelated prompt/API design.
+compatibility: Agent Skills-compatible clients. Bundled validator requires Python 3.10+.
 ---
 
-# Skill Creator
+# Skill creator
 
-Use this skill to create or improve Agent Skills: folders containing `SKILL.md` plus optional `scripts/`, `references/`, and `assets/` files. Optimize for progressive disclosure: only metadata is always loaded, `SKILL.md` loads on activation, supporting files load on demand.
+An Agent Skill is a directory with `SKILL.md` and optional support files. Only
+metadata is listed up front; the body loads when activated; references, scripts,
+assets, and eval inputs load on demand. Keep each layer useful at its own cost.
 
-## Where to put skills
+## Choose the target before authoring
 
-In Claude Code (this environment's primary client):
+Use one profile deliberately:
 
-- Personal (all projects): `~/.claude/skills/<skill-name>/SKILL.md`
-- Project-local: `.claude/skills/<skill-name>/SKILL.md` (commit to share)
-- Precedence on name clash: enterprise > personal > project > bundled skill.
-- SKILL.md edits are picked up live mid-session; a brand-new top-level
-  skills directory needs a restart.
+- **Portable Agent Skills:** only `name`, `description`, `license`,
+  `compatibility`, `metadata`, and `allowed-tools` in frontmatter. `name` and
+  `description` are required by portable packaging/upload validation. Claude
+  Code-only body preprocessing does not run in portable clients.
+- **Claude Code:** accepts portable fields plus invocation control, arguments,
+  tool grants/restrictions, model/effort, forked execution, hooks, paths, shell,
+  and dynamic context injection. Claude Code itself can fall back when `name` or
+  `description` is omitted, but this repository keeps both for identity and
+  cross-client compatibility.
 
-Cross-agent directories (use only when the skill must also serve Pi or other
-Agent Skills clients):
+Validate with the matching mode; do not call a Claude Code skill portable merely
+because another client ignores unknown behavior.
 
-- Global default: `~/.agents/skills/<skill-name>/SKILL.md`
-- Pi also loads: `~/.pi/agent/skills/`
-- Project-local defaults: `.agents/skills/<skill-name>/SKILL.md` or `.pi/skills/`
+## Locations
 
-In Pi, `.agents/skills` root `.md` files are ignored; use a directory containing `SKILL.md`.
+Claude Code discovers personal skills under `~/.claude/skills/<name>/` and
+project skills under `.claude/skills/<name>/`. Other Agent Skills clients commonly
+use `~/.agents/skills/` and `.agents/skills/`, but this repository's selective
+Node installer currently writes only Claude Code locations. Copying to cross-
+agent locations is a separate/manual distribution decision.
 
-**Claude Code extends the base skill format** with invocation control,
-dynamic context injection (a bang-prefixed backtick command), forked subagent execution,
-per-skill model/effort, `allowed-tools` permission grants, `paths`
-auto-activation, and `${CLAUDE_SKILL_DIR}`/`${CLAUDE_PROJECT_DIR}`
-substitutions. Read [references/claude-code-skills.md](references/claude-code-skills.md)
-when creating or editing any skill for Claude Code — the high-leverage
-patterns section there lists the features most worth using.
+Read [references/claude-code-skills.md](references/claude-code-skills.md) before
+adding Claude Code extensions. Its platform table distinguishes standard fields
+from extensions and documents substitution and injection hazards.
 
-## Creation workflow
+## Workflow
 
-1. **Clarify the expertise and trigger.** Identify the recurring task, source material, user prompts that should activate it, and near-miss prompts that should not. If the domain expertise is missing, ask for runbooks, examples, corrections from previous work, API docs, schemas, or concrete tasks.
-2. **Choose a precise name.** Use lowercase letters, numbers, and hyphens only; 1-64 characters; no leading/trailing hyphen; no consecutive hyphens. For broad compatibility, make the folder name match `name`.
-3. **Write the description first.** Keep under 1024 characters. Use imperative trigger phrasing: `Use when...`. Mention user intents, domain terms, implicit cases, and boundaries/near-misses when useful.
-4. **Write lean instructions.** Include only what the agent would likely get wrong without the skill: project conventions, workflow steps, gotchas, exact tools, validation loops, and output templates. Prefer procedures over one-off answers.
-5. **Add supporting files only when they improve reuse or context economy.**
-   - `references/` for detailed docs loaded on demand.
-   - `scripts/` for repeated, fragile, or mechanically verifiable operations.
-   - `assets/` for templates and static resources.
-6. **Validate.** Run the validator from this skill directory when possible:
-   - POSIX: `python3 scripts/validate_skill.py <target-skill-dir> --format text`
-   - Windows: `py -3 scripts/validate_skill.py <target-skill-dir> --format text` (fallback: `python ...`)
-   Also check scripts for non-interactive behavior and useful `--help` output.
-7. **Iterate from real use.** Add corrections to gotchas, remove vague/general instructions, and evaluate triggering/output quality for important skills.
+1. Define one recurring unit of work, its source expertise, should-trigger
+   prompts, and near misses. Ask for runbooks, corrections, schemas, examples, or
+   concrete failures when domain knowledge is missing.
+2. Choose a lowercase hyphenated directory/name (1–64 characters) and preserve
+   that identity. Write the description first: what the skill does, when to use
+   it, and the nearest boundary.
+3. Write only the non-obvious contract: decision rules, fragile ordered steps,
+   project conventions, exact commands, failure modes, validation, and output
+   shape. Do not fill a template section that has no job.
+4. Put detailed optional knowledge in `references/`, reusable deterministic
+   operations in `scripts/`, static output material in `assets/`, and output
+   evaluations in `evals/`.
+5. Validate in the intended profile, run script `--help`/smoke checks, and run at
+   least one realistic eval. Fix errors; review warnings rather than blindly
+   suppressing them.
+6. Iterate from observed trigger misses and output failures. Preserve useful
+   identities/files unless the user explicitly approves a rename or removal.
 
-## Bundled files
+## Validation
 
-Use these files as needed; do not load them all by default.
+The bundled validator is standard-library-only and uses a conservative typed
+YAML subset. It rejects duplicate keys, aliases/anchors/tags/merge keys, unknown
+fields for the selected profile, invalid extension types/combinations, unsafe
+load-time injection, and malformed eval files. Python cache artifacts are ignored
+when inventorying scripts.
 
-- `assets/SKILL_TEMPLATE.md` — Copy/adapt when creating a new skill.
-- `assets/TRIGGER_EVAL_QUERIES_TEMPLATE.json` — Copy when optimizing the `description` field.
-- `assets/OUTPUT_EVALS_TEMPLATE.json` — Copy to `<skill>/evals/evals.json` when evaluating output quality.
-- `scripts/validate_skill.py` — Validate a skill directory after creating or editing it.
-- `references/spec-and-patterns.md` — Read when you need frontmatter field details, scoping guidance, pattern examples, or the full trigger/output eval workflows.
-- `references/node-native-installer-pattern.md` — Read when implementing or refactoring the actual installer CLI, registry, or install/uninstall code for a packaged skill collection.
+```bash
+# Portable upload/package surface
+python3 scripts/validate_skill.py <skill-dir> --mode portable --format text
 
-## Description guidance
+# Claude Code frontmatter + dynamic injection audit
+python3 scripts/validate_skill.py <skill-dir> --mode claude-code --format text
+```
 
-Good descriptions carry the activation burden. Prefer:
+The default is `claude-code` for this Claude Code-first repository, but automation
+should pass `--mode` explicitly. Windows can use `py -3` or `python`.
+
+The injection audit is intentionally conservative, not a shell proof. It rejects
+invocation argument substitution, obvious mutations, and file-writing
+redirection; it warns about unguarded reads. Manually review data sensitivity,
+network/latency, and whether every command is truly unconditional.
+
+## Frontmatter and description
+
+Portable example:
 
 ```yaml
-description: Create and maintain database migrations for this Rails app. Use when adding tables, altering columns, backfilling data, or diagnosing migration failures. Do not use for general SQL analysis unrelated to schema changes.
+---
+name: rails-migrations
+description: Create and maintain Rails database migrations. Use when adding or altering schema, backfilling data, or diagnosing migration failures. Not for read-only SQL analysis.
+compatibility: Rails application with Bundler available.
+---
 ```
 
-Avoid vague descriptions like `Helps with databases.`
+Claude Code extension example:
 
-When optimizing a description, build about 20 realistic queries: 8-10 should trigger and 8-10 near-miss should-not-trigger. Vary phrasing, explicitness, file paths, typos, and complexity. Split into train/validation sets if iterating.
-
-## Instruction patterns to include when useful
-
-- **Checklist:** for multi-step workflows where order matters.
-- **Validation loop:** do work, run validator/checklist/tests, fix, repeat until pass.
-- **Plan-validate-execute:** for destructive, batch, or high-stakes operations.
-- **Gotchas:** concrete facts the agent is likely to assume incorrectly.
-- **Output template:** exact formats for reports, JSON, commit messages, etc.
-- **Defaults with escape hatches:** choose one recommended tool/approach; mention alternatives only when they matter.
-
-## Script guidance
-
-Bundle scripts when the agent would otherwise reinvent the same logic or when correctness is mechanically checkable.
-
-Scripts should:
-
-- Be non-interactive; accept flags, env vars, or stdin.
-- Provide concise `--help` with examples.
-- Emit machine-readable data on stdout and diagnostics on stderr.
-- Have clear error messages and meaningful exit codes.
-- Be idempotent where possible and support `--dry-run` for risky actions.
-- Pin dependencies or use self-contained runners when feasible (`uv run`, `npx package@version`, `deno run`, etc.).
-
-Reference scripts from `SKILL.md` with paths relative to the skill root, e.g. `scripts/validate_skill.py`. After adding a script, run its `--help` and make sure it cannot block waiting for input.
-
-## Packaging & distribution
-
-When shipping a repo of skills as an npm package:
-
-**Core principle: `npx` must not require Bun.** `bunx` runs Node packages fine, so the portable default is a Node-native CLI: `"bin": { "pkg": "bin/cli.js" }` with `#!/usr/bin/env node` as the shebang. A wrapper that spawns `bun` makes `npx` feel broken; require Bun only if the package is explicitly Bun-only and the README says so. `bunx` working does not prove `npx` is clean — test with Node only.
-
-**Package shape:**
-
-```text
-repo/
-├── bin/cli.js        # Node-native executable CLI
-├── lib/groups.js     # single registry of groups + standalone skills
-├── lib/installer.js  # install/uninstall/copy logic
-├── skills/           # skill directories containing SKILL.md
-└── package.json
+```yaml
+---
+name: deploy-preview
+description: Deploy a preview environment after explicit user invocation.
+disable-model-invocation: true
+argument-hint: [environment]
+arguments: [environment]
+allowed-tools: Bash(./scripts/deploy-preview *)
+---
 ```
 
-- Install and uninstall must derive from the same registry (`lib/groups.js`); duplicated lists drift.
-- `package.json.files` must list the CLI, libs, README/LICENSE, and every shipped skill directory.
-- Default global install copies to both `~/.claude/skills` and `~/.agents/skills`; project-local install uses `.claude/skills` and `.agents/skills` under `process.cwd()` — the user's invocation directory, never the package directory.
+Descriptions carry activation. Use realistic intents and boundaries, not a list
+of synonyms. For trigger tuning, keep train and validation queries separate and
+include indirect phrasing, paths, typos, buried subtasks, and keyword-sharing
+near misses.
 
-**CLI checklist:**
+## Supporting files and scripts
+
+Reference support paths relative to the skill root and say when to load/run them.
+Scripts should be non-interactive, accept flags/env/stdin, provide useful
+`--help`, separate machine output from diagnostics, use meaningful exit codes,
+and be idempotent where practical. Add `--dry-run` when a repeated operation can
+mutate external state.
+
+For Claude Code bundled scripts, `${CLAUDE_SKILL_DIR}` locates the installed
+skill and can also appear in a matching `allowed-tools` Bash rule. Never paste
+user invocation arguments into load-time shell. Use
+[dynamic-context-injection](../dynamic-context-injection/SKILL.md) to audit that
+pattern.
+
+## Output eval schema
+
+Place output evaluations at `<skill>/evals/evals.json`. The schema used by the
+official skill-creator plugin is an object with `skill_name` and a non-empty
+`evals` array. Each eval has a unique positive integer `id`, realistic `prompt`,
+human-readable `expected_output`, optional `files`, and a non-empty
+`expectations` array. File paths are relative to and confined within the skill
+root and must exist. Use `files: []` when no fixture is needed.
+
+```json
+{
+  "skill_name": "rails-migrations",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Add a production-safe index for users.email.",
+      "expected_output": "A migration plan and implementation that avoids a blocking transaction.",
+      "files": [],
+      "expectations": [
+        "Uses the repository's migration safety mechanism.",
+        "Includes a concrete validation command and expected success evidence."
+      ]
+    }
+  ]
+}
+```
+
+Expectations describe observable pass/fail evidence, not internal reasoning or
+vague quality. Run evals with the skill and a baseline/previous version; record
+outputs, expectation evidence, and cost/latency when available.
+
+Templates:
+
+- `assets/SKILL_TEMPLATE.md` — minimal portable starting point.
+- `assets/TRIGGER_EVAL_QUERIES_TEMPLATE.json` — copy to `evals/trigger_queries.json`; include at least one positive and one near-miss negative query.
+- `assets/OUTPUT_EVALS_TEMPLATE.json` — output eval schema above.
+- [references/spec-and-patterns.md](references/spec-and-patterns.md) — field
+  types, scoping, and eval workflow.
+
+## This repository's package behavior
+
+The published package exposes the Node-native `claude-skills` CLI (Node
+`>=20.11.0`). `npx` does not require Bun. The current CLI is interactive and
+selective:
 
 ```bash
-pkg                          # interactive install (keep a non-interactive path)
-pkg install --all            # global install of everything
-pkg install --group NAME     # one selectable unit; repeatable flag
-pkg uninstall --group NAME   # symmetric removal
-pkg install --all --dry-run  # no filesystem writes
-pkg --help
+claude-skills install [--project <dir>] [--skip-deps]
+claude-skills uninstall [--yes]
+claude-skills --help
 ```
 
-Richer features (`doctor`, target-root selection, project/global flags, symlink mode) are enhancements, not prerequisites for a basic `npx` experience.
+With no command it starts `install`. It offers search skills globally, suggests
+`dynamic-context-injection` and `skill-creator` for the selected project, then
+offers remaining skills individually as global/project/skip. Global means
+`~/.claude`; project means `<project>/.claude`. It does not install to
+`.agents/`.
 
-**Gotcha — adding a skill means updating 4 places:** the skill directory, the registry, `package.json.files`, and the README skill list/examples.
+The Node uninstaller removes only global items recorded in
+`~/.claude/claude-skills-manifest.json`; it leaves project installs, API keys,
+dependencies, and bulk-shell installs alone. `install.sh`/`install.ps1` and their
+matching uninstallers are separate bulk flows.
 
-**Validation:**
-
-```bash
-node bin/cli.js --help
-node bin/cli.js install --group <known> --dry-run
-node bin/cli.js uninstall --group <known> --dry-run
-npm pack --dry-run   # must list every SKILL.md + support file, exclude local-only files
-```
-
-Also confirm registry names match directory names and `SKILL.md` `name` fields, and README examples match actual CLI flags. For GitHub Packages, the README needs scope registry setup and `read:packages` token instructions.
+When changing package behavior, read
+[references/node-native-installer-pattern.md](references/node-native-installer-pattern.md)
+and inspect `bin/cli.js`, `lib/catalog.js`, `lib/install-flow.js`,
+`lib/uninstall-flow.js`, and `lib/paths.js`. Do not document aspirational flags as
+implemented. `package.json.files` currently ships whole `bin/`, `lib/`,
+`skills/`, and `agents/` trees plus `pool.md` and README, so a new file under a
+shipped skill does not require a per-skill package entry. Catalog/README updates
+are still needed when adding a selectable skill.
 
 ## Review checklist
 
-Before finalizing a skill:
-
-- [ ] Directory contains `SKILL.md` and the folder name matches `name`.
-- [ ] `name` is valid: lowercase alphanumeric and hyphens, 1-64 chars.
-- [ ] `description` is non-empty, under 1024 chars, and says when to use the skill.
-- [ ] `SKILL.md` is concise (recommended under 500 lines / 5000 tokens); long content is split into `references/` or `assets/`.
-- [ ] Supporting files are referenced with relative paths and clear load/run conditions.
-- [ ] Instructions focus on task-specific expertise — no generic advice the agent already knows (`handle errors`, `follow best practices`).
-- [ ] Description is neither so broad it triggers on unrelated tasks nor so narrow it only matches exact keywords.
-- [ ] Gotchas are concrete and high-value.
-- [ ] Decisions have one recommended default, not menus of equal options.
-- [ ] Scripts are documented, non-interactive, and safe, with useful errors; fragile, destructive, or multi-step workflows include a validation or self-check step.
-- [ ] The skill has been tested on at least one realistic prompt.
-- [ ] For Claude Code skills: considered the high-leverage extensions — dynamic injection for live state, `allowed-tools` + `${CLAUDE_SKILL_DIR}` for bundled scripts, invocation control for side-effecting skills, `paths` for auto-activation ([references/claude-code-skills.md](references/claude-code-skills.md)).
-
-## When more detail is needed
-
-For Claude Code skills, the local [references/claude-code-skills.md](references/claude-code-skills.md)
-is the first stop. When it seems stale or the user asks for the latest
-behavior, fetch the official documentation index on demand with `WebFetch`,
-then read only the relevant pages before editing:
-
-- https://code.claude.com/docs/llms.txt
-- https://agentskills.io/llms.txt
+- [ ] Target profile is explicit; validator passes in that mode.
+- [ ] Directory, `name`, references, and `skill_name` agree.
+- [ ] Description states trigger and nearest non-trigger.
+- [ ] Body contains task-specific judgment, not generic filler.
+- [ ] Support files are referenced and optional content is off the hot path.
+- [ ] Frontmatter values use supported types; no duplicate or advanced YAML.
+- [ ] Claude Code injection is static/read-only/bounded/secret-safe and guarded.
+- [ ] Scripts are non-interactive and smoke-tested.
+- [ ] Evals use positive integer IDs, confined existing fixtures, and observable expectations.
+- [ ] Package instructions match the executable CLI rather than a desired future CLI.

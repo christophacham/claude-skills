@@ -71,20 +71,24 @@ When designing a series:
 - Isolation & naming
 - Seed paths / symbols
 - Must cover
-- Agent shards
+- Deterministic extraction units and independent review role
 - Deliverables
 - Quality bar / adversary
 - Final user message checklist
 
-## Isolation checklist (prompt + pack)
+## Analytical-isolation checklist (prompt + pack)
 
 - [ ] No other product names in findings
 - [ ] “this codebase” wording
 - [ ] No “see other repo”
 - [ ] Compare packs only via a dedicated later compare doc, not inside scout
+- [ ] Pack remains labeled `SOURCE_INFORMED`; isolation is not represented as
+      clean-room source/implementation separation or provenance
 
 ## Dual-repo experiment
 
 1. Same prompt text in repo A and repo B separately.
 2. Each writes `2_<reponame>_…` or `4_<reponame>_…`.
 3. Optional third session: `COMPARE.md` from the two packs only.
+4. Treat separation as experimental control against cross-contamination, not as
+   proof of clean-room implementation.

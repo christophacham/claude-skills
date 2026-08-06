@@ -1,0 +1,60 @@
+{
+  "skill_name": "peek-repo",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Peek at https://github.com/astral-sh/uv/tree/main and explain from source where the CLI dispatches commands.",
+      "expected_output": "Resolve the canonical slug, invoke the platform helper once, use only the returned path, then inspect relevant entry points and answer with source paths/symbols.",
+      "files": [],
+      "expectations": [
+        "The helper receives exactly the validated slug astral-sh/uv rather than the free-form request.",
+        "The response preserves the helper STATUS/EXIT_CODE/PATH/SLUG fields and reads source only after CLONED or EXISTS.",
+        "An EXISTS result with FRESHNESS=NOT_CHECKED is not described as current or freshly updated."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Clone owner/widget for inspection; ~/code/tmp/widget already exists as an empty directory.",
+      "expected_output": "Treat every pre-existing non-repository path, including an empty directory, as blocked and do not run gh into it.",
+      "files": [],
+      "expectations": [
+        "Reports STATUS=BLOCKED, EXIT_CODE=2, and the resolved PATH/SLUG.",
+        "Does not delete, rename, reuse, or clone into the existing empty directory.",
+        "Does not suggest bypassing the fixed inspection root."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I already peeked at Example/Project; get full history now but do not alter my checkout.",
+      "expected_output": "Validate matching origin before and after a non-interactive unshallow fetch, without pull/reset, and report worktree freshness honestly.",
+      "files": [],
+      "expectations": [
+        "Uses --full on the helper and accepts only the matching canonical GitHub origin case-insensitively.",
+        "Successful conversion reports STATUS=EXISTS, ACTION=UNSHALLOWED, SHALLOW=false, and FRESHNESS=WORKTREE_NOT_UPDATED.",
+        "Never claims the checked-out revision was updated or is at the remote tip."
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Clone example/private-tool for inspection; gh fails and prints credential-bearing diagnostics.",
+      "expected_output": "Suppress raw command diagnostics and return the helper's stable structured error and exit code.",
+      "files": [],
+      "expectations": [
+        "Reports STATUS=ERROR, EXIT_CODE=5, ERROR=CLONE_FAILED, and COMMAND_EXIT without reproducing raw gh output.",
+        "Does not expose tokens, URLs with credentials, or other command stderr.",
+        "Does not invent a successful PATH or inspect a partial clone."
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Have a look at the source for a project called orbit; I do not know the GitHub organization.",
+      "expected_output": "Perform at most one repository lookup, prefer official identity evidence, and ask once rather than guessing when candidates remain ambiguous.",
+      "files": [],
+      "expectations": [
+        "Does not invoke either clone helper until exactly two validated slug components are known.",
+        "Uses STATUS=NEED_REPO only as an agent-level report, not as claimed helper output.",
+        "Never guesses the GitHub organization or passes the prompt as shell input."
+      ]
+    }
+  ]
+}

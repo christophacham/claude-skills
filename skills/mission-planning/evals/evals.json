@@ -1,0 +1,80 @@
+{
+  "skill_name": "mission-planning",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Plan our six-week billing migration. This repo keeps initiative RFCs under rfcs/ and tracks delivery in GitHub Issues. Do not create issues yet.",
+      "expected_output": "Uses the existing RFC convention for a tracker-neutral mission artifact and proposes, but does not execute, an optional GitHub projection.",
+      "expectations": [
+        "Uses or maps into the existing rfcs/ convention rather than requiring docs/opords/ or a fixed OPORD heading contract.",
+        "Does not mention a mandatory Beads epic, Beads labels, or Beads as the source of status.",
+        "Keeps live execution status out of the mission artifact and identifies GitHub Issues as the selected status system.",
+        "Does not create tracker items because mutation was not authorized."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "We have an initialized Beads workspace. Draft a mission plan for the regional failover launch and suggest how it could map into Beads, but make no tracker changes.",
+      "expected_output": "Produces a tracker-neutral plan, then gives a clearly optional Beads mapping without running mutations or imposing labels and issue types.",
+      "expectations": [
+        "The mission artifact remains usable without Beads-specific fields or identifiers.",
+        "Marks Beads projection as conditional on Beads being selected and mutation being authorized.",
+        "Presents any mission, PACE, cycle, or OODA labels as optional query aids rather than required schema.",
+        "Does not run bd init, create, update, close, commit, pull, or push."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I own and will implement a low-risk two-day internal script. Give me a mission sentence and tell me whether I need a formal backbrief.",
+      "expected_output": "Provides a lightweight mission sentence and explains that a separate formal backbrief is unnecessary for this low-ambiguity, same-executor task.",
+      "expectations": [
+        "Does not require a synchronous meeting or a 20-minute ceremony.",
+        "Explains the backbrief decision in terms of handoff, ambiguity, consequence, and ownership.",
+        "Does not expand the request into a full OPORD, PACE plan, cycle rotation, or tracker projection."
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "We're migrating a high-volume queue and don't know the final traffic shape, vendor throttling behavior, or exact cutover date. Build a planning approach without waiting for perfect information.",
+      "expected_output": "Classifies uncertainty by decision value and reducibility, runs targeted recon where evidence can change the plan, and guards residual uncertainty with reversibility, staged rollout, PACE, or triggers.",
+      "expectations": [
+        "Does not require every unknown to be retired before maneuver or delivery begins.",
+        "Distinguishes reducible-now, reducible-later, irreducible/contextual, or low-value uncertainty in substance.",
+        "Connects recon to a named decision and stopping condition rather than treating recon as a mandatory phase.",
+        "Uses residual-risk controls appropriate to consequence and reversibility."
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Our database specialist can run migration recon while the product team delivers unrelated work. Must the whole team rotate into recon, maneuver, and sustainment together?",
+      "expected_output": "Allows specialist or workstream-specific modes while requiring ownership, interface clarity, and transfer of decision-relevant evidence.",
+      "expectations": [
+        "Does not force every person or team into the same mode or rotate specialists merely for symmetry.",
+        "Permits modes at initiative, team, workstream, or specialist scope according to coordination needs.",
+        "Addresses specialist silos by defining how findings reach owners and affect decisions.",
+        "Does not impose a fixed percentage mix or sprint length."
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Design fallback planning for a stable but safety-critical monthly settlement job. A duplicate vendor is prohibitively expensive, and the manual recovery runbook changes only after regulation updates.",
+      "expected_output": "Tailors PACE tiers and validation to economics, correctness, consequence, and change rate instead of demanding four implementations and fixed calendar drills.",
+      "expectations": [
+        "Allows Alternate to be omitted or marked unavailable with rationale and accepted consequence.",
+        "Plans a return/reconciliation path for degraded or manual operation.",
+        "Chooses validation evidence and review timing from consequence, evidence decay, change events, and cost.",
+        "Does not mandate quarterly failover or annual emergency drills as universal cadence."
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Our incident feedback loop feels slow. Leadership assumes observability is the problem, but deploy approvals also take days. Diagnose what to improve.",
+      "expected_output": "Reconstructs a representative episode across all OODA phases and identifies the verified controlling delay before prescribing an intervention.",
+      "expectations": [
+        "Does not assume Observe or Orient is the bottleneck merely because that is common doctrine.",
+        "Checks timestamps, handoffs, rework, and delivery evidence across Observe, Orient, Decide, and Act.",
+        "Defines a next observation that can show whether the selected intervention improved the loop."
+      ]
+    }
+  ]
+}

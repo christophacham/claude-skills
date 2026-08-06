@@ -1,0 +1,234 @@
+from __future__ import annotations
+
+import importlib.util
+import json
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+SKILLS = ROOT / "skills"
+VALIDATOR_PATH = SKILLS / "skill-creator" / "scripts" / "validate_skill.py"
+
+spec = importlib.util.spec_from_file_location("skill_validator_semantics", VALIDATOR_PATH)
+assert spec and spec.loader
+validator = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(validator)
+
+
+def flatten(text: str) -> str:
+    return " ".join(text.split())
+
+
+class GeometryDoctrineTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.skill = (SKILLS / "geometric-robustness" / "SKILL.md").read_text(encoding="utf-8")
+        cls.reference = (
+            SKILLS / "geometric-robustness" / "references" / "reference.md"
+        ).read_text(encoding="utf-8")
+        cls.skill_flat = flatten(cls.skill)
+        cls.reference_flat = flatten(cls.reference)
+
+    def test_tolerances_separate_uncertainty_roundoff_snap_and_process(self) -> None:
+        for phrase in (
+            "Input uncertainty",
+            "Numerical error bound",
+            "Geometric snap/weld distance",
+            "Process/manufacturing tolerance",
+            "absolute-plus-relative",
+        ):
+            self.assertIn(phrase, self.skill_flat)
+        self.assertIn("Exact predicate signs are compared with zero exactly", self.skill_flat)
+        self.assertNotIn("Relative beats absolute", self.skill_flat)
+        self.assertNotIn("~1e-9 to 1e-12", self.skill_flat)
+
+    def test_predicates_and_constructions_have_scoped_guarantees(self) -> None:
+        self.assertIn("represented input floats", self.skill_flat)
+        self.assertIn("does not remove measurement uncertainty", self.skill_flat)
+        self.assertIn("certification", self.skill.lower())
+        self.assertIn("NeedsHigherPrecision", self.reference_flat)
+        self.assertIn("Do not recompute topology from the constructed coordinate", self.skill_flat)
+        self.assertNotIn("construct with floats; never reverse", self.skill_flat)
+
+    def test_determinism_uses_explicit_tiers(self) -> None:
+        for tier in (
+            "D0 — topological/canonical",
+            "D1 — pinned-byte",
+            "D2 — cross-platform-byte",
+        ):
+            self.assertIn(tier, self.skill_flat)
+        self.assertIn("does not prove", self.skill_flat)
+        self.assertIn("runtime/math implementation", self.skill_flat)
+        self.assertIn("standard transcendental functions", self.skill_flat)
+        self.assertIn("IndexMap` is deterministic only when", self.skill_flat)
+        self.assertNotIn("bit-identical output on every run and every supported platform", self.skill_flat)
+
+    def test_transform_properties_include_frame_and_process_parameters(self) -> None:
+        for phrase in (
+            "layer phase",
+            "inverse transpose",
+            "negative determinant",
+            "dimensionless relative tolerances stay unchanged",
+            "invertible linear part",
+            "preserve coordinate distinctions",
+            "classifications/signs",
+        ):
+            self.assertIn(phrase, self.skill_flat)
+        self.assertIn("Rotating only the mesh is a different problem", self.skill_flat)
+
+        def orient(a: tuple[float, float], b: tuple[float, float], c: tuple[float, float]) -> float:
+            return (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])
+
+        points = ((0.0, 0.0), (1.0, 0.0), (0.0, 1.0))
+        translated = tuple((x + 2**53, y + 2**53) for x, y in points)
+        self.assertGreater(orient(*points), 0.0)
+        self.assertEqual(0.0, orient(*translated))
+        self.assertNotIn("orient(a,b,c) == -orient(b,a,c)", self.reference)
+
+    def test_invariants_and_golden_authority_are_not_self_referential(self) -> None:
+        self.assertIn("An additive toolpath is not expected to avoid the model volume itself", self.skill_flat)
+        self.assertIn("specification and documented preconditions/postconditions", self.skill_flat)
+        self.assertIn("A golden records prior behavior", self.skill_flat)
+        self.assertIn("independent reference", self.skill_flat)
+        self.assertNotIn("total sliced area per height interval is monotone", self.skill_flat)
+
+
+class DesignDoctrineTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.architecture = (SKILLS / "architecture-design" / "references" / "reference.md").read_text(encoding="utf-8")
+        cls.distributed = (SKILLS / "distributed-architecture" / "SKILL.md").read_text(encoding="utf-8")
+        cls.distributed_ref = (SKILLS / "distributed-architecture" / "references" / "reference.md").read_text(encoding="utf-8")
+        cls.refactoring = (SKILLS / "refactoring" / "SKILL.md").read_text(encoding="utf-8")
+        cls.testing = (SKILLS / "testing-tdd" / "SKILL.md").read_text(encoding="utf-8")
+        cls.third_party = (SKILLS / "third-party-integration" / "SKILL.md").read_text(encoding="utf-8")
+
+    def test_atomic_persistence_example_includes_idempotent_result_and_outbox(self) -> None:
+        self.assertIn("save_submission", self.architecture)
+        self.assertIn("command result in one", self.architecture)
+        self.assertIn("mark_events_committed", self.architecture)
+        self.assertNotIn("ApiResponse::error(e.to_string())", self.architecture)
+        self.assertNotIn("Utc::now()", self.architecture)
+        self.assertNotIn("Uuid::new_v4()", self.architecture)
+
+    def test_main_sequence_and_saga_terms_are_consistent(self) -> None:
+        self.assertNotIn("atomic/eventual", self.distributed)
+        self.assertIn("stable and concrete", self.distributed_ref)
+        self.assertIn("unstable and abstract", self.distributed_ref)
+        corners = {(a, i): abs(a + i - 1) for a in (0, 1) for i in (0, 1)}
+        self.assertEqual(1, corners[(0, 0)])
+        self.assertEqual(1, corners[(1, 1)])
+        self.assertEqual(0, corners[(0, 1)])
+        self.assertEqual(0, corners[(1, 0)])
+
+    def test_abstraction_and_double_guidance_share_ownership(self) -> None:
+        self.assertIn("not an automatic threshold", self.refactoring)
+        self.assertNotIn("| Testing | **Create** instances, assert results | **Mock** peers", self.testing)
+        self.assertIn("Application policy tests", self.third_party)
+        self.assertNotIn("Domain Code Tests", self.third_party)
+
+
+class DynamicInjectionDoctrineTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.skill_path = SKILLS / "dynamic-context-injection" / "SKILL.md"
+        cls.skill = cls.skill_path.read_text(encoding="utf-8")
+        cls.examples = (
+            SKILLS / "dynamic-context-injection" / "references" / "injection-examples.md"
+        ).read_text(encoding="utf-8")
+        cls.skill_flat = flatten(cls.skill)
+        cls.examples_flat = flatten(cls.examples)
+
+    def test_teaching_skill_does_not_self_execute(self) -> None:
+        _, body, errors = validator.split_frontmatter(self.skill)
+        self.assertEqual([], errors)
+        injections, injection_errors = validator.find_injections(body)
+        self.assertEqual([], injection_errors)
+        self.assertEqual([], injections)
+
+    def test_argument_substitution_is_not_described_as_safe_argv(self) -> None:
+        self.assertIn("does not turn textual substitution into safe argv passing", self.skill_flat)
+        self.assertIn("do not create a safely escaped argv element", self.examples_flat)
+        self.assertIn("$ARGUMENTS", self.examples_flat)
+        self.assertNotIn("so `$0` works", self.examples_flat)
+
+    def test_shell_substitution_and_concurrency_are_distinguished(self) -> None:
+        self.assertIn("Normal shell evaluation still happens", self.skill_flat)
+        self.assertIn("command substitution such as `$(...)` work", self.skill_flat)
+        self.assertIn("may execute them concurrently", self.skill_flat)
+        self.assertIn("commands in that block run sequentially", self.skill_flat)
+        self.assertIn("renderer's single-pass rule", self.examples_flat)
+
+    def test_failure_guards_cover_pipeline_and_powershell_semantics(self) -> None:
+        self.assertIn("not a reliable guard", self.skill_flat)
+        self.assertIn("`head` can still exit zero", self.examples_flat)
+        self.assertIn("$LASTEXITCODE", self.skill_flat)
+        self.assertIn("service_key=present", self.examples_flat)
+        self.assertIn("never a token value", self.examples_flat)
+
+
+class SkillCreatorContractTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.skill = (SKILLS / "skill-creator" / "SKILL.md").read_text(encoding="utf-8")
+        cls.spec = (
+            SKILLS / "skill-creator" / "references" / "spec-and-patterns.md"
+        ).read_text(encoding="utf-8")
+        cls.installer = (
+            SKILLS / "skill-creator" / "references" / "node-native-installer-pattern.md"
+        ).read_text(encoding="utf-8")
+        cls.skill_flat = flatten(cls.skill)
+        cls.spec_flat = flatten(cls.spec)
+        cls.installer_flat = flatten(cls.installer)
+
+    def test_docs_distinguish_portable_and_claude_code_modes(self) -> None:
+        self.assertIn("--mode portable", self.skill_flat)
+        self.assertIn("--mode claude-code", self.skill_flat)
+        self.assertIn("only `name`, `description`, `license`", self.skill_flat)
+        self.assertIn("Claude Code-only body preprocessing", self.skill_flat)
+        self.assertIn("Portable validation rejects Claude Code extension fields", self.spec_flat)
+
+    def test_installer_docs_match_current_repository_behavior(self) -> None:
+        self.assertIn("claude-skills install [--project <dir>] [--skip-deps]", self.skill_flat)
+        self.assertIn("does not install to `.agents/`", self.skill_flat)
+        self.assertIn("removes only global items recorded", self.skill_flat)
+        self.assertIn("does **not** currently implement `--all`", self.installer_flat)
+        self.assertNotIn("npx @scope/agent-skill-books install --all", self.installer_flat)
+        self.assertNotIn("return [join(base, '.claude', 'skills'), join(base, '.agents'", self.installer_flat)
+
+    def test_eval_schema_is_consistent_across_docs_and_template(self) -> None:
+        template = json.loads(
+            (SKILLS / "skill-creator" / "assets" / "OUTPUT_EVALS_TEMPLATE.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual({"skill_name", "evals"}, set(template))
+        entry = template["evals"][0]
+        self.assertEqual(
+            {"id", "prompt", "expected_output", "files", "expectations"},
+            set(entry),
+        )
+        self.assertEqual(1, entry["id"])
+        self.assertEqual([], entry["files"])
+        self.assertIn("positive integer", self.skill.lower())
+        self.assertIn("confined within the skill", self.skill_flat)
+
+    def test_all_corrected_eval_and_trigger_files_validate(self) -> None:
+        names = {
+            "architecture-design", "beads", "distributed-architecture",
+            "dynamic-context-injection", "geometric-robustness", "mission-planning",
+            "peek-repo", "refactoring", "reimpl-scout", "simple-design",
+            "skill-creator", "testing-tdd", "third-party-integration",
+        }
+        claude_code_only = {"dynamic-context-injection", "peek-repo", "reimpl-scout"}
+        for name in names:
+            with self.subTest(skill=name):
+                mode = "claude-code" if name in claude_code_only else "portable"
+                report = validator.validate_skill(SKILLS / name, mode=mode)
+                self.assertTrue(report["ok"], report["errors"])
+                self.assertGreater(report["summary"]["evals"], 0)
+                self.assertGreater(report["summary"]["trigger_queries"], 0)
+
+
+if __name__ == "__main__":
+    unittest.main()

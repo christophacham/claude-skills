@@ -1,0 +1,41 @@
+{
+  "skill_name": "skill-creator",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I need one skill to upload through the Agent Skills API and another project-local Claude Code skill that uses arguments, paths, and load-time shell. Author and validate both without pretending the formats are identical.",
+      "expected_output": "Two explicit profiles with portable-only metadata for upload and validated Claude Code extensions/injection for the local skill.",
+      "files": [],
+      "expectations": [
+        "Uses only the six portable frontmatter fields for the upload skill and requires name/description.",
+        "Uses --mode portable and --mode claude-code explicitly in validation commands.",
+        "Treats dynamic injection as Claude Code-only and keeps invocation arguments out of shell source.",
+        "Validates extension field types and combinations such as fork-only agent/background."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Add output evals for a skill named api-review. There are no fixture files. I want checks that can be graded from the response rather than the model's hidden reasoning.",
+      "expected_output": "A valid evals/evals.json object with matching skill_name, positive integer IDs, empty files arrays, and observable expectations.",
+      "files": [],
+      "expectations": [
+        "Uses the official object schema with skill_name and a non-empty evals array.",
+        "Each eval includes a positive integer id, prompt, expected_output, optional files, and a non-empty expectations array.",
+        "Uses files: [] instead of a nonexistent placeholder fixture.",
+        "Expectations target observable output/actions and IDs are unique."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Update the skill-authoring guidance for this repository's npm package. Tell users exactly what the current Node installer and uninstaller do, including project paths and .agents support.",
+      "expected_output": "Documentation matching bin/cli.js and lib ownership rather than a generic --all/--group installer design.",
+      "files": [],
+      "expectations": [
+        "Documents the interactive install and install/uninstall/help flags currently implemented.",
+        "States that global/project targets are ~/.claude and <project>/.claude and that the Node flow does not mirror .agents.",
+        "States that Node uninstall removes only manifest-recorded global items and preserves project installs, keys, dependencies, and bulk installs.",
+        "Does not claim --all, --group, --dry-run, or project uninstall exists."
+      ]
+    }
+  ]
+}

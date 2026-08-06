@@ -1,0 +1,10 @@
+[
+  {
+    "query": "Plan a behavior-preserving Rust refactor of a parser that mixes IO and parsing. Coverage is weak, callers depend on typed errors and stable output ordering, and I am not asking for commits.",
+    "should_trigger": true
+  },
+  {
+    "query": "Add partial-refund behavior to the billing service.",
+    "should_trigger": false
+  }
+]

@@ -1,0 +1,37 @@
+{
+  "skill_name": "simple-design",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Review this parser API: callers construct Parser, call configure(schema), call begin(input), repeatedly call step(), then call result(). Calling methods out of order panics. How would you simplify the module without hiding useful errors?",
+      "expected_output": "A module/API design review grounded in temporal coupling, deep modules, information hiding, and an actionable error contract.",
+      "files": [],
+      "expectations": [
+        "Positive: names temporal coupling and the invalid intermediate states callers must manage.",
+        "Proposes moving the sequence inside one deeper operation, a valid builder, or a staged type only if the staged protocol is genuinely public.",
+        "Keeps caller-actionable parse/configuration failures explicit and does not mask them with infinite retry or panic."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Where should an OrderRepository port live in a Clean Architecture application, and how should Postgres implement it?",
+      "expected_output": "A boundary-aware handoff to architecture-design rather than a module-depth answer pretending to own application layering.",
+      "files": [],
+      "expectations": [
+        "Negative: does not present simple-design as the authority for application layers, ports, or composition roots.",
+        "Routes to architecture-design while noting that client-owned abstraction and interface depth remain relevant supporting concerns."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "A reviewer says we must not introduce an abstraction until there are three callers, and that the file client should retry every error forever so callers see a simpler API. Is that sound simple-design guidance?",
+      "expected_output": "A correction based on knowledge ownership and truthful, bounded error policy rather than usage counts or blanket masking.",
+      "files": [],
+      "expectations": [
+        "Corrected behavior: rejects caller count as the abstraction rule and evaluates hidden knowledge, volatility, co-change, and a real client role.",
+        "Places an earned abstraction with the client/policy whose need it expresses, not automatically beside the implementation.",
+        "Rejects infinite retry; requires deadline, backoff, cancellation, retry safety, observable exhaustion, and preservation of actionable errors."
+      ]
+    }
+  ]
+}

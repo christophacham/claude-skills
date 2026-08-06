@@ -1,137 +1,143 @@
 ---
 name: beads
-description: Use when creating, claiming, updating, or closing issues, managing dependencies, or syncing work with the bd (beads) CLI in a project where beads is initialized (.beads/ exists). Not for GitHub/Jira/Linear trackers, and not for projects where beads has not been initialized (no .beads/ directory, bd init not run).
+description: Use when creating, claiming, updating, or closing issues, managing dependencies, or explicitly committing or syncing issue data with the bd (Beads) CLI in a project where Beads is initialized. Not for GitHub/Jira/Linear trackers, uninitialized projects, or as permission to publish unrelated source-code changes.
 ---
 
 # Beads Issue Tracker
 
-In projects where beads is initialized (a `.beads/` directory exists, i.e. `bd init` has been run), use **bd** (beads) for all task tracking. Do NOT use TodoWrite, TaskCreate, or markdown TODO lists. In projects without beads initialized, this skill does not apply.
+Use `bd` for requested issue-tracker work when the project is already initialized for Beads. Do not initialize Beads, replace another tracker, or impose a project workflow unless the user asks.
 
-## Architecture
+## Establish the live contract
 
-Issues live in a local Dolt database (`.beads/dolt/`). Cross-machine sync uses `bd dolt push/pull` via `refs/dolt/data` on your git remote — separate from `refs/heads/*`. `.beads/issues.jsonl` is a passive export, not the source of truth (JSONL is the source of truth in no-db mode — this repo itself runs no-db mode).
-
-Reference: [references/sync-concepts.md](references/sync-concepts.md)
-
-## Setup & Recovery
-
-If bd reports "no beads database found" or you are unsure whether beads is set up:
+Beads versions and project configuration differ. Before a mutation when the active workspace or syntax is uncertain:
 
 ```bash
-bd init               # Initialize .beads/ (and the Dolt database) in the current project
-bd where              # Show which beads database is actually active
-bd doctor             # Diagnose installation, schema, and sync problems
+bd where                 # Resolve the active Beads workspace, including redirects
+bd help                  # List commands supported by the installed version
+bd <command> --help      # Confirm flags before relying on them
 ```
 
-## Commands
+A `.beads/` directory marks an initialized checkout, but `bd where` is authoritative about the active location. If no workspace is active, stop and ask whether to initialize; do not run `bd init` implicitly.
 
-### Finding Work
+Current Beads uses Dolt as its supported storage backend. The live Dolt database is authoritative. `.beads/issues.jsonl`, when configured, is an optional export for viewers, interchange, or migration; it is not a no-database backend or the normal sync channel. Treat instructions that rely on legacy SQLite or `no-db` mode as stale and confirm migration steps with the installed `bd init --help` or `bd migrate --help`.
+
+For storage, commit, and remote details, read [references/sync-concepts.md](references/sync-concepts.md).
+
+## Mutation contract
+
+A request to perform one tracker operation authorizes only that operation.
+
+1. Inspect the target with `bd show <id> --json` when changing an existing issue.
+2. Use the narrowest command that expresses the requested mutation.
+3. Do not infer extra labels, fields, parents, dependencies, assignments, claims, status changes, closes, commits, or pushes.
+4. Verify the affected issue or relation after the command and report the exact mutation.
+5. If required content or the intended dependency direction is ambiguous, ask instead of guessing.
+
+Closing, reopening, reparenting, removing dependencies, and resolving duplicates require explicit intent. Deletion, pruning, purging, destructive reinitialization, and force-push operations require separate, explicit authorization and a review of their effects.
+
+## Core commands
+
+### Find and inspect
 
 ```bash
-bd ready                        # Show issues ready to work (no blockers)
-bd list --status=open           # All open issues
-bd list --status=in_progress    # Active work
-bd show <id>                    # Issue details with dependencies
+bd ready
+bd list --status=open
+bd list --status=in_progress
+bd show <id>
+bd blocked
+bd status
 ```
 
-### Creating Issues
+### Create
 
 ```bash
 bd create --title="Summary" --description="Why and what" --type=task --priority=2
 ```
 
-Valid types include `task`, `bug`, and `feature`; choose one concrete value.
+Built-in types and flags can change; use `bd create --help`. Priorities are **0–4**, where `0` is highest/critical and `4` is lowest/backlog. `2` is the CLI default. Accept `P0`–`P4` only if the installed help supports them. Do not invent acceptance criteria, design notes, labels, or custom fields that the request did not supply.
 
-- Priority: 0–4 (0=critical, 4=backlog). Use numbers, not words.
-- Optional flags: `--acceptance="criteria"`, `--design="decisions"`, `--notes="context"`
-- Do NOT use `bd edit` — it opens an interactive editor that blocks agents.
-
-### Updating & Claiming
+### Update and claim
 
 ```bash
-bd update <id> --claim                # Claim work
-bd update <id> --assignee=username    # Assign
-bd update <id> --title="..."          # Update fields inline
+bd update <id> --claim
+bd update <id> --assignee=username
+bd update <id> --priority=1
+bd update <id> --title="..."
 bd update <id> --description="..."
-bd update <id> --notes="..."
+bd update <id> --acceptance="..."
 bd update <id> --design="..."
+bd update <id> --notes="..."
 ```
 
-### Completing Work
+`--claim` atomically sets the current actor as assignee and moves the issue to `in_progress`; use it only when the request is to claim the issue. Do not use `bd edit` in an agent workflow because it opens an interactive editor.
+
+### Close only when requested
 
 ```bash
-bd close <id>                   # Mark complete
-bd close <id1> <id2> ...        # Close multiple at once
-bd close <id> --reason="why"    # Close with explanation
-bd close <id> --suggest-next    # Show newly unblocked issues
+bd close <id>
+bd close <id> --reason="why"
 ```
 
-### Dependencies
+A successful implementation, review, or repository policy does not itself authorize closing the issue. Close only when the governing user request explicitly authorizes it, then verify the resulting status.
+
+### Dependencies and hierarchy
 
 ```bash
-bd dep add <issue> <depends-on> # issue depends on depends-on
-bd blocked                      # Show all blocked issues
+bd dep add <issue> <depends-on>   # issue depends on depends-on
+bd dep list <issue>
+bd children <parent-id>
+bd create "..." --parent <parent-id>
 ```
 
-### Labels & Queries
+Confirm direction before adding an edge. Use `bd dep --help` for relation and removal syntax. Never infer a parent or dependency from similar titles alone.
+
+### Labels and queries
 
 ```bash
-bd create "..." -l "opord,opord:<slug>"        # --labels / -l, comma-separated
-bd create "..." --parent <epic-id>             # Hierarchical child issue
-bd update <id> --add-label=<label>             # Add a label to an existing issue
-bd list --label=opord:<slug>                   # AND: issue must have ALL listed labels
-bd list --label-any=a,b                        # OR: at least one of the labels
-bd list --label-pattern="opord:*"              # Glob match on label names
-bd query "label=opord:<slug> AND status=open"  # Compound filters (AND/OR/NOT, field=value)
+bd label add <id> <label>
+bd label remove <id> <label>
+bd list --label=<label>
+bd list --label-any=a,b
+bd list --label-pattern="domain:*"
+bd query "label=<label> AND status=open"
 ```
 
-Label convention: use namespaced `<domain>:<value>` labels (e.g. `pace:primary`, `cycle:recon`, `opord:<slug>`) to group related issues; retrieve them by exact label (`bd list --label` / `bd query "label=..."`) or by glob (`bd list --label-pattern`). The mission-planning skill uses these conventions for its OPORD epics and children.
+Labels are project data, not generic Beads doctrine. Preserve the project's existing conventions and add, remove, or normalize labels only when requested or when a documented project rule supplies the exact value.
 
-### Sync & Search
+### Quality and search
 
 ```bash
-bd dolt push          # Push beads data to remote
-bd dolt pull          # Pull from remote
-bd search <query>     # Search by keyword
+bd search <query>
+bd lint
+bd stale
+bd orphans
+bd dep cycles
+bd preflight
 ```
 
-### Quality & Hygiene
+Treat lint, orphan, stale, and duplicate output as evidence for review, not permission to mutate issues.
+
+## Dolt working state, commits, and remotes
+
+Issue writes change the Dolt working set. Whether they immediately create Dolt commits depends on the effective `dolt.auto-commit` policy:
+
+- `on`: each write commits automatically.
+- `batch`: writes accumulate until `bd dolt commit` (and may be flushed by process shutdown handling).
+- `off`: writes remain in the working set until explicitly committed. This is the CLI default unless project configuration overrides it.
+
+Use the commands for their distinct purposes:
 
 ```bash
-bd stats              # Project statistics
-bd doctor             # Check for sync problems
-bd lint               # Check issues for missing sections
-bd stale              # Find issues with no recent activity
-bd orphans            # Find broken dependencies
-bd preflight          # Pre-PR checks
+bd vc status              # Dolt branch and uncommitted issue-data changes
+bd dolt status            # Dolt engine/server health, not pending changes
+bd dolt commit -m "..."   # Commit pending issue-data changes
+bd dolt remote list       # Inspect configured Dolt remotes
+bd dolt pull              # Pull issue-data commits from a configured remote
+bd dolt push              # Push issue-data commits to a configured remote
 ```
 
-### Other
+A request to create or update an issue does **not** authorize a Dolt commit, pull, or push. Run commit/pull/push only when the governing user request explicitly authorizes that operation; repository workflow may define the procedure but cannot create consent. An explicit request to publish/sync Beads authorizes the non-destructive Dolt commit needed to publish pending requested changes, followed by the requested push; inspect `bd vc status` first and report what will be included. Never infer permission for `--force`.
 
-```bash
-bd remember "insight"           # Persist knowledge across sessions
-bd memories <keyword>           # Search memories
-bd defer <id> --until="date"    # Defer work
-bd supersede <id> --with=<new>  # Mark superseded
-bd update <id> --add-label=human  # Flag for human decision (bd human list/respond reads the 'human' label)
-bd formula list                 # Workflow templates
-bd mol pour <name>              # Start workflow from template
-```
+Dolt history and source Git history are separate. `bd dolt commit/push` does not commit or push source code, and `git commit/push` does not publish Dolt history. Do not perform source Git operations merely because Beads changed.
 
-## Session Close Protocol
-
-When ending a session, complete ALL steps. Work is NOT done until the pushes in step 4 succeed.
-
-1. **File issues** for remaining work
-2. **Run quality gates** (tests, linters, builds) if code changed
-3. **Update issue status** — close finished work, update in-progress items
-4. **Push to remote** — `git push` alone does NOT sync beads data, which lives on `refs/dolt/data`, not `refs/heads/*`. Push both (the bd pre-push hook installed via `bd hooks install` automates the beads push):
-   ```bash
-   git pull --rebase
-   git push
-   bd dolt push  # Sync beads data to refs/dolt/data (skip in no-db mode: JSONL travels with git push)
-   git status    # Must show "up to date with origin"
-   ```
-5. **Verify** all changes committed and pushed
-
-**Rule:** Work is NOT complete until both pushes succeed — never stop before pushing (that strands work locally), never say "ready to push when you are"; if a push fails, resolve and retry until it succeeds.
+There is no unconditional end-of-session close, commit, pull, or push protocol. Follow the user's request and the repository's documented policy, and report any pending Dolt state left intentionally uncommitted or unpublished.

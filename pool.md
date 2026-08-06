@@ -1,19 +1,20 @@
-# Active pool — edit when the week turns. Built-in short-names only
-# (fable, opus, sonnet, haiku) or a full model ID; passed to Agent(model=) as-is.
-# pool:     active tiers. 2+ enables cross-model review; 1 = every unit degraded.
-# coder:    optional pin — this tier codes EVERY unit
-# reviewer: optional pin — this tier reviews EVERY unit
-# Pins must name pool members; a pin outside pool: is a config bug.
-# Absent pins: parent agent chooses tiers. Prefer coder ≠ reviewer for independence.
-# Include a weak tier (e.g. haiku) if you want cheap mechanical work (beads-*).
-# Repo .claude/pool.md overrides this file at load time.
+# Advisory model-routing preferences for parent agents.
+# This file does not enforce or validate routing, and agents work without it.
+# Values may use built-in short names (fable, opus, sonnet, haiku) or full model IDs.
 #
-# Suggested mechanical roles (not enforced by a skill — parent dispatches):
-#   beads-creator, beads-reviewer → haiku
-#   coder / reviewer → different pool members when possible
+# pool: preferred tiers available for ordinary dispatch decisions.
+# coder / reviewer: optional role preferences a parent may honor when appropriate.
+# Pins are optional preferences, not correctness constraints or an allowlist.
+# Same-model review remains valid because independence comes from fresh context and
+# evidence-based review. Different models can add diversity when available.
+# A project `.claude/pool.md` may provide project-specific preferences.
+#
+# Common advisory choices:
+#   beads-creator, beads-reviewer -> a fast economical tier
+#   coder, reviewer -> tiers suited to task difficulty; different tiers when useful
 
 pool: opus, sonnet, haiku
 # Leave coder/reviewer unpinned so the parent can choose per task.
-# Example pins (must be pool members):
+# Example preferences:
 # coder: sonnet
 # reviewer: opus
