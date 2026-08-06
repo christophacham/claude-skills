@@ -35,13 +35,13 @@ never resolved relative to the installed package.
 
 ## Selection and placement
 
-`lib/catalog.js` is the selectable inventory:
+`lib/catalog.js` is the selectable inventory (SLIM groups):
 
-1. Search skills are offered for global install under `~/.claude/skills`.
-2. `skill-creator` is suggested for the chosen project's `.claude/skills`
-   (authoring + injection audit).
-3. Remaining skills are offered one by one as global, project, skip, or done.
-4. Skills that declare agent/pool coupling in the catalog install those related
+1. **SEARCH** — offered for global install under `~/.claude/skills` (default-yes multiselect).
+2. **AUTHOR** — `skill-creator` suggested for the chosen project's `.claude/skills`.
+3. **CORE** — `peek-repo`, `simple-design`, `refactoring` (confirm default-yes; multiselect all selected; global or project placement).
+4. **OPT_IN + BEADS** — architecture, distributed, geometric, beads — one by one as skip (default) / global / project / done.
+5. Skills that declare agent/pool coupling in the catalog install those related
    resources through the shared filesystem operations.
 
 `lib/paths.js` is the placement authority:

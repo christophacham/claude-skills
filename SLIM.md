@@ -1,7 +1,7 @@
 # Slim plan — 30-year maintainable core
 
 Branch: `slim/30y-maintainable-core`  
-Status: **in progress** — injection folded into skill-creator; `testing-tdd` and `third-party-integration` **deleted** (not merged).  
+Status: **in progress** — injection folded; testing/third-party deleted; catalog CORE/OPT_IN encoded in `lib/catalog.js` + Node install.  
 Revised after full multi-agent audit + adversarial pass (workflow `skill-suite-slim-audit`).
 
 ## Mission (one sentence)

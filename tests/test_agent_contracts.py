@@ -199,6 +199,26 @@ class CoordinationDocumentationTests(unittest.TestCase):
             "refactoring", "simple-design", "skill-creator",
             "tavily-search",
         }
+        # Catalog group law (SLIM): CORE default-yes craft; OPT_IN never default-yes
+        catalog = read_repo_file("lib/catalog.js")
+        self.assertIn("export const CORE_SKILLS", catalog)
+        self.assertIn("export const OPT_IN_SKILLS", catalog)
+        self.assertIn("export const BEADS_SKILLS", catalog)
+        for core_id in ("peek-repo", "simple-design", "refactoring"):
+            self.assertIn(f"id: '{core_id}'", catalog)
+        for opt_id in (
+            "architecture-design",
+            "distributed-architecture",
+            "geometric-robustness",
+        ):
+            self.assertIn(f"id: '{opt_id}'", catalog)
+        # CORE and OPT_IN are separate exports (not a flat OTHER-only list for craft)
+        self.assertIn("...CORE_SKILLS.map", catalog)
+        self.assertIn("...OPT_IN_SKILLS.map", catalog)
+        install_flow = read_repo_file("lib/install-flow.js")
+        self.assertIn("CORE_SKILLS", install_flow)
+        self.assertIn("Install CORE skills?", install_flow)
+        self.assertIn("OPT_IN / beads", install_flow)
         expected_agents = {
             "beads-creator.md", "beads-reviewer.md", "coder.md", "reviewer.md",
             "panelists/deep-module.md", "panelists/minimal-diff.md", "panelists/seam.md",

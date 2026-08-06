@@ -296,10 +296,11 @@ claude-skills uninstall [--yes]
 claude-skills --help
 ```
 
-With no command it starts `install`. It offers search skills globally, suggests
-`skill-creator` for the selected project, then offers remaining skills
-individually as global/project/skip. Global means `~/.claude`; project means
-`<project>/.claude`. It does not install to `.agents/`.
+With no command it starts `install`. It offers SEARCH skills globally (default-yes),
+suggests AUTHOR `skill-creator` for the selected project, offers CORE
+(`peek-repo`, `simple-design`, `refactoring`) default-yes, then OPT_IN/beads
+individually as skip-default/global/project. Global means `~/.claude`; project
+means `<project>/.claude`. It does not install to `.agents/`.
 
 The Node uninstaller removes only global items recorded in
 `~/.claude/claude-skills-manifest.json`; it leaves project installs, API keys,
