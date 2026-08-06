@@ -402,7 +402,8 @@ function Invoke-Main {
         if (-not $Full) {
             $cloneArgs += @('--', '--depth', '1', '--single-branch')
         }
-        $clone = Invoke-Captured -Executable $gh.Source -Arguments $cloneArgs
+        $ghExecutable = if (-not [string]::IsNullOrWhiteSpace($gh.Path)) { $gh.Path } else { $gh.Source }
+        $clone = Invoke-Captured -Executable $ghExecutable -Arguments $cloneArgs
     }
 
     # Public repositories remain inspectable when gh is absent or unauthenticated.

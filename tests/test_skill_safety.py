@@ -178,6 +178,7 @@ class InstallerTests(unittest.TestCase):
                 encoding="utf-8",
             )
             (fake_bin / "npm").write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            (fake_bin / "tvly").write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
             for executable in fake_bin.iterdir():
                 executable.chmod(0o755)
 
