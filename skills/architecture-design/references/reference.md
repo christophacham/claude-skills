@@ -844,7 +844,7 @@ impl core::MlPredictor for ExperimentalModel { .. }
 
 ### SAP — the main sequence
 
-A stable component that many others depend on needs deliberate extension seams where its policy varies; an unstable leaf usually needs concrete implementation, not abstract surface. The main-sequence metrics are diagnostic, not a target to game by adding traits. Stable + concrete (`A≈0, I≈0`) is the Zone of Pain; abstract + unstable (`A≈1, I≈1`) is the Zone of Uselessness. Formulas and interpretation live in `distributed-architecture/references/reference.md` — Codebase Health Metrics.
+A stable component that many others depend on needs deliberate extension seams where its policy varies; an unstable leaf usually needs concrete implementation, not abstract surface. The main-sequence metrics are diagnostic, not a target to game by adding traits. Stable + concrete (`A≈0, I≈0`) is the Zone of Pain; abstract + unstable (`A≈1, I≈1`) is the Zone of Uselessness. Formulas and interpretation for main-sequence distance, instability, and abstractness belong with deployable-boundary / quantum analysis (instability, abstractness, distance from the main sequence)—not application layer placement alone.
 
 ```rust
 // VIOLATION: Zone of Pain — widely depended on, fully concrete

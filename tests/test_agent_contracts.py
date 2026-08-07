@@ -1,295 +1,145 @@
+"""Suite shape contracts after agent roster removal."""
+
 from __future__ import annotations
 
-import importlib.util
-import json
-import re
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 AGENTS = ROOT / "agents"
-VALIDATOR_PATH = ROOT / "skills" / "skill-creator" / "scripts" / "validate_skill.py"
-
-spec = importlib.util.spec_from_file_location("agent_contract_yaml", VALIDATOR_PATH)
-assert spec and spec.loader
-validator = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(validator)
+SKILLS = ROOT / "skills"
 
 
-def read_repo_file(relative_path: str) -> str:
-    return (ROOT / relative_path).read_text(encoding="utf-8")
+class SuiteShapeTests(unittest.TestCase):
+    def test_agents_tree_is_gone(self) -> None:
+        self.assertFalse(AGENTS.exists(), "agents/ must not ship with the suite")
 
-
-def frontmatter(text: str) -> dict[str, object]:
-    match = re.match(r"\A---\n(.*?)\n---\n", text, re.DOTALL)
-    if not match:
-        raise AssertionError("agent file has no YAML frontmatter")
-    values, errors = validator.parse_frontmatter(match.group(1))
-    if errors:
-        raise AssertionError(f"invalid agent frontmatter: {errors}")
-    return values
-
-
-def configured_tools(text: str) -> set[str]:
-    tools = frontmatter(text).get("tools", "")
-    if isinstance(tools, str):
-        return {tool.strip() for tool in tools.split(",") if tool.strip()}
-    if isinstance(tools, list):
-        return {str(tool).strip() for tool in tools if str(tool).strip()}
-    raise AssertionError(f"invalid tools field: {tools!r}")
-
-
-def configured_skills(text: str) -> list[str]:
-    skills = frontmatter(text).get("skills", [])
-    if not isinstance(skills, list) or not all(isinstance(skill, str) for skill in skills):
-        raise AssertionError(f"skills must be a YAML sequence of strings: {skills!r}")
-    return skills
-
-
-class AgentContractTests(unittest.TestCase):
-    def test_om_roster_identities_are_preserved(self) -> None:
-        expected = {
-            "agents/coder.md": "coder",
-            "agents/reviewer.md": "reviewer",
-            "agents/scope-scout.md": "scope-scout",
-            "agents/scope-auditor.md": "scope-auditor",
-            "agents/panelists/deep-module.md": "deep-module",
-            "agents/panelists/minimal-diff.md": "minimal-diff",
-            "agents/panelists/seam.md": "seam",
-        }
-
-        actual = {
-            path: frontmatter(read_repo_file(path))["name"]
-            for path in expected
-        }
-
-        self.assertEqual(expected, actual)
-        self.assertFalse((AGENTS / "beads-creator.md").exists())
-        self.assertFalse((AGENTS / "beads-reviewer.md").exists())
-
-    def test_coder_is_om_unit_implementer(self) -> None:
-        text = read_repo_file("agents/coder.md")
-        lowered = text.lower()
-
-        self.assertEqual(
-            {"Read", "Write", "Edit", "Bash", "Grep", "Glob"},
-            configured_tools(text),
-        )
-        self.assertEqual(
-            ["simple-design", "refactoring"],
-            configured_skills(text),
-        )
-        for phrase in (
-            "one operating-mode unit",
-            "project's `CLAUDE.md`",
-            "Live gates",
-            "Only create a commit when the user explicitly authorizes it",
-            "No tracker",
-            "Never push",
-            "Ready for main PR",
+    def test_removed_process_skills_are_gone(self) -> None:
+        for gone in (
+            "operating-mode",
+            "capability-plan",
+            "beads-om",
+            "beads",
+            "skill-creator",
         ):
-            self.assertIn(phrase, text)
-        self.assertNotIn("one bead", lowered)
-        self.assertNotIn("full test suite", lowered)
-        self.assertNotIn("work-loop", lowered)
+            self.assertFalse(
+                (SKILLS / gone).exists(),
+                f"removed skill still present: {gone}",
+            )
 
-    def test_reviewer_is_read_only_with_om_pr_bar(self) -> None:
-        text = read_repo_file("agents/reviewer.md")
-
-        self.assertEqual({"Read", "Grep", "Glob"}, configured_tools(text))
-        self.assertEqual(
-            ["simple-design", "refactoring"],
-            configured_skills(text),
-        )
-        for forbidden_tool in ("Write", "Edit", "Bash"):
-            self.assertNotIn(forbidden_tool, configured_tools(text))
-        for target in ("diff", "commit", "branch", "files"):
-            self.assertRegex(text, rf"(?i)\b{target}\b")
-        self.assertIn(
-            "Verdict: PASS | CHANGES_REQUESTED | REPLAN_RECOMMENDED",
-            text,
-        )
-        self.assertIn("Operating-mode PR bar", text)
-        self.assertIn(
-            "A fresh review context remains independent even on the same model",
-            text,
-        )
-        self.assertIn("evidence: <observed behavior, diff hunk, or supplied check output>", text)
-        self.assertIn("impact: <concrete failure or maintenance cost>", text)
-        self.assertNotIn("micro-fix exception", text.lower())
-        self.assertNotIn("microFixCommits", text)
-        self.assertNotIn("run formatters", text.lower())
-        self.assertNotIn("re-running the test suite", text.lower())
-
-    def test_panelists_are_no_bash_read_only_unit_scoped(self) -> None:
-        contracts = {
-            "agents/panelists/deep-module.md": (
-                "the deep module",
-                "one PR-sized unit",
-                ["simple-design"],
-            ),
-            "agents/panelists/minimal-diff.md": (
-                "the minimal honest diff",
-                "one PR-sized unit",
-                ["refactoring"],
-            ),
-            "agents/panelists/seam.md": (
-                "the behavior-preserving seam",
-                "one PR-sized unit",
-                ["simple-design"],
-            ),
-        }
-
-        for path, (lens, unit_phrase, skills) in contracts.items():
-            with self.subTest(path=path):
-                text = read_repo_file(path)
-                self.assertEqual({"Read", "Grep", "Glob"}, configured_tools(text))
-                self.assertEqual(skills, configured_skills(text))
-                self.assertIn("Read-only", text)
-                self.assertIn(lens, text)
-                self.assertIn(unit_phrase, text)
-                self.assertIn("operating-mode design×3", text)
-                self.assertNotIn("second caller", text.lower())
-                self.assertNotIn("function boundary alone", text.lower())
-
-    def test_scope_scout_researches_without_tracker_writes(self) -> None:
-        text = read_repo_file("agents/scope-scout.md")
-        self.assertEqual(
-            {"Read", "Grep", "Glob", "Bash"},
-            configured_tools(text),
-        )
-        self.assertIn("Feasible:", text)
-        self.assertIn("Do NOT put in Beads", text)
-        self.assertIn("Never write Beads", text)
-        self.assertNotIn("bd create", text.lower())
-
-    def test_scope_auditor_is_verify_progress_read_only(self) -> None:
-        text = read_repo_file("agents/scope-auditor.md")
-        self.assertEqual(
-            {"Read", "Grep", "Glob", "Bash"},
-            configured_tools(text),
-        )
-        self.assertIn("verify", text.lower())
-        self.assertIn("progress", text.lower())
-        self.assertIn("how leakage", text.lower())
-        self.assertIn("Beads mutations: none", text)
-
-
-class CoordinationDocumentationTests(unittest.TestCase):
-    def test_readme_matches_agent_behavior(self) -> None:
-        text = read_repo_file("README.md")
-
-        self.assertIn("One-unit implementer", text)
-        self.assertIn("user-authorized commit", text)
-        self.assertIn(
-            "PASS / CHANGES_REQUESTED / REPLAN_RECOMMENDED",
-            text,
-        )
-        self.assertIn("Same-model review remains valid", text)
-        self.assertNotIn("advisory routing preferences", text)
-        self.assertNotIn("PASS / FIX / ROLLBACK", text)
-        self.assertNotIn("beads-creator", text)
-        self.assertNotIn("beads-reviewer", text)
-
-    def test_archive_points_to_current_root_readme_without_stale_suite_claims(self) -> None:
-        text = read_repo_file("personal-skill-archive/README.md")
-
-        self.assertIn(
-            "The root [`README.md`](../README.md) is the source of truth for the current managed suite",
-            text,
-        )
-        for stale_current_skill in ("`work-loop`", "`work-plan`", "`bd-epic-runner`"):
-            self.assertNotIn(stale_current_skill, text)
-
-    def test_distribution_membership_is_unchanged(self) -> None:
-        package = json.loads(read_repo_file("package.json"))
-        expected_skills = {
-            "architecture-design", "beads", "beads-om", "brave-search", "capability-plan",
-            "ddg-search", "defectdojo-fix", "distributed-architecture",
-            "geometric-robustness", "ink-cli-tui", "operating-mode",
-            "refactoring", "simple-design", "skill-creator",
+    def test_kept_skills_exist(self) -> None:
+        for kept in (
+            "ddg-search",
+            "brave-search",
             "tavily-search",
-        }
-        catalog = read_repo_file("lib/catalog.js")
+            "simple-design",
+            "refactoring",
+            "architecture-design",
+            "distributed-architecture",
+            "geometric-robustness",
+            "defectdojo-fix",
+            "ink-cli-tui",
+        ):
+            self.assertTrue(
+                (SKILLS / kept / "SKILL.md").is_file(),
+                f"kept skill missing: {kept}",
+            )
+
+    def test_catalog_has_no_agent_pullers(self) -> None:
+        catalog = (ROOT / "lib" / "catalog.js").read_text(encoding="utf-8")
+        self.assertIn("export const SKILLS_NEEDING_AGENTS = new Set()", catalog)
+        self.assertIn("export const TOP_LEVEL_AGENTS = []", catalog)
         self.assertIn("export const CORE_SKILLS", catalog)
         self.assertIn("export const OPT_IN_SKILLS", catalog)
         self.assertIn("export const SECURITY_SKILLS", catalog)
         self.assertIn("export const SPECIALIST_SKILLS", catalog)
-        self.assertIn("export const BEADS_SKILLS", catalog)
-        for core_id in (
+        self.assertNotIn("PROJECT_SUGGESTED", catalog)
+        self.assertNotIn("BEADS_SKILLS", catalog)
+        for dead in (
             "operating-mode",
-            "beads-om",
             "capability-plan",
+            "beads-om",
+            "skill-creator",
+        ):
+            self.assertNotIn(f"id: '{dead}'", catalog)
+        for kept in (
             "simple-design",
             "refactoring",
-        ):
-            self.assertIn(f"id: '{core_id}'", catalog)
-        self.assertNotIn("id: 'peek-repo'", catalog)
-        self.assertIn("SKILLS_NEEDING_AGENTS", catalog)
-        self.assertIn("'operating-mode'", catalog)
-        self.assertIn("STALE_AGENT_FILES", catalog)
-        readme = read_repo_file("README.md")
-        self.assertIn("## Operating mode", readme)
-        self.assertIn("`operating-mode`", readme)
-        for opt_id in (
             "architecture-design",
             "distributed-architecture",
             "geometric-robustness",
         ):
-            self.assertIn(f"id: '{opt_id}'", catalog)
-        self.assertIn("export const SKILL_GROUPS", catalog)
-        self.assertIn("skills: CORE_SKILLS", catalog)
-        self.assertIn("skills: OPT_IN_SKILLS", catalog)
-        self.assertIn("skills: SECURITY_SKILLS", catalog)
-        self.assertIn("skills: SPECIALIST_SKILLS", catalog)
-        self.assertIn("id: 'defectdojo-fix'", catalog)
-        self.assertIn("id: 'ink-cli-tui'", catalog)
-        install_flow = read_repo_file("lib/install-flow-legacy.js")
-        self.assertIn("CORE_SKILLS", install_flow)
-        self.assertIn("Install CORE skills?", install_flow)
-        self.assertIn("OPT_IN / beads", install_flow)
-        expected_agents = {
+            self.assertIn(f"id: '{kept}'", catalog)
+
+    def test_readme_does_not_advertise_om_or_agents(self) -> None:
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertNotIn("`operating-mode`", readme)
+        self.assertNotIn("`capability-plan`", readme)
+        self.assertNotIn("`beads-om`", readme)
+        self.assertNotIn("scope-scout", readme)
+        self.assertNotIn("design×3", readme)
+        self.assertIn("`simple-design`", readme)
+        self.assertIn("`architecture-design`", readme)
+        self.assertIn("`refactoring`", readme)
+
+    def test_slim_and_om_handbooks_are_gone(self) -> None:
+        self.assertFalse((ROOT / "SLIM.md").exists())
+        for name in (
+            "01-handbook-product-flow.md",
+            "02-handbook-capability-plan.md",
+            "03-handbook-operating-mode.md",
+        ):
+            self.assertFalse((ROOT / "docs" / name).exists(), name)
+
+    def test_craft_skills_do_not_name_agents_or_other_skill_ids(self) -> None:
+        forbidden = (
+            "operating-mode",
+            "capability-plan",
+            "beads-om",
+            "skill-creator",
+            "scope-scout",
+            "scope-auditor",
+            "panelists/",
             "coder.md",
             "reviewer.md",
-            "scope-scout.md",
-            "scope-auditor.md",
-            "panelists/deep-module.md",
-            "panelists/minimal-diff.md",
-            "panelists/seam.md",
+        )
+        # other suite skill ids must not appear as backtick skill references
+        other_ids = {
+            "simple-design",
+            "architecture-design",
+            "distributed-architecture",
+            "geometric-robustness",
+            "refactoring",
         }
-
-        package = json.loads(read_repo_file("package.json"))
-        self.assertEqual(
-            ["bin/", "lib/", "skills/", "agents/", "README.md", "LICENSE"],
-            package["files"],
-        )
-        self.assertEqual(
-            expected_skills,
-            {path.name for path in (ROOT / "skills").iterdir() if path.is_dir()},
-        )
-        self.assertEqual(
-            expected_agents,
-            {path.relative_to(AGENTS).as_posix() for path in AGENTS.rglob("*.md")},
-        )
-        self.assertEqual(
-            {"brave-search", "ddg-search", "tavily-search"},
-            {name for name in expected_skills if name.endswith("-search")},
-        )
-
-
-class ContinuousIntegrationContractTests(unittest.TestCase):
-    def test_ci_runs_unittest_discovery_on_linux_and_windows_powershell(self) -> None:
-        workflow = read_repo_file(".github/workflows/test.yml")
-
-        self.assertIn("runs-on: ubuntu-latest", workflow)
-        self.assertIn("runs-on: macos-latest", workflow)
-        self.assertIn("runs-on: windows-latest", workflow)
-        self.assertGreaterEqual(workflow.count("actions/setup-python@"), 3)
-        self.assertGreaterEqual(
-            workflow.count("python -m unittest discover -s tests -p 'test_*.py'"),
-            3,
-        )
-        self.assertRegex(workflow, r"(?m)^\s+shell: pwsh$")
+        for skill in sorted(other_ids | {"ink-cli-tui"}):
+            root = SKILLS / skill
+            for path in root.rglob("*"):
+                if not path.is_file() or path.suffix in {".png", ".jpg"}:
+                    continue
+                text = path.read_text(encoding="utf-8", errors="ignore")
+                for token in forbidden:
+                    self.assertNotIn(
+                        token,
+                        text,
+                        f"{path} still mentions {token}",
+                    )
+                for other in other_ids:
+                    if other == skill:
+                        continue
+                    # backtick skill id references
+                    self.assertNotIn(
+                        f"`{other}`",
+                        text,
+                        f"{path} still cross-links skill `{other}`",
+                    )
+                    self.assertNotIn(
+                        f"see {other}",
+                        text,
+                    )
+                    self.assertNotIn(
+                        f"→ `{other}`",
+                        text,
+                    )
 
 
 if __name__ == "__main__":

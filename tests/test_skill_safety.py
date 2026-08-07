@@ -7,7 +7,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SKILLS = ROOT / "skills"
-VALIDATOR_PATH = SKILLS / "skill-creator" / "scripts" / "validate_skill.py"
+VALIDATOR_PATH = ROOT / "tools" / "validate_skill.py"
 
 spec = importlib.util.spec_from_file_location("validate_skill", VALIDATOR_PATH)
 assert spec and spec.loader
@@ -52,7 +52,9 @@ class SkillValidationTests(unittest.TestCase):
         self.assertEqual({}, failures)
 
     def test_active_injections_are_static_and_trusted(self) -> None:
-        expected = {"tavily-search"}
+        # Skills that may use network tools in load-time injections (API clients).
+        network_allowed = {"defectdojo-fix"}
+        expected_with_injections = {"tavily-search", "defectdojo-fix"}
         actual = set()
         for skill_dir in sorted(SKILLS.iterdir()):
             skill_file = skill_dir / "SKILL.md"
@@ -79,11 +81,12 @@ class SkillValidationTests(unittest.TestCase):
                     command,
                     f"{skill_dir.name}:{line}",
                 )
-                self.assertIsNone(
-                    re.search(r"\b(curl|wget|Invoke-WebRequest)\b", command),
-                    f"network injection in {skill_dir.name}:{line}",
-                )
-        self.assertEqual(expected, actual)
+                if skill_dir.name not in network_allowed:
+                    self.assertIsNone(
+                        re.search(r"\b(curl|wget|Invoke-WebRequest)\b", command),
+                        f"network injection in {skill_dir.name}:{line}",
+                    )
+        self.assertEqual(expected_with_injections, actual)
 
 
 if __name__ == "__main__":

@@ -49,7 +49,7 @@ _dd_read_key() {
   _dd_key_re="$DD_KEY_RE"
   for f in "${HOME}/.defectdojo-credentials" /root/.defectdojo-credentials; do
     [ -r "$f" ] || continue
-    line=$(grep -E "^${_dd_key_re}=" "$f" 2>/dev/null | head -1 || true)
+    line=$(grep -E "^(${_dd_key_re})=" "$f" 2>/dev/null | head -1 || true)
     if [ -n "$line" ]; then
       _dd_file_val="${line#*=}"
       _dd_file_val="${_dd_file_val%\"}"
@@ -252,10 +252,12 @@ Scripts (`scripts/resolve-env.sh`) and this skill resolve config in this order.
 
 ### Token
 
-1. Env: `DEFECTDOJO_API_TOKEN` or `API_TOKEN`
-2. Claude Code `~/.claude/settings.json` → `env.DEFECTDOJO_API_TOKEN` (injected into process by the harness)
+1. Env: `DEFECTDOJO_API_TOKEN` (prefer) or bare `API_TOKEN` (legacy alias — avoid if other tools set it)
+2. Claude Code `~/.claude/settings.json` → `env.DEFECTDOJO_API_TOKEN` — **only when the harness has already injected `env` into the process**
 3. File: `~/.defectdojo-credentials` then `/root/.defectdojo-credentials`
-   keys: `API_TOKEN=` / `DEFECTDOJO_API_TOKEN=`
+   keys: `DEFECTDOJO_API_TOKEN=` / `API_TOKEN=`
+
+Bundled scripts (`resolve-env.sh`) read **env + credentials file only**. They do **not** parse `settings.json`. Outside Claude Code, put the token in env or the credentials file.
 
 ### Base URL (host + port)
 
@@ -263,7 +265,8 @@ Prefer one full base URL, or host and port separately:
 
 1. Env: `DEFECTDOJO_URL` (e.g. `http://192.168.50.179:8080`)
 2. Env: `DEFECTDOJO_HOST` + optional `DEFECTDOJO_PORT` (default **8080**) + optional `DEFECTDOJO_SCHEME` (default **http**)
-3. Same keys in credentials file or settings.json `env`
+3. Same keys in credentials file
+4. Same keys in settings.json `env` — again **only under Claude Code process injection**; scripts do not load settings.json
 
 Examples:
 

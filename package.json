@@ -1,7 +1,7 @@
 {
   "name": "claude-skills",
   "version": "1.0.0",
-  "description": "Selective interactive installer for the claude-skills suite (Claude Code skills + agents)",
+  "description": "Selective interactive installer for the claude-skills suite (Claude Code skills)",
   "type": "module",
   "bin": {
     "claude-skills": "bin/cli.js"
@@ -10,7 +10,6 @@
     "bin/",
     "lib/",
     "skills/",
-    "agents/",
     "README.md",
     "LICENSE"
   ],
@@ -34,7 +33,6 @@
   "keywords": [
     "claude-code",
     "skills",
-    "agents",
     "installer"
   ],
   "license": "MIT",

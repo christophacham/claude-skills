@@ -10,13 +10,17 @@ import {
   writeFileSync,
   rmSync,
   existsSync,
-  symlinkSync,
   lstatSync,
-  readFileSync,
 } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { createDesiredState, planChanges, planIsEmpty, planCounts, setSelected, setTrees, summarizePlan } from '../lib/desired.js';
+import {
+  createDesiredState,
+  planChanges,
+  planIsEmpty,
+  planCounts,
+  summarizePlan,
+} from '../lib/desired.js';
 import { allSkillIds, defaultSelectedSkillIds, SKILL_GROUPS } from '../lib/catalog.js';
 import { scanAllInstalled, isInstalled, skillStatus } from '../lib/scan.js';
 import { applyPlan } from '../lib/apply.js';
@@ -26,24 +30,45 @@ import { skillsDestForTree } from '../lib/paths.js';
 const known = allSkillIds();
 
 describe('catalog groups', () => {
-  it('exposes seven groups covering all skill ids', () => {
-    assert.equal(SKILL_GROUPS.length, 7);
+  it('exposes five groups covering all skill ids', () => {
+    assert.equal(SKILL_GROUPS.length, 5);
     const fromGroups = SKILL_GROUPS.flatMap((g) => g.skills.map((s) => s.id)).sort();
     assert.deepEqual(fromGroups, [...known].sort());
-    assert.ok(SKILL_GROUPS.some((g) => g.id === 'specialist'));
+    assert.ok(SKILL_GROUPS.some((g) => g.id === 'search'));
+    assert.ok(SKILL_GROUPS.some((g) => g.id === 'core'));
+    assert.ok(SKILL_GROUPS.some((g) => g.id === 'opt_in'));
     assert.ok(SKILL_GROUPS.some((g) => g.id === 'security'));
+    assert.ok(SKILL_GROUPS.some((g) => g.id === 'specialist'));
   });
 
-  it('defaultSelected includes CORE+AUTHOR+SEARCH not beads/opt_in/security/specialist', () => {
+  it('defaultSelected includes CORE+SEARCH not opt_in/security/specialist', () => {
     const d = new Set(defaultSelectedSkillIds());
-    assert.ok(d.has('operating-mode'));
-    assert.ok(d.has('beads-om'));
-    assert.ok(d.has('skill-creator'));
+    assert.ok(d.has('simple-design'));
+    assert.ok(d.has('refactoring'));
     assert.ok(d.has('ddg-search'));
-    assert.ok(!d.has('beads'));
+    assert.ok(d.has('brave-search'));
+    assert.ok(d.has('tavily-search'));
     assert.ok(!d.has('architecture-design'));
     assert.ok(!d.has('defectdojo-fix'));
     assert.ok(!d.has('ink-cli-tui'));
+  });
+
+  it('known suite is the ten kept skills', () => {
+    assert.deepEqual(
+      [...known].sort(),
+      [
+        'architecture-design',
+        'brave-search',
+        'ddg-search',
+        'defectdojo-fix',
+        'distributed-architecture',
+        'geometric-robustness',
+        'ink-cli-tui',
+        'refactoring',
+        'simple-design',
+        'tavily-search',
+      ],
+    );
   });
 });
 
@@ -53,7 +78,7 @@ describe('desired planChanges', () => {
       projectRoot: '/tmp/proj',
       scope: 'project',
       trees: ['claude'],
-      selected: ['operating-mode', 'refactoring'],
+      selected: ['refactoring', 'simple-design'],
     });
     const plan = planChanges(state, []);
     assert.equal(plan.skillOps.length, 2);
@@ -70,7 +95,7 @@ describe('desired planChanges', () => {
     });
     const installed = [
       {
-        id: 'operating-mode',
+        id: 'refactoring',
         scope: 'project',
         tree: 'claude',
         path: '/x',
@@ -87,18 +112,18 @@ describe('desired planChanges', () => {
       projectRoot: '/tmp/proj',
       scope: 'project',
       trees: ['claude'],
-      selected: ['operating-mode'],
+      selected: ['refactoring'],
     });
     const installed = [
       {
-        id: 'operating-mode',
+        id: 'refactoring',
         scope: 'project',
         tree: 'claude',
         path: '/c',
         kind: 'dir',
       },
       {
-        id: 'operating-mode',
+        id: 'refactoring',
         scope: 'project',
         tree: 'agents',
         path: '/a',
@@ -111,19 +136,8 @@ describe('desired planChanges', () => {
     assert.equal(rem[0].tree, 'agents');
   });
 
-  it('needAgents when operating-mode selected and agents missing', () => {
-    const state = createDesiredState({
-      projectRoot: '/tmp/proj',
-      selected: ['operating-mode'],
-    });
-    const planMissing = planChanges(state, [], { agentsPresent: false });
-    assert.equal(planMissing.needAgents, true);
-    const planPresent = planChanges(state, [], { agentsPresent: true });
-    assert.equal(planPresent.needAgents, false);
-  });
-
-  it('beads and beads-om do not pull agents', () => {
-    for (const id of ['beads', 'beads-om']) {
+  it('suite skills never pull agent roster', () => {
+    for (const id of known) {
       const state = createDesiredState({
         projectRoot: '/tmp/proj',
         selected: [id],
@@ -131,15 +145,6 @@ describe('desired planChanges', () => {
       const plan = planChanges(state, [], { agentsPresent: false });
       assert.equal(plan.needAgents, false, id);
     }
-  });
-
-  it('capability-plan pulls agents', () => {
-    const state = createDesiredState({
-      projectRoot: '/tmp/proj',
-      selected: ['capability-plan'],
-    });
-    const plan = planChanges(state, [], { agentsPresent: false });
-    assert.equal(plan.needAgents, true);
   });
 
   it('summarizePlan lists ops', () => {
@@ -156,29 +161,24 @@ describe('desired planChanges', () => {
       projectRoot: '/tmp/proj',
       scope: 'project',
       trees: ['claude'],
-      selected: ['operating-mode', 'refactoring'],
+      selected: ['refactoring', 'simple-design'],
     });
     const installed = [
       {
-        id: 'operating-mode',
+        id: 'refactoring',
         scope: 'global',
         tree: 'claude',
-        path: '/home/x/.claude/skills/operating-mode',
+        path: '/home/x/.claude/skills/refactoring',
         kind: 'dir',
       },
     ];
     const plan = planChanges(state, installed);
-    assert.ok(plan.blocked.some((b) => b.id === 'operating-mode'));
+    assert.ok(plan.blocked.some((b) => b.id === 'refactoring'));
     assert.ok(plan.blocked.every((b) => b.otherScope === 'global'));
     assert.ok(
-      !plan.skillOps.some(
-        (o) => o.op === 'install' && o.id === 'operating-mode',
-      ),
+      !plan.skillOps.some((o) => o.op === 'install' && o.id === 'refactoring'),
     );
-    // refactoring not global → still schedules install
-    assert.ok(
-      plan.skillOps.some((o) => o.op === 'install' && o.id === 'refactoring'),
-    );
+    assert.ok(plan.skillOps.some((o) => o.op === 'install' && o.id === 'simple-design'));
     const lines = summarizePlan(plan);
     assert.ok(lines.some((l) => l.startsWith('blocked')));
   });
@@ -188,14 +188,14 @@ describe('desired planChanges', () => {
       projectRoot: '/tmp/proj',
       scope: 'global',
       trees: ['claude'],
-      selected: ['simple-design'],
+      selected: ['architecture-design'],
     });
     const installed = [
       {
-        id: 'simple-design',
+        id: 'architecture-design',
         scope: 'project',
         tree: 'claude',
-        path: '/tmp/proj/.claude/skills/simple-design',
+        path: '/tmp/proj/.claude/skills/architecture-design',
         kind: 'dir',
       },
     ];
@@ -210,28 +210,28 @@ describe('desired planChanges', () => {
       projectRoot: '/tmp/proj',
       scope: 'project',
       trees: ['claude'],
-      selected: [], // deselect → remove project copy
+      selected: [],
     });
     const installed = [
       {
-        id: 'operating-mode',
+        id: 'refactoring',
         scope: 'project',
         tree: 'claude',
-        path: '/tmp/proj/.claude/skills/operating-mode',
+        path: '/tmp/proj/.claude/skills/refactoring',
         kind: 'dir',
       },
       {
-        id: 'operating-mode',
+        id: 'refactoring',
         scope: 'global',
         tree: 'claude',
-        path: '/home/x/.claude/skills/operating-mode',
+        path: '/home/x/.claude/skills/refactoring',
         kind: 'dir',
       },
     ];
     const plan = planChanges(state, installed);
     assert.ok(
       plan.skillOps.some(
-        (o) => o.op === 'remove' && o.id === 'operating-mode' && o.scope === 'project',
+        (o) => o.op === 'remove' && o.id === 'refactoring' && o.scope === 'project',
       ),
     );
   });
@@ -263,40 +263,35 @@ describe('apply + scan integration (isolated project)', () => {
       projectRoot,
       scope: 'project',
       trees: ['claude'],
-      selected: ['operating-mode', 'simple-design'],
+      selected: ['refactoring', 'simple-design'],
       skipDeps: true,
     });
     const plan = planChanges(state, scanAllInstalled(projectRoot));
     assert.ok(!planIsEmpty(plan));
     const result = applyPlan(plan, state);
     assert.equal(result.errors.length, 0);
-    assert.ok(existsSync(join(projectRoot, '.claude/skills/operating-mode/SKILL.md')));
+    assert.ok(existsSync(join(projectRoot, '.claude/skills/refactoring/SKILL.md')));
     assert.ok(existsSync(join(projectRoot, '.claude/skills/simple-design/SKILL.md')));
 
     const installed = scanAllInstalled(projectRoot);
-    assert.ok(isInstalled(installed, 'operating-mode', 'project', 'claude'));
-    assert.equal(skillStatus(installed, 'operating-mode', 'project', ['claude']), 'installed');
+    assert.ok(isInstalled(installed, 'refactoring', 'project', 'claude'));
+    assert.equal(skillStatus(installed, 'refactoring', 'project', ['claude']), 'installed');
   });
 
   it('mirrors to .agents/skills via symlink or copy', () => {
-    setTrees(
-      createDesiredState({ projectRoot, selected: [] }),
-      ['claude', 'agents'],
-    );
     const state = createDesiredState({
       projectRoot,
       scope: 'project',
       trees: ['claude', 'agents'],
-      selected: ['operating-mode'],
+      selected: ['refactoring'],
       skipDeps: true,
     });
-    // ensure claude already has it from previous test; plan agents install
     const plan = planChanges(state, scanAllInstalled(projectRoot));
     const agentsOps = plan.skillOps.filter((o) => o.tree === 'agents' && o.op === 'install');
     assert.ok(agentsOps.length >= 1);
     const result = applyPlan(plan, state);
     assert.equal(result.errors.length, 0);
-    const agentsPath = join(projectRoot, '.agents/skills/operating-mode');
+    const agentsPath = join(projectRoot, '.agents/skills/refactoring');
     assert.ok(existsSync(agentsPath));
   });
 
@@ -305,14 +300,12 @@ describe('apply + scan integration (isolated project)', () => {
       projectRoot,
       scope: 'project',
       trees: ['claude'],
-      selected: [], // remove all
+      selected: [],
       skipDeps: true,
     });
-    // keep only empty selection for known skills that were installed
     const plan = planChanges(state, scanAllInstalled(projectRoot));
     assert.ok(plan.skillOps.some((o) => o.op === 'remove'));
     applyPlan(plan, state);
-    // agents tree still may have operating-mode if trees only claude — disabling agents tree removes it
     const state2 = createDesiredState({
       projectRoot,
       scope: 'project',
@@ -321,7 +314,7 @@ describe('apply + scan integration (isolated project)', () => {
       skipDeps: true,
     });
     applyPlan(planChanges(state2, scanAllInstalled(projectRoot)), state2);
-    assert.ok(!existsSync(join(projectRoot, '.claude/skills/operating-mode')));
+    assert.ok(!existsSync(join(projectRoot, '.claude/skills/refactoring')));
   });
 });
 
@@ -337,7 +330,6 @@ describe('trySymlink', () => {
       if (ok) {
         assert.ok(lstatSync(link).isSymbolicLink() || existsSync(join(link, 'f.txt')));
       } else {
-        // environment may forbid symlinks — not a hard fail
         assert.equal(ok, false);
       }
     } finally {
@@ -354,7 +346,9 @@ describe('installSkillToTree direct', () => {
       assert.equal(r.kind, 'dir');
       assert.ok(existsSync(join(r.path, 'SKILL.md')));
       removeSkillFromTree('refactoring', 'claude', 'project', projectRoot);
-      assert.ok(!existsSync(join(skillsDestForTree('claude', 'project', projectRoot), 'refactoring')));
+      assert.ok(
+        !existsSync(join(skillsDestForTree('claude', 'project', projectRoot), 'refactoring')),
+      );
     } finally {
       rmSync(projectRoot, { recursive: true, force: true });
     }

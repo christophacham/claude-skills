@@ -1,6 +1,6 @@
 ---
 name: architecture-design
-description: "Application-level structure: Clean Architecture layering (domain/application/infrastructure, ports and adapters, use cases, composition root) and dependency direction toward business policy. Use when asking 'where does this code live?', 'which way should application-layer dependencies point?', 'how should I split application packages or crates by architectural responsibility?', when business logic is tangled with I/O and hard to test, or when placing invariants next to the data they protect. Language-agnostic; worked examples in Rust. Not for module/API interface depth (see simple-design), service or monolith splitting (see distributed-architecture), or behavior-preserving refactor mechanics (see refactoring)."
+description: "Application-level structure: Clean Architecture layering (domain/application/infrastructure, ports and adapters, use cases, composition root) and dependency direction toward business policy. Use when asking 'where does this code live?', 'which way should application-layer dependencies point?', 'how should I split application packages or crates by architectural responsibility?', when business logic is tangled with I/O and hard to test, or when placing invariants next to the data they protect. Language-agnostic; worked examples in Rust. Not for module/API interface depth, service or monolith splitting, or behavior-preserving refactor mechanics."
 ---
 
 # Architecture Design
@@ -9,8 +9,10 @@ One rule, one recipe. Everything else escalates to the reference.
 
 **The one rule: dependencies point toward policy and stability.** Core business policy does not depend on delivery, persistence, or framework details. When inversion is useful, the policy-side client owns the abstraction it needs; the adapter depends on and implements that contract. Depend in the direction of stability (SDP); no dependency cycles (ADP) — a cycle makes two packages one change unit. Group what changes together; split only when a boundary earns its cost.
 
-- **Interface depth** ("is this module well-shaped?") → `simple-design`
-- **Cross-deployable decisions** ("split the monolith?", sagas) → `distributed-architecture`
+**Out of scope here:**
+
+- Module/API interface depth ("is this module well-shaped?")
+- Cross-deployable decisions ("split the monolith?", sagas, multi-service data ownership)
 
 **Hats:** never review/refactor for design quality and add features in the same step. Note violations while building; fix them separately.
 
@@ -127,7 +129,7 @@ Errors travel outward even though source dependencies point inward. Domain failu
 - **No layering for small tools and scripts.** The composition root of a 300-line CLI is `main()`.
 - **Typed wrappers only where a primitive carries business meaning plus validation** — not every String.
 - **Directory discipline before crate-per-layer enforcement.** Reach for separate packages/crates (or workspace-enforced layers) only when violations keep recurring.
-- **SOLID as a checklist, not a religion.** SRP/OCP/LSP/ISP are restatements of depth, information hiding, and substitutability — apply them through the `simple-design` red flags. DIP and SDP are the two that anchor the layering above; the rest need no separate ceremony here.
+- **SOLID as a checklist, not a religion.** SRP/OCP/LSP/ISP are restatements of depth, information hiding, and substitutability — apply them through module-depth red flags (shallow module, leakage, pass-through). DIP and SDP are the two that anchor the layering above; the rest need no separate ceremony here.
 
 ## Reference loading
 

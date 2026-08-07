@@ -1,6 +1,6 @@
 ---
 name: ink-cli-tui
-description: "Build full-screen, in-place terminal wizards for Node/Bun packages shippable via npx/bunx/github: — React+Ink screen FSM, sticky header, List/MultiCheck, plan-then-apply, clear-screen entry (ccstatusline-style). Use when creating or rewriting an interactive CLI installer/configurator, npx -y github:… TUI, Ink menus that must not scroll like Clack logs, or when the user asks for ccstatusline-like UX. Not for web UI, blessed/ncurses without React, non-interactive CLIs, or Claude Code skill authoring (skill-creator)."
+description: "Build full-screen, in-place terminal wizards for Node/Bun packages shippable via npx/bunx/github: — React+Ink screen FSM, sticky header, List/MultiCheck, plan-then-apply, clear-screen entry (ccstatusline-style). Use when creating or rewriting an interactive CLI installer/configurator, npx -y github:… TUI, Ink menus that must not scroll like Clack logs, or when the user asks for ccstatusline-like UX. Not for web UI, blessed/ncurses without React, non-interactive CLIs, or Claude Code skill authoring."
 ---
 
 # Ink CLI TUI (npx / bunx)

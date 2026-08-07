@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-VALIDATOR_PATH = ROOT / "skills" / "skill-creator" / "scripts" / "validate_skill.py"
+VALIDATOR_PATH = ROOT / "tools" / "validate_skill.py"
 
 spec = importlib.util.spec_from_file_location("skill_validator_regression", VALIDATOR_PATH)
 assert spec and spec.loader
