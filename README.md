@@ -80,6 +80,7 @@ Selection is an in-memory **cart**. Nothing is written until **Apply changes**.
 - Select skills → **Apply** → installs the pending `+` set for the active scope/targets  
 - Deselect skills → **Apply** → removes the pending `−` set (project uninstall)  
 - Cancel / Exit with pending changes → cart discarded; disk unchanged  
+- **Cross-scope guard:** if the same skill **name** is already installed in the *other* scope (e.g. global while you are in project), install is **blocked** with a clear warning — switch Scope to manage the existing copy, or remove it there first. Removes in the active scope still work.  
 
 When you apply skills that need them, the CLI also:
 

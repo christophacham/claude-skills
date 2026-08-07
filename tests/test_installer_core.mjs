@@ -128,6 +128,91 @@ describe('desired planChanges', () => {
     const lines = summarizePlan(planChanges(state, []));
     assert.ok(lines.some((l) => l.includes('install')));
   });
+
+  it('blocks project install when same skill name exists globally', () => {
+    const state = createDesiredState({
+      projectRoot: '/tmp/proj',
+      scope: 'project',
+      trees: ['claude'],
+      selected: ['operating-mode', 'refactoring'],
+    });
+    const installed = [
+      {
+        id: 'operating-mode',
+        scope: 'global',
+        tree: 'claude',
+        path: '/home/x/.claude/skills/operating-mode',
+        kind: 'dir',
+      },
+    ];
+    const plan = planChanges(state, installed);
+    assert.ok(plan.blocked.some((b) => b.id === 'operating-mode'));
+    assert.ok(plan.blocked.every((b) => b.otherScope === 'global'));
+    assert.ok(
+      !plan.skillOps.some(
+        (o) => o.op === 'install' && o.id === 'operating-mode',
+      ),
+    );
+    // refactoring not global → still schedules install
+    assert.ok(
+      plan.skillOps.some((o) => o.op === 'install' && o.id === 'refactoring'),
+    );
+    const lines = summarizePlan(plan);
+    assert.ok(lines.some((l) => l.startsWith('blocked')));
+  });
+
+  it('blocks global install when same skill name exists in project', () => {
+    const state = createDesiredState({
+      projectRoot: '/tmp/proj',
+      scope: 'global',
+      trees: ['claude'],
+      selected: ['simple-design'],
+    });
+    const installed = [
+      {
+        id: 'simple-design',
+        scope: 'project',
+        tree: 'claude',
+        path: '/tmp/proj/.claude/skills/simple-design',
+        kind: 'dir',
+      },
+    ];
+    const plan = planChanges(state, installed);
+    assert.equal(plan.blocked.length, 1);
+    assert.equal(plan.blocked[0].otherScope, 'project');
+    assert.equal(plan.skillOps.filter((o) => o.op === 'install').length, 0);
+  });
+
+  it('still allows remove in active scope when other scope also has the skill', () => {
+    const state = createDesiredState({
+      projectRoot: '/tmp/proj',
+      scope: 'project',
+      trees: ['claude'],
+      selected: [], // deselect → remove project copy
+    });
+    const installed = [
+      {
+        id: 'operating-mode',
+        scope: 'project',
+        tree: 'claude',
+        path: '/tmp/proj/.claude/skills/operating-mode',
+        kind: 'dir',
+      },
+      {
+        id: 'operating-mode',
+        scope: 'global',
+        tree: 'claude',
+        path: '/home/x/.claude/skills/operating-mode',
+        kind: 'dir',
+      },
+    ];
+    const plan = planChanges(state, installed);
+    assert.ok(
+      plan.skillOps.some(
+        (o) => o.op === 'remove' && o.id === 'operating-mode' && o.scope === 'project',
+      ),
+    );
+  });
 });
 
 describe('apply + scan integration (isolated project)', () => {
