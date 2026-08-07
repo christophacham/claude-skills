@@ -47,10 +47,8 @@ def configured_skills(text: str) -> list[str]:
 
 
 class AgentContractTests(unittest.TestCase):
-    def test_all_seven_agent_identities_are_preserved(self) -> None:
+    def test_om_roster_identities_are_preserved(self) -> None:
         expected = {
-            "agents/beads-creator.md": "beads-creator",
-            "agents/beads-reviewer.md": "beads-reviewer",
             "agents/coder.md": "coder",
             "agents/reviewer.md": "reviewer",
             "agents/panelists/deep-module.md": "deep-module",
@@ -64,8 +62,10 @@ class AgentContractTests(unittest.TestCase):
         }
 
         self.assertEqual(expected, actual)
+        self.assertFalse((AGENTS / "beads-creator.md").exists())
+        self.assertFalse((AGENTS / "beads-reviewer.md").exists())
 
-    def test_coder_accepts_a_normal_scoped_brief(self) -> None:
+    def test_coder_is_om_unit_implementer(self) -> None:
         text = read_repo_file("agents/coder.md")
         lowered = text.lower()
 
@@ -78,19 +78,20 @@ class AgentContractTests(unittest.TestCase):
             configured_skills(text),
         )
         for phrase in (
-            "a scoped implementation brief",
+            "one operating-mode unit",
             "project's `CLAUDE.md`",
-            "relevant checks",
-            "Only create a commit when the user explicitly authorizes it.",
-            "Do not mutate any issue tracker",
-            "Never push or amend",
+            "Live gates",
+            "Only create a commit when the user explicitly authorizes it",
+            "No tracker",
+            "Never push",
+            "Ready for main PR",
         ):
             self.assertIn(phrase, text)
-        self.assertNotIn("work unit", lowered)
         self.assertNotIn("one bead", lowered)
         self.assertNotIn("full test suite", lowered)
+        self.assertNotIn("work-loop", lowered)
 
-    def test_reviewer_is_read_only_and_accepts_common_review_targets(self) -> None:
+    def test_reviewer_is_read_only_with_om_pr_bar(self) -> None:
         text = read_repo_file("agents/reviewer.md")
 
         self.assertEqual({"Read", "Grep", "Glob"}, configured_tools(text))
@@ -106,11 +107,11 @@ class AgentContractTests(unittest.TestCase):
             "Verdict: PASS | CHANGES_REQUESTED | REPLAN_RECOMMENDED",
             text,
         )
+        self.assertIn("Operating-mode PR bar", text)
         self.assertIn(
-            "A fresh review context remains independent even when it uses the same model",
+            "A fresh review context remains independent even on the same model",
             text,
         )
-        self.assertIn("same-model review is not degraded", text)
         self.assertIn("evidence: <observed behavior, diff hunk, or supplied check output>", text)
         self.assertIn("impact: <concrete failure or maintenance cost>", text)
         self.assertNotIn("micro-fix exception", text.lower())
@@ -118,50 +119,43 @@ class AgentContractTests(unittest.TestCase):
         self.assertNotIn("run formatters", text.lower())
         self.assertNotIn("re-running the test suite", text.lower())
 
-    def test_panelists_are_no_bash_read_only_and_keep_distinct_lenses(self) -> None:
+    def test_panelists_are_no_bash_read_only_unit_scoped(self) -> None:
         contracts = {
             "agents/panelists/deep-module.md": (
                 "the deep module",
-                "The best recommendation may be to keep behavior in an existing owner or make no structural change.",
+                "one PR-sized unit",
                 ["simple-design"],
             ),
             "agents/panelists/minimal-diff.md": (
                 "the minimal honest diff",
-                "Defer structure when its current cost exceeds its demonstrated benefit",
+                "one PR-sized unit",
                 ["refactoring"],
             ),
             "agents/panelists/seam.md": (
                 "the behavior-preserving seam",
-                "A function boundary can be a valid seam when it forms a meaningful contract",
+                "one PR-sized unit",
                 ["simple-design"],
             ),
         }
 
-        for path, (lens, correction, skills) in contracts.items():
+        for path, (lens, unit_phrase, skills) in contracts.items():
             with self.subTest(path=path):
                 text = read_repo_file(path)
                 self.assertEqual({"Read", "Grep", "Glob"}, configured_tools(text))
                 self.assertEqual(skills, configured_skills(text))
                 self.assertIn("Read-only", text)
                 self.assertIn(lens, text)
-                self.assertIn(correction, text)
+                self.assertIn(unit_phrase, text)
+                self.assertIn("operating-mode design×3", text)
                 self.assertNotIn("second caller", text.lower())
                 self.assertNotIn("function boundary alone", text.lower())
-
-    def test_beads_agents_preload_beads_and_require_user_authorization(self) -> None:
-        for path in ("agents/beads-creator.md", "agents/beads-reviewer.md"):
-            with self.subTest(path=path):
-                text = read_repo_file(path)
-                self.assertEqual(["beads"], configured_skills(text))
-                self.assertIn("governing user request", text)
-                self.assertNotIn("documented repository policy that authorizes", text)
 
 
 class CoordinationDocumentationTests(unittest.TestCase):
     def test_readme_matches_agent_behavior(self) -> None:
         text = read_repo_file("README.md")
 
-        self.assertIn("scoped implementation brief", text)
+        self.assertIn("One-unit implementer", text)
         self.assertIn("user-authorized commit", text)
         self.assertIn(
             "PASS / CHANGES_REQUESTED / REPLAN_RECOMMENDED",
@@ -170,6 +164,8 @@ class CoordinationDocumentationTests(unittest.TestCase):
         self.assertIn("Same-model review remains valid", text)
         self.assertIn("advisory routing preferences", text)
         self.assertNotIn("PASS / FIX / ROLLBACK", text)
+        self.assertNotIn("beads-creator", text)
+        self.assertNotIn("beads-reviewer", text)
 
     def test_pool_is_advisory_and_same_model_review_is_valid(self) -> None:
         text = read_repo_file("pool.md")
@@ -179,6 +175,7 @@ class CoordinationDocumentationTests(unittest.TestCase):
         self.assertIn("Pins are optional preferences", text)
         self.assertNotIn("degraded", text.lower())
         self.assertNotIn("config bug", text.lower())
+        self.assertNotIn("beads-creator", text)
 
     def test_archive_points_to_current_root_readme_without_stale_suite_claims(self) -> None:
         text = read_repo_file("personal-skill-archive/README.md")
@@ -199,7 +196,6 @@ class CoordinationDocumentationTests(unittest.TestCase):
             "refactoring", "simple-design", "skill-creator",
             "tavily-search",
         }
-        # Catalog group law: CORE default-yes; OPT_IN + SPECIALIST never default-yes
         catalog = read_repo_file("lib/catalog.js")
         self.assertIn("export const CORE_SKILLS", catalog)
         self.assertIn("export const OPT_IN_SKILLS", catalog)
@@ -213,6 +209,9 @@ class CoordinationDocumentationTests(unittest.TestCase):
         ):
             self.assertIn(f"id: '{core_id}'", catalog)
         self.assertNotIn("id: 'peek-repo'", catalog)
+        self.assertIn("SKILLS_NEEDING_AGENTS", catalog)
+        self.assertIn("'operating-mode'", catalog)
+        self.assertIn("STALE_AGENT_FILES", catalog)
         readme = read_repo_file("README.md")
         self.assertIn("## Operating mode", readme)
         self.assertIn("`operating-mode`", readme)
@@ -222,7 +221,6 @@ class CoordinationDocumentationTests(unittest.TestCase):
             "geometric-robustness",
         ):
             self.assertIn(f"id: '{opt_id}'", catalog)
-        # Groups drive the wizard; specialist is load-on-demand
         self.assertIn("export const SKILL_GROUPS", catalog)
         self.assertIn("skills: CORE_SKILLS", catalog)
         self.assertIn("skills: OPT_IN_SKILLS", catalog)
@@ -233,8 +231,11 @@ class CoordinationDocumentationTests(unittest.TestCase):
         self.assertIn("Install CORE skills?", install_flow)
         self.assertIn("OPT_IN / beads", install_flow)
         expected_agents = {
-            "beads-creator.md", "beads-reviewer.md", "coder.md", "reviewer.md",
-            "panelists/deep-module.md", "panelists/minimal-diff.md", "panelists/seam.md",
+            "coder.md",
+            "reviewer.md",
+            "panelists/deep-module.md",
+            "panelists/minimal-diff.md",
+            "panelists/seam.md",
         }
 
         package = json.loads(read_repo_file("package.json"))

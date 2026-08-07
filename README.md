@@ -1,6 +1,6 @@
 # claude-skills
 
-Software engineering skills and custom agents for Claude Code: architecture, simple design, testing, refactoring, search helpers, plus a subagent roster (coder, reviewer, beads, design panelists) you dispatch from the main agent.
+Software engineering skills and custom agents for Claude Code: architecture, simple design, refactoring, search helpers, plus an operating-mode subagent roster (coder, reviewer, design panelists) you dispatch from the main agent.
 
 ---
 
@@ -68,8 +68,8 @@ If the active scope already has suite skills on disk, selection seeds from the s
 |------|---------------|--------------|
 | Skills (primary) | `<project>/.claude/skills/<id>` | `~/.claude/skills/<id>` |
 | Skills (optional mirror) | `<project>/.agents/skills/<id>` | `~/.agents/skills/<id>` |
-| Agent roster (when **beads** selected) | `<project>/.claude/agents/` | `~/.claude/agents/` |
-| Optional `pool.md` (with beads) | `<project>/.claude/pool.md` | `~/.claude/pool.md` |
+| Agent roster (when **operating-mode** / design-preload skills selected) | `<project>/.claude/agents/` | `~/.claude/agents/` |
+| Optional `pool.md` (with operating-mode) | `<project>/.claude/pool.md` | `~/.claude/pool.md` |
 | API keys (Brave / Tavily) | always `~/.claude/settings.json` (never the project tree) | same |
 | Global install manifest | — | `~/.claude/claude-skills-manifest.json` |
 
@@ -146,7 +146,7 @@ merge only if understood + green
 - **Independent review** — Review from a fresh context and require evidence-based findings. Same-model review remains valid; a different model tier is an optional source of diversity.
 - **Ceremony follows irreversibility** — Ports, ADRs, and sagas only when earned (`architecture-design`, `distributed-architecture`).
 
-Optional: **`beads-om`** (CORE) for a thin Beads queue around operating-mode units; full **`beads`** profile for general tracker ops + agent roster. Design panelists for multi-lens design when the parent wants them. The general `coder` and `reviewer` do not mutate trackers.
+Optional: **`beads-om`** (CORE) for a thin Beads queue around operating-mode units; full **`beads`** for general tracker ops (skill only). The OM roster (`coder` / `reviewer` / panelists) installs with **operating-mode** (and design preloads). `coder` and `reviewer` do not mutate trackers.
 
 ---
 
@@ -161,7 +161,7 @@ Catalog groups (selective Node installer): **SEARCH** · **CORE** (default-yes) 
 
 ### CORE (default-yes)
 - **`operating-mode`**: Hands-off one-unit run to PR; design×3; live gates; main may dispatch subagents; human reviews at PR.
-- **`beads-om`**: Thin Beads companion to operating-mode (claim unit bead, park discoveries, close post-merge). Does **not** install the agent roster; needs `bd` + initialized `.beads/`.
+- **`beads-om`**: Thin Beads companion to operating-mode (claim unit bead, park discoveries, close post-merge). Skill only; needs `bd` + initialized `.beads/`.
 - **`simple-design`**: Ousterhout deep modules, information hiding, red flags.
 - **`refactoring`**: Fowler smells and safe structural steps.
 
@@ -169,7 +169,7 @@ Catalog groups (selective Node installer): **SEARCH** · **CORE** (default-yes) 
 - **`skill-creator`**: Create, validate, evaluate, and package Agent Skills; audit Claude Code load-time shell injection.
 
 ### BEADS (profile — only when chosen)
-- **`beads`**: Issue creation, claiming, status updates, dependency graphing, and Dolt sync via `bd` (also installs agents + optional `pool.md`).
+- **`beads`**: Full `bd` tracker skill (create/claim/deps/Dolt). Does **not** install agents; use `beads-om` for OM-thin usage.
 
 ### OPT_IN (offer, never default-yes)
 - **`architecture-design`**: Clean Architecture layering, ports & adapters.
@@ -185,17 +185,15 @@ Narrow, task-specific skills. Install only when you need that specialty (wizard 
 
 ## Custom Agents (`agents/`)
 
-Install into `~/.claude/agents` (or project `.claude/agents`). Dispatch from the main agent — no work-loop skill required.
+Install into `~/.claude/agents` (or project `.claude/agents`) when **operating-mode** (or `simple-design` / `refactoring`) is applied. Dispatch from main under operating-mode — no permission ping for unit work.
 
 | Agent | Role |
 |-------|------|
-| **`coder`** | Implement a scoped implementation brief using project `CLAUDE.md`, focused changes, and relevant checks; a user-authorized commit is optional |
-| **`reviewer`** | Read-only independent audit of a diff, commit, branch, or file set → PASS / CHANGES_REQUESTED / REPLAN_RECOMMENDED |
-| **`beads-creator`** | Execute explicitly requested Beads creates, updates, labels, and links; destructive actions and Dolt pushes require user authorization |
-| **`beads-reviewer`** | Read-only board hygiene by default; apply only explicitly requested, deterministic repairs |
-| **`panelists/deep-module`** | Design lens: natural ownership, information hiding, and justified module depth |
-| **`panelists/minimal-diff`** | Design lens: every touch point and structural cost must be earned |
-| **`panelists/seam`** | Design lens: smallest justified contract that contains demonstrated coupling |
+| **`coder`** | One-unit implementer: refactor-then-integrate, live gates, unit health; optional user-authorized commit; no tracker |
+| **`reviewer`** | Read-only unit/PR audit → PASS / CHANGES_REQUESTED / REPLAN_RECOMMENDED (includes OM PR bar) |
+| **`panelists/deep-module`** | Design×3 lens: natural ownership, information hiding, justified module depth (one unit) |
+| **`panelists/minimal-diff`** | Design×3 lens: every touch point and structural cost must be earned (one unit) |
+| **`panelists/seam`** | Design×3 lens: smallest justified contract that contains demonstrated coupling (one unit) |
 
 Optional **`pool.md`** (global or project `.claude/pool.md`) provides advisory routing preferences for agent model tiers. Agents do not require it, and same-model review remains valid.
 

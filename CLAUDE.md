@@ -33,7 +33,7 @@ Other skills, agents, installers (non-search paths), docs, and tests remain fair
 | Layer | Role |
 |-------|------|
 | **Skills** (`skills/`) | Judgment libraries and operational skills Claude loads by trigger |
-| **Agents** (`agents/`) | Dispatchable subagents (coder, reviewer, beads, design panelists) |
+| **Agents** (`agents/`) | Dispatchable subagents (coder, reviewer, design panelists) |
 | **Installer** (`bin/`, `lib/`) | Full-screen Ink TUI: pick skills → plan → apply (project-default) |
 | **Docs** | `README.md` (users), `SLIM.md` (suite shape), `docs/node-native-installer-pattern.md` (installer contract) |
 
@@ -76,7 +76,7 @@ docs/                      # installer pattern essay
 | **SEARCH** | yes | `ddg-search`, `brave-search`, `tavily-search` (**bodies frozen** — see ban) |
 | **CORE** | yes | `operating-mode`, `beads-om`, `simple-design`, `refactoring` |
 | **AUTHOR** | yes | `skill-creator` |
-| **BEADS** | no | `beads` (+ agents + optional `pool.md` when applied) |
+| **BEADS** | no | `beads` (full tracker skill only) |
 | **OPT_IN** | no | `architecture-design`, `distributed-architecture`, `geometric-robustness` |
 | **SPECIALIST** | no | load-on-demand niches, e.g. `ink-cli-tui` |
 
@@ -129,16 +129,15 @@ When doing or planning product implementation **in a consuming app** (or when th
 
 ---
 
-## Agents (when beads / roster installed)
+## Agents (OM roster)
 
 | Agent | Role |
 |-------|------|
-| `coder` | Scoped implementation |
-| `reviewer` | Independent read-only audit |
-| `beads-creator` / `beads-reviewer` | Beads tracker ops (with `beads` skill) |
-| `panelists/deep-module`, `minimal-diff`, `seam` | Design lenses |
+| `coder` | One-unit implementer (live gates, unit health; no tracker) |
+| `reviewer` | Independent read-only unit/PR audit |
+| `panelists/deep-module`, `minimal-diff`, `seam` | Design×3 lenses (one unit) |
 
-Roster installs with **beads** (or explicit agent install paths). Preloads favor **simple-design** + **refactoring** — not the whole suite.
+Roster installs when **operating-mode** (or `simple-design` / `refactoring`) is applied. Optional `pool.md` with operating-mode. Preloads: **simple-design** + **refactoring** on coder/reviewer — not the whole suite. No beads tracker agents.
 
 ---
 
@@ -167,5 +166,5 @@ Do not invent CI requirements that are not in-repo; keep help/README/catalog/tes
 | Build another Ink wizard | skill `ink-cli-tui` |
 | Product cadence skill | `operating-mode` |
 | Beads + OM (thin) | `beads-om` (CORE; no roster) |
-| Full Beads profile | `beads` (BEADS group; pulls agents) |
+| Full Beads skill | `beads` (BEADS group; skill only) |
 | Search skills | **leave alone** |

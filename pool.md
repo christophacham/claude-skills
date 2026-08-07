@@ -10,8 +10,7 @@
 # A project `.claude/pool.md` may provide project-specific preferences.
 #
 # Common advisory choices:
-#   beads-creator, beads-reviewer -> a fast economical tier
-#   coder, reviewer -> tiers suited to task difficulty; different tiers when useful
+#   coder, reviewer, panelists -> tiers suited to task difficulty; different tiers when useful
 
 pool: opus, sonnet, haiku
 # Leave coder/reviewer unpinned so the parent can choose per task.

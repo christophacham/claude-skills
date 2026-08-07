@@ -45,7 +45,7 @@ All inventory rows below that said “MERGE → web-search” are **void**. Sear
 | **SEARCH** | `ddg-search`, `brave-search`, `tavily-search` | multiselect as today; **do not change skill bodies/IDs** |
 | **CORE** | `operating-mode`, `beads-om`, `simple-design`, `refactoring` | yes |
 | **AUTHOR** | `skill-creator` | project/author path |
-| **PROFILE · BEADS** | `beads` (+ agents + `pool.md`) | only when beads chosen |
+| **PROFILE · BEADS** | `beads` (skill only) | only when beads chosen |
 | **OPT_IN** | `architecture-design`, `distributed-architecture`, `geometric-robustness` | no — offer, never default-yes |
 | **Archive** | never catalog | VCS / `personal-skill-archive/` |
 
@@ -75,10 +75,10 @@ Newcomer placement: rare domain → archive or external project skill; agent-pul
 | `reimpl-scout` | **DELETE** | Removed from suite; stale cleanup on install |
 | `geometric-robustness` | **KEEP** | Domain skill retained |
 | `find-docs` + personal archive | **ARCHIVE stay** | Do not restore; do not edit search skills to fix citations — if search descriptions mention find-docs, **leave them** (search no-go) |
-| Agents `coder`, `reviewer` | **KEEP** | Permanent roles; preloads: simple-design + refactoring only |
-| `beads-creator`, `beads-reviewer` | **KEEP · BEADS-only** | Install only with beads |
-| `panelists/*` ×3 | **KEEP** | Lenses stay separate |
-| `pool.md` | **KEEP advisory** | Prefer exclude from npm `files` if trivial |
+| Agents `coder`, `reviewer` | **KEEP · OM roster** | Install with operating-mode; preloads: simple-design + refactoring |
+| `beads-creator`, `beads-reviewer` | **DELETE** | Removed; thin beads-om on main; no tracker subagents |
+| `panelists/*` ×3 | **KEEP · OM roster** | Design×3 for one unit |
+| `pool.md` | **KEEP advisory** | Install with operating-mode |
 | Install product | **Node CLI only** (`npx`/`bunx`); shell install/uninstall scripts removed |
 | Evals | **git / `dev/` only** where easy without touching search | Never npm install surface for non-search |
 | Skill-linked `references/` | **SHIP with skill** | Progressive disclosure intact |
@@ -206,7 +206,8 @@ If a step would require editing search skills, skip that step and continue.
 - SEARCH: ddg-search, brave-search, tavily-search (untouched)
 - CORE: operating-mode, beads-om, simple-design, refactoring
 - AUTHOR: skill-creator
-- BEADS profile: beads (+ agents + pool when chosen)
+- BEADS profile: beads skill only
+- OM agents: coder, reviewer, panelists ×3 (with operating-mode)
 - OPT_IN: architecture-design, distributed-architecture, geometric-robustness
 - Agents: full current set (coder/reviewer preload simple-design + refactoring)
 

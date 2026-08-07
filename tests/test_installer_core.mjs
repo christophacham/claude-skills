@@ -109,16 +109,32 @@ describe('desired planChanges', () => {
     assert.equal(rem[0].tree, 'agents');
   });
 
-  it('needAgents only when beads selected and agents missing', () => {
+  it('needAgents when operating-mode selected and agents missing', () => {
     const state = createDesiredState({
       projectRoot: '/tmp/proj',
-      selected: ['beads'],
+      selected: ['operating-mode'],
     });
     const planMissing = planChanges(state, [], { agentsPresent: false });
     assert.equal(planMissing.needAgents, true);
-    const planPresent = planChanges(state, [], { agentsPresent: true, poolPresent: true });
+    assert.equal(planMissing.needPool, true);
+    const planPresent = planChanges(state, [], {
+      agentsPresent: true,
+      poolPresent: true,
+    });
     assert.equal(planPresent.needAgents, false);
     assert.equal(planPresent.needPool, false);
+  });
+
+  it('beads and beads-om do not pull agents', () => {
+    for (const id of ['beads', 'beads-om']) {
+      const state = createDesiredState({
+        projectRoot: '/tmp/proj',
+        selected: [id],
+      });
+      const plan = planChanges(state, [], { agentsPresent: false });
+      assert.equal(plan.needAgents, false, id);
+      assert.equal(plan.needPool, false, id);
+    }
   });
 
   it('summarizePlan lists ops', () => {
