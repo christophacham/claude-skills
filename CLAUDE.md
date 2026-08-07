@@ -35,7 +35,7 @@ Other skills, agents, installers (non-search paths), docs, and tests remain fair
 | **Skills** (`skills/`) | Judgment libraries and operational skills Claude loads by trigger |
 | **Agents** (`agents/`) | Dispatchable subagents (coder, reviewer, design panelists) |
 | **Installer** (`bin/`, `lib/`) | Full-screen Ink TUI: pick skills → plan → apply (project-default) |
-| **Docs** | `README.md` (users), `SLIM.md` (suite shape), `docs/01-handbook-operating-mode.md` (OM walkthrough), `docs/node-native-installer-pattern.md` (installer) |
+| **Docs** | `README.md` (users), `SLIM.md` (suite shape), `docs/01`–`03` product handbooks, `docs/node-native-installer-pattern.md` (installer) |
 
 **Not:** a product app, a personal CLI zoo, or a bulk “install everything by default” distribution.
 
@@ -64,7 +64,8 @@ agents/*.md + panelists/   # custom agents
 pool.md                    # optional routing note (with beads)
 tests/                     # Python suite contracts + Node installer tests
 personal-skill-archive/    # NOT managed suite — do not re-catalog into install
-docs/                      # OM handbook + installer pattern essay```
+docs/                      # product handbooks 01–03 + installer pattern essay
+```
 
 ---
 
@@ -166,7 +167,8 @@ Do not invent CI requirements that are not in-repo; keep help/README/catalog/tes
 | TUI | `lib/tui/` |
 | Build another Ink wizard | skill `ink-cli-tui` |
 | Product cadence skill | `operating-mode` |
-| OM handbook (human when/how/what) | `docs/01-handbook-operating-mode.md` |
+| Product handbooks | `docs/01-handbook-product-flow.md` → `02` plan → `03` unit |
 | Epic→feature→task map | `capability-plan` (+ `scope-scout` / `scope-auditor`) |
-| Beads + OM (thin) | `beads-om` (CORE; no roster) || Full Beads skill | `beads` (BEADS group; skill only) |
+| Beads + OM (thin) | `beads-om` (CORE; no roster) |
+| Full Beads skill | `beads` (BEADS group; skill only) |
 | Search skills | **leave alone** |
