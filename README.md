@@ -6,7 +6,7 @@ Software engineering skills and custom agents for Claude Code: architecture, sim
 
 ## Quick Start & Installation
 
-Node CLI only. Menu-driven **plan-then-apply** wizard (Clack UI). **Project scope by default** — not global.
+Node CLI only. Full-screen **plan-then-apply** wizard (Ink TUI, like ccstatusline — redraws in place). **Project scope by default** — not global.
 
 > **Note:** The unscoped npm name `claude-skills` is a *different* package. Install **this** suite from GitHub (or a clone), not `npx claude-skills@latest`.
 
@@ -34,7 +34,7 @@ node bin/cli.js
 # or: npm run wizard
 ```
 
-No subcommand opens the wizard. Compat aliases: `wizard`, `install` (same UI). Options: `-p/--project <dir>`, `--skip-deps`, `--legacy` (old linear confirm ladder), `-y/--yes` (uninstall only).
+No subcommand opens the full-screen wizard. Compat aliases: `wizard`, `install` (same UI). Options: `-p/--project <dir>`, `--skip-deps`, `--clack` (scrolling Clack UI), `--legacy` (old linear ladder), `-y/--yes` (uninstall only).
 
 ### What the wizard does
 
