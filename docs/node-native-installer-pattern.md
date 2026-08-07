@@ -60,7 +60,8 @@ apply      = applyPlan(plan, desired)        // sole mutator
 2. **CORE** — default-selected  
 3. **AUTHOR** — default-selected (skill-creator)  
 4. **BEADS** — offer only  
-5. **OPT_IN** — offer only  
+5. **OPT_IN** — offer only (broad domain craft)  
+6. **SPECIALIST** — offer only (narrow load-on-demand; e.g. `ink-cli-tui`)  
 
 Fresh project with nothing installed: seed selected = `defaultSelectedSkillIds()`.
 If the active scope already has suite skills on disk: seed selected from scan.

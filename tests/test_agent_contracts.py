@@ -195,14 +195,15 @@ class CoordinationDocumentationTests(unittest.TestCase):
         expected_skills = {
             "architecture-design", "beads", "brave-search", "ddg-search",
             "distributed-architecture",
-            "geometric-robustness", "operating-mode", "peek-repo",
+            "geometric-robustness", "ink-cli-tui", "operating-mode", "peek-repo",
             "refactoring", "simple-design", "skill-creator",
             "tavily-search",
         }
-        # Catalog group law (SLIM): CORE default-yes craft; OPT_IN never default-yes
+        # Catalog group law: CORE default-yes; OPT_IN + SPECIALIST never default-yes
         catalog = read_repo_file("lib/catalog.js")
         self.assertIn("export const CORE_SKILLS", catalog)
         self.assertIn("export const OPT_IN_SKILLS", catalog)
+        self.assertIn("export const SPECIALIST_SKILLS", catalog)
         self.assertIn("export const BEADS_SKILLS", catalog)
         for core_id in (
             "operating-mode",
@@ -220,10 +221,12 @@ class CoordinationDocumentationTests(unittest.TestCase):
             "geometric-robustness",
         ):
             self.assertIn(f"id: '{opt_id}'", catalog)
-        # CORE and OPT_IN are separate exports; groups drive the wizard
+        # Groups drive the wizard; specialist is load-on-demand
         self.assertIn("export const SKILL_GROUPS", catalog)
         self.assertIn("skills: CORE_SKILLS", catalog)
         self.assertIn("skills: OPT_IN_SKILLS", catalog)
+        self.assertIn("skills: SPECIALIST_SKILLS", catalog)
+        self.assertIn("id: 'ink-cli-tui'", catalog)
         install_flow = read_repo_file("lib/install-flow-legacy.js")
         self.assertIn("CORE_SKILLS", install_flow)
         self.assertIn("Install CORE skills?", install_flow)
@@ -233,8 +236,9 @@ class CoordinationDocumentationTests(unittest.TestCase):
             "panelists/deep-module.md", "panelists/minimal-diff.md", "panelists/seam.md",
         }
 
+        package = json.loads(read_repo_file("package.json"))
         self.assertEqual(
-            ["bin/", "lib/", "skills/", "agents/", "pool.md", "README.md"],
+            ["bin/", "lib/", "skills/", "agents/", "pool.md", "README.md", "LICENSE"],
             package["files"],
         )
         self.assertEqual(

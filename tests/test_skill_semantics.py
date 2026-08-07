@@ -217,6 +217,7 @@ class SkillCreatorContractTests(unittest.TestCase):
         self.assertIn("**CORE** — default-selected", self.installer)
         self.assertIn("**AUTHOR** — default-selected", self.installer)
         self.assertIn("**OPT_IN** — offer only", self.installer)
+        self.assertIn("**SPECIALIST** — offer only", self.installer)
         self.assertNotIn("dynamic-context-injection", self.installer_flat)
         self.assertNotIn("npx @scope/agent-skill-books install --all", self.installer_flat)
         self.assertNotIn("install.sh", self.installer_flat)

@@ -51,7 +51,7 @@ If the active scope already has suite skills on disk, selection seeds from the s
 
 **Main menu** (labels match the live wizard):
 
-1. **Browse & select skills** — groups: Search · Core · Author · Beads · Opt-in; optional filter; toggle is a cart, not an install
+1. **Browse & select skills** — groups: Search · Core · Author · Beads · Opt-in · Specialist; optional filter; toggle is a cart, not an install
 2. **Scope: project \| global** — project = `<root>/.claude/skills`; global = `~/.claude/skills`
 3. **Targets** — `.claude/skills` always primary; optional `.agents/skills` portable mirror (symlink → copy fallback)
 4. **Status detail** — selected (●) vs on-disk; pending `+install` / `−remove`; paths that would change
@@ -149,7 +149,7 @@ Optional: Beads (`bd`) for issue tracking; design panelists for multi-lens desig
 
 ## Bundled Skills
 
-Catalog groups (selective Node installer): **SEARCH** · **CORE** (default-yes) · **AUTHOR** · **BEADS** · **OPT_IN** (offer, never default-yes).
+Catalog groups (selective Node installer): **SEARCH** · **CORE** (default-yes) · **AUTHOR** · **BEADS** · **OPT_IN** · **SPECIALIST** (last two: offer, never default-yes).
 
 ### SEARCH
 - **`ddg-search`**: Free web/news search via `ddgs` (no API key). Always forks into an Explore subagent.
@@ -172,6 +172,11 @@ Catalog groups (selective Node installer): **SEARCH** · **CORE** (default-yes) 
 - **`architecture-design`**: Clean Architecture layering, ports & adapters.
 - **`distributed-architecture`**: Trade-offs across deployables — granularity, monolith decomposition, data, sagas, contracts.
 - **`geometric-robustness`**: Float/geometry robustness for slicers and CAD/CAM (Rust).
+
+### SPECIALIST (load on demand — never default-yes)
+Narrow, task-specific skills. Install only when you need that specialty (wizard group **Specialist**).
+
+- **`ink-cli-tui`**: Full-screen React+Ink wizards for `npx`/`bunx`/`github:` CLIs (ccstatusline-style plan-then-apply TUI).
 
 ---
 
