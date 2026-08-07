@@ -12,16 +12,32 @@ Node CLI only. Full-screen **plan-then-apply** wizard (Ink TUI, like ccstatuslin
 
 ### Quick start (no clone)
 
+Always pin **`#main`** so bunx/npx resolve the tip of this branch (plain `github:…` often reuses a stale local cache).
+
 ```sh
 # from any project directory — runs the interactive wizard
-npx -y github:christophacham/claude-skills
+npx -y github:christophacham/claude-skills#main
 ```
 
 Same idea with Bun:
 
 ```sh
-bunx github:christophacham/claude-skills
+bunx github:christophacham/claude-skills#main
 ```
+
+If it still looks old after a merge, clear the runner cache and re-run with `#main`:
+
+```sh
+# Bun
+rm -rf ~/.bun/install/cache ~/.bun/install/git
+bunx github:christophacham/claude-skills#main
+
+# npm / npx
+npm cache clean --force
+npx -y github:christophacham/claude-skills#main
+```
+
+Do **not** use `@latest` here — that is npm-registry semantics. This suite is installed from GitHub; the unscoped npm name `claude-skills` is a different package.
 
 ### From a clone
 
@@ -101,8 +117,8 @@ Use `--skip-deps` to skip npm/pip/uv setup on apply.
 | **Global (tracked)** | Only items recorded in `~/.claude/claude-skills-manifest.json` |
 
 ```sh
-npx -y github:christophacham/claude-skills uninstall   # confirm, then remove tracked global items
-node bin/cli.js uninstall --yes                        # no confirm (from a clone)
+npx -y github:christophacham/claude-skills#main uninstall   # confirm, then remove tracked global items
+node bin/cli.js uninstall --yes                            # no confirm (from a clone)
 # or from Manage installation → Uninstall tracked GLOBAL items
 ```
 
