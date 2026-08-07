@@ -114,6 +114,10 @@ Tracked global uninstall does **not** touch project installs, API keys, or npm/P
 
 We work in **tiny vertical units** on year-scale product work: deep modules, light structure, quality over speed. An agent may write every line; the human rarely codes but **must understand every line that merges**. Hard human stops are **kickoff**, **PR review**, and **defining principles when missing**—not mid-unit micromanagement. After kickoff the main agent runs **hands-off inside one unit** until a feature-branch PR is ready: design ×3 → pick, refactor-then-integrate, live Rust watch/tests and/or Playwright as soon as UI exists, early SoC/errors/traces/unknowns. It may dispatch `coder` / `reviewer` / panelists **without asking**. It asks only on blockers or missing project law (then helps define that law). Unit size guidance ~200–300 LOC production (one idea). Oneshot multi-feature work and unattended multi-unit loops are out; **Ralf-style iteration inside one unit until PR is in**.
 
+**In one line:** you name one unit → main runs hands-off (panelists if needed → coder → reviewer → PR) → you understand and merge → repeat.
+
+Full when/how/what walkthrough (roles, timeline, dispatch, example): **[`docs/01-handbook-operating-mode.md`](docs/01-handbook-operating-mode.md)**.
+
 Spine: Beck (small steps + feedback), Fowler (tidy/refactor), Ousterhout (deep modules), Hohpe (architecture that reaches working code). CI is the hard gate (lefthook/mise-class checks, strict Rust); UI confidence is Playwright. There is **no** grill→tickets product pipeline—main is the kernel; subagents are optional tools for the current unit. The main agent loads this cadence via **`operating-mode`** (CORE).
 
 Default: you kick off one unit → agent runs to PR (assuming repo principles) → you review for understanding → merge only when you understand and gates are green → optional prototype → next unit.
