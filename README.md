@@ -6,24 +6,28 @@ Software engineering skills and custom agents for Claude Code: architecture, sim
 
 ## Quick Start & Installation
 
-Node CLI only (`npx` / `bunx` / `node bin/cli.js`). Menu-driven **plan-then-apply** wizard (Clack UI). **Project scope by default** — not global.
+Node CLI only. Menu-driven **plan-then-apply** wizard (Clack UI). **Project scope by default** — not global.
 
-### Quick start
+> **Note:** The unscoped npm name `claude-skills` is a *different* package. Install **this** suite from GitHub (or a clone), not `npx claude-skills@latest`.
+
+### Quick start (no clone)
 
 ```sh
-# from any project directory
-npx -y claude-skills@latest
+# from any project directory — runs the interactive wizard
+npx -y github:christophacham/claude-skills
 ```
 
-Same entrypoint:
+Same idea with Bun:
 
 ```sh
-bunx claude-skills
+bunx github:christophacham/claude-skills
 ```
 
-From a clone of this repo:
+### From a clone
 
 ```sh
+git clone https://github.com/christophacham/claude-skills.git
+cd claude-skills
 npm install
 node bin/cli.js
 # or: node bin/cli.js --project /path/to/app
@@ -94,8 +98,8 @@ Use `--skip-deps` to skip npm/pip/uv setup on apply.
 | **Global (tracked)** | Only items recorded in `~/.claude/claude-skills-manifest.json` |
 
 ```sh
-npx -y claude-skills@latest uninstall   # confirm, then remove tracked global items
-node bin/cli.js uninstall --yes         # no confirm
+npx -y github:christophacham/claude-skills uninstall   # confirm, then remove tracked global items
+node bin/cli.js uninstall --yes                        # no confirm (from a clone)
 # or from Manage installation → Uninstall tracked GLOBAL items
 ```
 

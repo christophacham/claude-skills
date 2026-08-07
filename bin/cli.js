@@ -37,8 +37,8 @@ Usage:
   claude-skills uninstall       Remove tracked GLOBAL items only
   claude-skills --help
 
-  npx -y claude-skills@latest
-  bunx claude-skills
+  npx -y github:christophacham/claude-skills
+  bunx github:christophacham/claude-skills
 
 Options:
   -p, --project <dir>   Project root (default: cwd). Skills land in

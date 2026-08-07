@@ -12,7 +12,8 @@
     "skills/",
     "agents/",
     "pool.md",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "engines": {
     "node": ">=20.11.0"
@@ -23,6 +24,21 @@
     "uninstall-ui": "node bin/cli.js uninstall",
     "test:installer": "node --test tests/test_installer_core.mjs"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/christophacham/claude-skills.git"
+  },
+  "bugs": {
+    "url": "https://github.com/christophacham/claude-skills/issues"
+  },
+  "homepage": "https://github.com/christophacham/claude-skills#readme",
+  "keywords": [
+    "claude-code",
+    "skills",
+    "agents",
+    "installer"
+  ],
+  "license": "MIT",
   "dependencies": {
     "@clack/prompts": "^0.10.1",
     "picocolors": "^1.1.1"
