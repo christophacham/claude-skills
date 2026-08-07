@@ -73,7 +73,7 @@ If the active scope already has suite skills on disk, selection seeds from the s
 4. **Status detail** — selected (●) vs on-disk; pending `+install` / `−remove`; paths that would change
 5. **Apply changes** — sole write path; confirms with file side-effect list for the active scope/targets  
    —  
-6. **API keys** — Brave / Tavily into `~/.claude/settings.json` only
+6. **API keys** — Brave / Tavily / DefectDojo into `~/.claude/settings.json` only
 7. **Manage installation** — resync from disk · select defaults (CORE+SEARCH) · clear selection · uninstall tracked GLOBAL items  
    —  
 8. **Exit** — confirms if cart still has pending changes, then discards
@@ -84,7 +84,7 @@ If the active scope already has suite skills on disk, selection seeds from the s
 |------|---------------|--------------|
 | Skills (primary) | `<project>/.claude/skills/<id>` | `~/.claude/skills/<id>` |
 | Skills (optional mirror) | `<project>/.agents/skills/<id>` | `~/.agents/skills/<id>` |
-| API keys (Brave / Tavily) | always `~/.claude/settings.json` (never the project tree) | same |
+| API keys (Brave / Tavily / DefectDojo) | always `~/.claude/settings.json` (never the project tree) | same |
 | Global install manifest | — | `~/.claude/claude-skills-manifest.json` |
 
 Claude skill dirs are a full **copy** from the package. The `.agents/skills` mirror prefers **symlink** to the Claude skill dir, **copy** on failure. This suite does **not** ship custom agent files.
@@ -104,6 +104,7 @@ When you apply skills that need them, the CLI also:
 - ensures the `ddgs` Python package when Python >=3.10 is available (`ddg-search`)
 - ensures the Tavily CLI (`tvly`) when possible (`tavily-search`)
 - may prompt for **Brave** / **Tavily** keys into `~/.claude/settings.json` (or set them later via **API keys**). Restart Claude Code after setting keys.
+- when **`defectdojo-fix`** is selected and URL/token are missing, **Apply** prompts for `DEFECTDOJO_URL` then `DEFECTDOJO_API_TOKEN` (skippable; skill will `STATUS: BLOCKED` until set). Same keys are always available under **API keys**.
 
 Use `--skip-deps` to skip npm/pip/uv setup on apply.
 

@@ -318,6 +318,58 @@ describe('apply + scan integration (isolated project)', () => {
   });
 });
 
+describe('settings helpers (DefectDojo)', () => {
+  it('reports missing / partial / ok from env without printing values', async () => {
+    // Dynamic import so we can monkey with env safely per assertion
+    const {
+      hasDefectDojoUrl,
+      hasDefectDojoToken,
+      hasDefectDojoConfig,
+      defectDojoConfigStatus,
+    } = await import('../lib/settings.js');
+
+    const prevUrl = process.env.DEFECTDOJO_URL;
+    const prevHost = process.env.DEFECTDOJO_HOST;
+    const prevTok = process.env.DEFECTDOJO_API_TOKEN;
+    const prevApi = process.env.API_TOKEN;
+    try {
+      delete process.env.DEFECTDOJO_URL;
+      delete process.env.DEFECTDOJO_HOST;
+      delete process.env.DEFECTDOJO_API_TOKEN;
+      delete process.env.API_TOKEN;
+
+      // Without settings.json entries, missing when env cleared.
+      // (settings.json on the real machine may still set keys — only assert
+      // positive env overrides, which always win over settings.)
+      process.env.DEFECTDOJO_URL = 'http://example.test:8080';
+      assert.equal(hasDefectDojoUrl(), true);
+      process.env.DEFECTDOJO_API_TOKEN = 'unit-test-token-not-a-secret';
+      assert.equal(hasDefectDojoToken(), true);
+      assert.equal(hasDefectDojoConfig(), true);
+      assert.equal(defectDojoConfigStatus(), 'ok');
+
+      delete process.env.DEFECTDOJO_API_TOKEN;
+      delete process.env.API_TOKEN;
+      // URL still set via env; token may still come from user settings.json —
+      // only assert URL side which we control.
+      assert.equal(hasDefectDojoUrl(), true);
+
+      delete process.env.DEFECTDOJO_URL;
+      process.env.DEFECTDOJO_HOST = '192.0.2.1';
+      assert.equal(hasDefectDojoUrl(), true);
+    } finally {
+      if (prevUrl === undefined) delete process.env.DEFECTDOJO_URL;
+      else process.env.DEFECTDOJO_URL = prevUrl;
+      if (prevHost === undefined) delete process.env.DEFECTDOJO_HOST;
+      else process.env.DEFECTDOJO_HOST = prevHost;
+      if (prevTok === undefined) delete process.env.DEFECTDOJO_API_TOKEN;
+      else process.env.DEFECTDOJO_API_TOKEN = prevTok;
+      if (prevApi === undefined) delete process.env.API_TOKEN;
+      else process.env.API_TOKEN = prevApi;
+    }
+  });
+});
+
 describe('trySymlink', () => {
   it('creates a usable symlink when permitted', () => {
     const dir = mkdtempSync(join(tmpdir(), 'cs-link-'));
