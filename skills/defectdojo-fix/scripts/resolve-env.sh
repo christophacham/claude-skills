@@ -20,18 +20,46 @@
 #
 # Token:
 #   DEFECTDOJO_API_TOKEN (prefer) | API_TOKEN (legacy) | credentials file
+#
+# Credentials file permissions: if a candidate file is group- or world-readable,
+# we emit a warning to stderr but keep going. The file holds an API token; the
+# user should `chmod 600` it. Hard-failing would break legitimate shared hosts
+# where the file is intentionally readable; the user gets a clear reminder.
 
 _dd_load_file_kv() {
   local f="$1" key val
   [[ -r "$f" ]] || return 1
+  # Warn if the credentials file is readable by other users on this host.
+  # The token is sensitive; chmod 600 is the recommended baseline. We do not
+  # hard-fail because some shared hosts intentionally keep the file open.
+  if [[ -O "$f" || "$(id -u)" -eq 0 ]]; then
+    local mode go_other
+    mode=$(stat -c '%a' "$f" 2>/dev/null || stat -f '%Lp' "$f" 2>/dev/null || echo "")
+    # Last two octal digits = group + other permission bits. If any are set,
+    # the file is exposed to users other than the owner. 700 -> 0, 600 -> 0,
+    # 644 -> 44 (warn), 704 -> 4 (warn).
+    go_other=$((mode % 100))
+    if [[ "$go_other" != "0" ]]; then
+      echo "warning: $f is mode $mode (group/world readable); run: chmod 600 $f" >&2
+    fi
+  fi
   while IFS= read -r line || [[ -n "$line" ]]; do
     [[ "$line" =~ ^[[:space:]]*# ]] && continue
     [[ -z "${line// }" ]] && continue
     key="${line%%=*}"
     val="${line#*=}"
+    # Strip trailing CR, then surrounding whitespace, then a single pair of
+    # matching " or ' quotes. DefectDojo tokens never contain quotes, so this
+    # trims common .env-style quoting without altering the value.
     val="${val%$'\r'}"
-    val="${val%\"}"
-    val="${val#\"}"
+    val="${val#"${val%%[![:space:]]*}"}"
+    val="${val%"${val##*[![:space:]]}"}"
+    if [[ ${#val} -ge 2 ]]; then
+      local first="${val:0:1}" last="${val: -1}"
+      if [[ "$first" == '"' && "$last" == '"' ]] || [[ "$first" == "'" && "$last" == "'" ]]; then
+        val="${val:1:${#val}-2}"
+      fi
+    fi
     case "$key" in
       API_TOKEN|DEFECTDOJO_API_TOKEN)
         if [[ -z "${_DD_FILE_TOKEN:-}" ]]; then _DD_FILE_TOKEN="$val"; fi

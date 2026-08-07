@@ -53,6 +53,10 @@ class SkillValidationTests(unittest.TestCase):
 
     def test_active_injections_are_static_and_trusted(self) -> None:
         # Skills that may use network tools in load-time injections (API clients).
+        # `defectdojo-fix` is a network client by design (pulls DefectDojo findings),
+        # so it is exempted from the no-curl/wget check. Every other skill is
+        # required to keep load-time injections offline; a regression here would
+        # trigger a network call before the user runs the skill.
         network_allowed = {"defectdojo-fix"}
         expected_with_injections = {"tavily-search", "defectdojo-fix"}
         actual = set()
