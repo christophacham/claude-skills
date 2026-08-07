@@ -73,7 +73,7 @@ docs/                      # OM handbook + installer pattern essay```
 | Group | Default in cart? | Contents (approx.) |
 |-------|------------------|--------------------|
 | **SEARCH** | yes | `ddg-search`, `brave-search`, `tavily-search` (**bodies frozen** — see ban) |
-| **CORE** | yes | `operating-mode`, `beads-om`, `simple-design`, `refactoring` |
+| **CORE** | yes | `operating-mode`, `beads-om`, `capability-plan`, `simple-design`, `refactoring` |
 | **AUTHOR** | yes | `skill-creator` |
 | **BEADS** | no | `beads` (full tracker skill only) |
 | **OPT_IN** | no | `architecture-design`, `distributed-architecture`, `geometric-robustness` |
@@ -134,9 +134,11 @@ When doing or planning product implementation **in a consuming app** (or when th
 |-------|------|
 | `coder` | One-unit implementer (live gates, unit health; no tracker) |
 | `reviewer` | Independent read-only unit/PR audit |
+| `scope-scout` | Feasibility/research for capability-plan (no Beads writes) |
+| `scope-auditor` | Plan verify / progress (read-only) |
 | `panelists/deep-module`, `minimal-diff`, `seam` | Design×3 lenses (one unit) |
 
-Roster installs when **operating-mode** (or `simple-design` / `refactoring`) is applied. Optional `pool.md` with operating-mode. Preloads: **simple-design** + **refactoring** on coder/reviewer — not the whole suite. No beads tracker agents.
+Roster installs when **operating-mode**, **capability-plan**, or design preloads are applied. Optional `pool.md` with operating-mode. Coder/reviewer preload **simple-design** + **refactoring**. No beads tracker agents.
 
 ---
 
@@ -165,6 +167,6 @@ Do not invent CI requirements that are not in-repo; keep help/README/catalog/tes
 | Build another Ink wizard | skill `ink-cli-tui` |
 | Product cadence skill | `operating-mode` |
 | OM handbook (human when/how/what) | `docs/01-handbook-operating-mode.md` |
-| Beads + OM (thin) | `beads-om` (CORE; no roster) |
-| Full Beads skill | `beads` (BEADS group; skill only) |
+| Epic→feature→task map | `capability-plan` (+ `scope-scout` / `scope-auditor`) |
+| Beads + OM (thin) | `beads-om` (CORE; no roster) || Full Beads skill | `beads` (BEADS group; skill only) |
 | Search skills | **leave alone** |

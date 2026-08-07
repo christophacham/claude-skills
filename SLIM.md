@@ -43,7 +43,7 @@ All inventory rows below that said “MERGE → web-search” are **void**. Sear
 | Group | IDs | Install default |
 |-------|-----|-----------------|
 | **SEARCH** | `ddg-search`, `brave-search`, `tavily-search` | multiselect as today; **do not change skill bodies/IDs** |
-| **CORE** | `operating-mode`, `beads-om`, `simple-design`, `refactoring` | yes |
+| **CORE** | `operating-mode`, `beads-om`, `capability-plan`, `simple-design`, `refactoring` | yes |
 | **AUTHOR** | `skill-creator` | project/author path |
 | **PROFILE · BEADS** | `beads` (skill only) | only when beads chosen |
 | **OPT_IN** | `architecture-design`, `distributed-architecture`, `geometric-robustness` | no — offer, never default-yes |
@@ -63,6 +63,7 @@ Newcomer placement: rare domain → archive or external project skill; agent-pul
 | `dynamic-context-injection` | **MERGE → `skill-creator`** (Audit H2 **in body** + thin ref) | Same audience; safety entry-visible |
 | `operating-mode` | **KEEP · CORE** | Product cadence; human PR gate |
 | `beads-om` | **KEEP · CORE** | Thin Beads companion to OM; never pulls agents |
+| `capability-plan` | **KEEP · CORE** | Epic/features/tasks what-why map; scout+auditor |
 | `peek-repo` | **DELETE** | Removed from suite; clone-hardening not core default |
 | `simple-design` | **KEEP · CORE** | Kernel doctrine; agent preload |
 | `refactoring` | **KEEP · CORE** | Edit mechanics; panelist lens |
@@ -76,6 +77,7 @@ Newcomer placement: rare domain → archive or external project skill; agent-pul
 | `geometric-robustness` | **KEEP** | Domain skill retained |
 | `find-docs` + personal archive | **ARCHIVE stay** | Do not restore; do not edit search skills to fix citations — if search descriptions mention find-docs, **leave them** (search no-go) |
 | Agents `coder`, `reviewer` | **KEEP · OM roster** | Install with operating-mode; preloads: simple-design + refactoring |
+| `scope-scout`, `scope-auditor` | **KEEP · plan roster** | capability-plan research + verify/progress |
 | `beads-creator`, `beads-reviewer` | **DELETE** | Removed; thin beads-om on main; no tracker subagents |
 | `panelists/*` ×3 | **KEEP · OM roster** | Design×3 for one unit |
 | `pool.md` | **KEEP advisory** | Install with operating-mode |
@@ -204,7 +206,7 @@ If a step would require editing search skills, skip that step and continue.
 
 ## KEEP
 - SEARCH: ddg-search, brave-search, tavily-search (untouched)
-- CORE: operating-mode, beads-om, simple-design, refactoring
+- CORE: operating-mode, beads-om, capability-plan, simple-design, refactoring
 - AUTHOR: skill-creator
 - BEADS profile: beads skill only
 - OM agents: coder, reviewer, panelists ×3 (with operating-mode)

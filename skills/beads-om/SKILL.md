@@ -25,6 +25,7 @@ Requires an **already initialized** Beads workspace and the `bd` CLI on PATH. Do
 | **main** | May run this thin surface (claim / create / note / dep / close / publish-when-asked) |
 | **coder / reviewer / panelists** | **No** tracker mutations |
 | Full `beads` skill | Only when the user wants general board work beyond OM (no tracker subagents in this suite) |
+| **capability-plan** (main) | Epic/feature/task **map** apply to Beads when user authorizes — what/why only; not mid-unit OM |
 
 ## Minimum `bd` surface
 

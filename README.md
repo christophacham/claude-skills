@@ -166,6 +166,7 @@ Catalog groups (selective Node installer): **SEARCH** · **CORE** (default-yes) 
 ### CORE (default-yes)
 - **`operating-mode`**: Hands-off one-unit run to PR; design×3; live gates; main may dispatch subagents; human reviews at PR.
 - **`beads-om`**: Thin Beads companion to operating-mode (claim unit bead, park discoveries, close post-merge). Skill only; needs `bd` + initialized `.beads/`.
+- **`capability-plan`**: Epic → features (what/why) → OM-sized tasks; create/verify/modify/progress. Research stays out of Beads. Agents: `scope-scout`, `scope-auditor`.
 - **`simple-design`**: Ousterhout deep modules, information hiding, red flags.
 - **`refactoring`**: Fowler smells and safe structural steps.
 
@@ -195,6 +196,8 @@ Install into `~/.claude/agents` (or project `.claude/agents`) when **operating-m
 |-------|------|
 | **`coder`** | One-unit implementer: refactor-then-integrate, live gates, unit health; optional user-authorized commit; no tracker |
 | **`reviewer`** | Read-only unit/PR audit → PASS / CHANGES_REQUESTED / REPLAN_RECOMMENDED (includes OM PR bar) |
+| **`scope-scout`** | Research/feasibility for capability-plan; what-level split hints; no Beads writes, no how-for-tracker |
+| **`scope-auditor`** | Verify plan OM-fit / what-why purity or report epic·feature progress; read-only |
 | **`panelists/deep-module`** | Design×3 lens: natural ownership, information hiding, justified module depth (one unit) |
 | **`panelists/minimal-diff`** | Design×3 lens: every touch point and structural cost must be earned (one unit) |
 | **`panelists/seam`** | Design×3 lens: smallest justified contract that contains demonstrated coupling (one unit) |

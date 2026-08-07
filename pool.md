@@ -10,7 +10,7 @@
 # A project `.claude/pool.md` may provide project-specific preferences.
 #
 # Common advisory choices:
-#   coder, reviewer, panelists -> tiers suited to task difficulty; different tiers when useful
+#   coder, reviewer, panelists, scope-scout, scope-auditor -> tiers by task difficulty
 
 pool: opus, sonnet, haiku
 # Leave coder/reviewer unpinned so the parent can choose per task.

@@ -137,6 +137,16 @@ describe('desired planChanges', () => {
     }
   });
 
+  it('capability-plan pulls agents but not pool', () => {
+    const state = createDesiredState({
+      projectRoot: '/tmp/proj',
+      selected: ['capability-plan'],
+    });
+    const plan = planChanges(state, [], { agentsPresent: false, poolPresent: false });
+    assert.equal(plan.needAgents, true);
+    assert.equal(plan.needPool, false);
+  });
+
   it('summarizePlan lists ops', () => {
     const state = createDesiredState({
       projectRoot: '/tmp/proj',

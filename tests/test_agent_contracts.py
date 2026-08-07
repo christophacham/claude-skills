@@ -51,6 +51,8 @@ class AgentContractTests(unittest.TestCase):
         expected = {
             "agents/coder.md": "coder",
             "agents/reviewer.md": "reviewer",
+            "agents/scope-scout.md": "scope-scout",
+            "agents/scope-auditor.md": "scope-auditor",
             "agents/panelists/deep-module.md": "deep-module",
             "agents/panelists/minimal-diff.md": "minimal-diff",
             "agents/panelists/seam.md": "seam",
@@ -150,6 +152,28 @@ class AgentContractTests(unittest.TestCase):
                 self.assertNotIn("second caller", text.lower())
                 self.assertNotIn("function boundary alone", text.lower())
 
+    def test_scope_scout_researches_without_tracker_writes(self) -> None:
+        text = read_repo_file("agents/scope-scout.md")
+        self.assertEqual(
+            {"Read", "Grep", "Glob", "Bash"},
+            configured_tools(text),
+        )
+        self.assertIn("Feasible:", text)
+        self.assertIn("Do NOT put in Beads", text)
+        self.assertIn("Never write Beads", text)
+        self.assertNotIn("bd create", text.lower())
+
+    def test_scope_auditor_is_verify_progress_read_only(self) -> None:
+        text = read_repo_file("agents/scope-auditor.md")
+        self.assertEqual(
+            {"Read", "Grep", "Glob", "Bash"},
+            configured_tools(text),
+        )
+        self.assertIn("verify", text.lower())
+        self.assertIn("progress", text.lower())
+        self.assertIn("how leakage", text.lower())
+        self.assertIn("Beads mutations: none", text)
+
 
 class CoordinationDocumentationTests(unittest.TestCase):
     def test_readme_matches_agent_behavior(self) -> None:
@@ -190,8 +214,8 @@ class CoordinationDocumentationTests(unittest.TestCase):
     def test_distribution_membership_is_unchanged(self) -> None:
         package = json.loads(read_repo_file("package.json"))
         expected_skills = {
-            "architecture-design", "beads", "beads-om", "brave-search", "ddg-search",
-            "distributed-architecture",
+            "architecture-design", "beads", "beads-om", "brave-search", "capability-plan",
+            "ddg-search", "distributed-architecture",
             "geometric-robustness", "ink-cli-tui", "operating-mode",
             "refactoring", "simple-design", "skill-creator",
             "tavily-search",
@@ -204,6 +228,7 @@ class CoordinationDocumentationTests(unittest.TestCase):
         for core_id in (
             "operating-mode",
             "beads-om",
+            "capability-plan",
             "simple-design",
             "refactoring",
         ):
@@ -233,6 +258,8 @@ class CoordinationDocumentationTests(unittest.TestCase):
         expected_agents = {
             "coder.md",
             "reviewer.md",
+            "scope-scout.md",
+            "scope-auditor.md",
             "panelists/deep-module.md",
             "panelists/minimal-diff.md",
             "panelists/seam.md",

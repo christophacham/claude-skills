@@ -39,8 +39,11 @@ Spine: Beck (small steps + feedback), Fowler (tidy/refactor), Ousterhout (deep m
 | **`reviewer`** | subagent | Read-only audit before/at PR |
 | **Panelists ×3** | subagents | Design lenses; **main picks** |
 | **`beads-om`** | skill on **main** (optional) | Claim / park / close beads — not a subagent |
+| **`capability-plan`** | skill on **main** (before OM) | Epic → features → OM tasks (what/why); modes create/verify/modify/progress |
+| **`scope-scout`** | subagent | Research/feasibility; **not** written into Beads how-fields |
+| **`scope-auditor`** | subagent | Plan verify / progress; read-only |
 
-Main loads **`operating-mode`**. Subagents do **not** load it; they get a brief from main.
+Main loads **`operating-mode`** for a unit. Use **`capability-plan`** to build or check the map **before** kickoff. Subagents get a brief from main.
 
 Preloads on implementer/reviewer: `simple-design` + `refactoring`.  
 Roster installs with **operating-mode** (or those design preloads) — not with full `beads`.  
@@ -282,8 +285,9 @@ Do **not** ask “should I spawn coder?” — spawn if it helps **this unit**.
 | Need | Go to |
 |------|--------|
 | Agent-facing cadence law | `skills/operating-mode/SKILL.md` |
+| Epic → feature → task map | `skills/capability-plan/SKILL.md` |
 | Thin Beads companion | `skills/beads-om/SKILL.md` |
 | Full tracker skill | `skills/beads/SKILL.md` |
 | Short human summary | README **Operating mode** |
-| Agent contracts | `agents/coder.md`, `reviewer.md`, `agents/panelists/*` |
+| Agent contracts | `agents/coder.md`, `reviewer.md`, `scope-scout.md`, `scope-auditor.md`, `agents/panelists/*` |
 | Installer / catalog | `README.md`, `lib/catalog.js` |
