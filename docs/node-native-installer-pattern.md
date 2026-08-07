@@ -68,7 +68,9 @@ If the active scope already has suite skills on disk: seed selected from scan.
 
 ### Main menu
 
-Browse groups · Scope · Targets · Status · Apply · API keys · Manage · Exit.
+Workflow order (separators in the TUI):
+
+**Scope · Targets · Browse · Status · Apply** · | · **API keys · Manage** · | · **Exit**
 
 Apply is the only path that writes skills/agents/pool/manifest for the wizard.
 Cancel discards the in-memory cart (no partial mid-menu writes).

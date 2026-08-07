@@ -49,15 +49,17 @@ Defaults on a fresh project (nothing installed yet):
 
 If the active scope already has suite skills on disk, selection seeds from the scan instead.
 
-**Main menu** (labels match the live wizard):
+**Main menu** (workflow order — place → pick → review → write):
 
-1. **Browse & select skills** — groups: Search · Core · Author · Beads · Opt-in · Specialist; optional filter; toggle is a cart, not an install
-2. **Scope: project \| global** — project = `<root>/.claude/skills`; global = `~/.claude/skills`
-3. **Targets** — `.claude/skills` always primary; optional `.agents/skills` portable mirror (symlink → copy fallback)
+1. **Scope: project \| global** — project = `<root>/.claude/skills`; global = `~/.claude/skills`
+2. **Targets** — `.claude/skills` always primary; optional `.agents/skills` portable mirror (symlink → copy fallback)
+3. **Browse & select skills** — groups: Search · Core · Author · Beads · Opt-in · Specialist; optional filter; toggle is a cart, not an install
 4. **Status detail** — selected (●) vs on-disk; pending `+install` / `−remove`; paths that would change
-5. **Apply changes** — sole write path; confirms with file side-effect list for the active scope/targets
+5. **Apply changes** — sole write path; confirms with file side-effect list for the active scope/targets  
+   —  
 6. **API keys** — Brave / Tavily into `~/.claude/settings.json` only
-7. **Manage installation** — resync from disk · select defaults (CORE+AUTHOR+SEARCH) · clear selection · uninstall tracked GLOBAL items
+7. **Manage installation** — resync from disk · select defaults (CORE+AUTHOR+SEARCH) · clear selection · uninstall tracked GLOBAL items  
+   —  
 8. **Exit** — confirms if cart still has pending changes, then discards
 
 ### Where files land
