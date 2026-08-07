@@ -195,7 +195,7 @@ class CoordinationDocumentationTests(unittest.TestCase):
         expected_skills = {
             "architecture-design", "beads", "beads-om", "brave-search", "ddg-search",
             "distributed-architecture",
-            "geometric-robustness", "ink-cli-tui", "operating-mode", "peek-repo",
+            "geometric-robustness", "ink-cli-tui", "operating-mode",
             "refactoring", "simple-design", "skill-creator",
             "tavily-search",
         }
@@ -208,11 +208,11 @@ class CoordinationDocumentationTests(unittest.TestCase):
         for core_id in (
             "operating-mode",
             "beads-om",
-            "peek-repo",
             "simple-design",
             "refactoring",
         ):
             self.assertIn(f"id: '{core_id}'", catalog)
+        self.assertNotIn("id: 'peek-repo'", catalog)
         readme = read_repo_file("README.md")
         self.assertIn("## Operating mode", readme)
         self.assertIn("`operating-mode`", readme)

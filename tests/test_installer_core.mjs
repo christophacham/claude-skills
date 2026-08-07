@@ -124,7 +124,7 @@ describe('desired planChanges', () => {
   it('summarizePlan lists ops', () => {
     const state = createDesiredState({
       projectRoot: '/tmp/proj',
-      selected: ['peek-repo'],
+      selected: ['simple-design'],
     });
     const lines = summarizePlan(planChanges(state, []));
     assert.ok(lines.some((l) => l.includes('install')));

@@ -74,7 +74,7 @@ docs/                      # installer pattern essay
 | Group | Default in cart? | Contents (approx.) |
 |-------|------------------|--------------------|
 | **SEARCH** | yes | `ddg-search`, `brave-search`, `tavily-search` (**bodies frozen** — see ban) |
-| **CORE** | yes | `operating-mode`, `beads-om`, `peek-repo`, `simple-design`, `refactoring` |
+| **CORE** | yes | `operating-mode`, `beads-om`, `simple-design`, `refactoring` |
 | **AUTHOR** | yes | `skill-creator` |
 | **BEADS** | no | `beads` (+ agents + optional `pool.md` when applied) |
 | **OPT_IN** | no | `architecture-design`, `distributed-architecture`, `geometric-robustness` |
