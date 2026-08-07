@@ -246,7 +246,7 @@ class SkillCreatorContractTests(unittest.TestCase):
 
     def test_all_corrected_eval_and_trigger_files_validate(self) -> None:
         names = {
-            "architecture-design", "beads", "distributed-architecture",
+            "architecture-design", "beads", "beads-om", "distributed-architecture",
             "geometric-robustness", "operating-mode",
             "peek-repo", "refactoring", "simple-design",
             "skill-creator",

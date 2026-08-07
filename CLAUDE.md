@@ -74,7 +74,7 @@ docs/                      # installer pattern essay
 | Group | Default in cart? | Contents (approx.) |
 |-------|------------------|--------------------|
 | **SEARCH** | yes | `ddg-search`, `brave-search`, `tavily-search` (**bodies frozen** — see ban) |
-| **CORE** | yes | `operating-mode`, `peek-repo`, `simple-design`, `refactoring` |
+| **CORE** | yes | `operating-mode`, `beads-om`, `peek-repo`, `simple-design`, `refactoring` |
 | **AUTHOR** | yes | `skill-creator` |
 | **BEADS** | no | `beads` (+ agents + optional `pool.md` when applied) |
 | **OPT_IN** | no | `architecture-design`, `distributed-architecture`, `geometric-robustness` |
@@ -166,4 +166,6 @@ Do not invent CI requirements that are not in-repo; keep help/README/catalog/tes
 | TUI | `lib/tui/` |
 | Build another Ink wizard | skill `ink-cli-tui` |
 | Product cadence skill | `operating-mode` |
+| Beads + OM (thin) | `beads-om` (CORE; no roster) |
+| Full Beads profile | `beads` (BEADS group; pulls agents) |
 | Search skills | **leave alone** |

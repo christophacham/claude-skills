@@ -43,7 +43,7 @@ All inventory rows below that said “MERGE → web-search” are **void**. Sear
 | Group | IDs | Install default |
 |-------|-----|-----------------|
 | **SEARCH** | `ddg-search`, `brave-search`, `tavily-search` | multiselect as today; **do not change skill bodies/IDs** |
-| **CORE** | `peek-repo`, `simple-design`, `refactoring` | yes |
+| **CORE** | `operating-mode`, `beads-om`, `peek-repo`, `simple-design`, `refactoring` | yes |
 | **AUTHOR** | `skill-creator` | project/author path |
 | **PROFILE · BEADS** | `beads` (+ agents + `pool.md`) | only when beads chosen |
 | **OPT_IN** | `architecture-design`, `distributed-architecture`, `geometric-robustness` | no — offer, never default-yes |
@@ -61,6 +61,8 @@ Newcomer placement: rare domain → archive or external project skill; agent-pul
 | `web-search` (proposed merge) | **CANCELLED** | Conflicts with search no-go |
 | `third-party-integration` | **DELETE** | Removed with testing-tdd; no merge |
 | `dynamic-context-injection` | **MERGE → `skill-creator`** (Audit H2 **in body** + thin ref) | Same audience; safety entry-visible |
+| `operating-mode` | **KEEP · CORE** | Product cadence; human PR gate |
+| `beads-om` | **KEEP · CORE** | Thin Beads companion to OM; never pulls agents |
 | `peek-repo` | **KEEP · CORE** | Unique clone-hardening contract |
 | `simple-design` | **KEEP · CORE** | Kernel doctrine; agent preload |
 | `refactoring` | **KEEP · CORE** | Edit mechanics; panelist lens |
@@ -201,7 +203,7 @@ If a step would require editing search skills, skip that step and continue.
 
 ## KEEP
 - SEARCH: ddg-search, brave-search, tavily-search (untouched)
-- CORE: peek-repo, simple-design, refactoring
+- CORE: operating-mode, beads-om, peek-repo, simple-design, refactoring
 - AUTHOR: skill-creator
 - BEADS profile: beads (+ agents + pool when chosen)
 - OPT_IN: architecture-design, distributed-architecture, geometric-robustness

@@ -146,7 +146,7 @@ merge only if understood + green
 - **Independent review** — Review from a fresh context and require evidence-based findings. Same-model review remains valid; a different model tier is an optional source of diversity.
 - **Ceremony follows irreversibility** — Ports, ADRs, and sagas only when earned (`architecture-design`, `distributed-architecture`).
 
-Optional: Beads (`bd`) for issue tracking; design panelists for multi-lens design when the parent wants them. The general `coder` and `reviewer` do not mutate trackers.
+Optional: **`beads-om`** (CORE) for a thin Beads queue around operating-mode units; full **`beads`** profile for general tracker ops + agent roster. Design panelists for multi-lens design when the parent wants them. The general `coder` and `reviewer` do not mutate trackers.
 
 ---
 
@@ -161,6 +161,7 @@ Catalog groups (selective Node installer): **SEARCH** · **CORE** (default-yes) 
 
 ### CORE (default-yes)
 - **`operating-mode`**: Hands-off one-unit run to PR; design×3; live gates; main may dispatch subagents; human reviews at PR.
+- **`beads-om`**: Thin Beads companion to operating-mode (claim unit bead, park discoveries, close post-merge). Does **not** install the agent roster; needs `bd` + initialized `.beads/`.
 - **`peek-repo`**: Third-party GitHub source under `~/code/tmp/<name>` (or `%USERPROFILE%\code\tmp\<name>`) for answers from real code.
 - **`simple-design`**: Ousterhout deep modules, information hiding, red flags.
 - **`refactoring`**: Fowler smells and safe structural steps.

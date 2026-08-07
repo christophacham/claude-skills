@@ -193,7 +193,7 @@ class CoordinationDocumentationTests(unittest.TestCase):
     def test_distribution_membership_is_unchanged(self) -> None:
         package = json.loads(read_repo_file("package.json"))
         expected_skills = {
-            "architecture-design", "beads", "brave-search", "ddg-search",
+            "architecture-design", "beads", "beads-om", "brave-search", "ddg-search",
             "distributed-architecture",
             "geometric-robustness", "ink-cli-tui", "operating-mode", "peek-repo",
             "refactoring", "simple-design", "skill-creator",
@@ -207,6 +207,7 @@ class CoordinationDocumentationTests(unittest.TestCase):
         self.assertIn("export const BEADS_SKILLS", catalog)
         for core_id in (
             "operating-mode",
+            "beads-om",
             "peek-repo",
             "simple-design",
             "refactoring",

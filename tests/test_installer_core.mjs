@@ -36,6 +36,7 @@ describe('catalog groups', () => {
   it('defaultSelected includes CORE+AUTHOR+SEARCH not beads/opt_in/specialist', () => {
     const d = new Set(defaultSelectedSkillIds());
     assert.ok(d.has('operating-mode'));
+    assert.ok(d.has('beads-om'));
     assert.ok(d.has('skill-creator'));
     assert.ok(d.has('ddg-search'));
     assert.ok(!d.has('beads'));
