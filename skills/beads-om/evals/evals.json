@@ -1,0 +1,46 @@
+{
+  "skill_name": "beads-om",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Operating mode is active and Beads is initialized. I kicked off unit 'load 3MF with boundary errors'. Claim the matching open bead if it exists, otherwise create a task and claim it. Then run the unit to PR. Do not close anything yet.",
+      "expected_output": "Claims or creates+claims exactly one unit bead, then continues operating-mode to a feature-branch PR without closing or publishing beads.",
+      "expectations": [
+        "Uses bd where or equivalent only as needed and works in an initialized workspace.",
+        "Claims at most one bead for the unit (update --claim or create then claim).",
+        "Does not close the bead, run multi-unit claim-next, or dolt push.",
+        "Treats the PR as the unit delivery goal under operating-mode."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "While implementing the current unit bd-12, I found we will need export validation later. Park that work in Beads and keep going on bd-12 only.",
+      "expected_output": "Creates a parked issue for the discovery and continues the current unit without implementing the parked work.",
+      "expectations": [
+        "Creates a new task (or equivalent) for the discovered work.",
+        "Does not claim or implement the new issue in this unit.",
+        "Does not close bd-12 or start a second unit."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "PR #18 for unit bd-12 merged and I understand the diff. Close the bead.",
+      "expected_output": "Closes bd-12 with a reason tied to the merge; no source git operations and no next-unit auto-claim.",
+      "expectations": [
+        "Runs bd close on bd-12 with a reason.",
+        "Does not invent labels, epics, or follow-up claims.",
+        "Does not git commit/push or dolt push unless separately requested."
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Use Beads to finish the whole slicer product tonight: load, UI, and export as one agent session.",
+      "expected_output": "Refuses multi-unit oneshot; keeps operating-mode one-unit discipline; beads may hold backlog but not authorize multi-feature unattended work.",
+      "expectations": [
+        "Rejects multi-unit unattended execution.",
+        "Points at one unit at a time with PR review between units.",
+        "Does not treat bd ready or claim-next as permission to oneshot the product."
+      ]
+    }
+  ]
+}

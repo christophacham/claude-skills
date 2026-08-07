@@ -50,7 +50,7 @@ apply      = applyPlan(plan, desired)        // sole mutator
 | Agents tree | off until toggled under Targets |
 | Claude install | full **copy** from package `skills/<id>` |
 | Agents install | **symlink/junction** to Claude skill dir → **copy** fallback |
-| Agent roster / pool | under `.claude/agents` + `pool.md` when beads selected |
+| Agent roster / pool | under `.claude/agents` + `pool.md` when operating-mode (or design preloads) selected |
 | API keys | always `~/.claude/settings.json` |
 | Deps | run against **claude** skill path only |
 

@@ -246,16 +246,15 @@ class SkillCreatorContractTests(unittest.TestCase):
 
     def test_all_corrected_eval_and_trigger_files_validate(self) -> None:
         names = {
-            "architecture-design", "beads", "distributed-architecture",
+            "architecture-design", "beads", "beads-om", "capability-plan",
+            "distributed-architecture",
             "geometric-robustness", "operating-mode",
-            "peek-repo", "refactoring", "simple-design",
+            "refactoring", "simple-design",
             "skill-creator",
         }
-        claude_code_only = {"peek-repo"}
         for name in names:
             with self.subTest(skill=name):
-                mode = "claude-code" if name in claude_code_only else "portable"
-                report = validator.validate_skill(SKILLS / name, mode=mode)
+                report = validator.validate_skill(SKILLS / name, mode="portable")
                 self.assertTrue(report["ok"], report["errors"])
                 self.assertGreater(report["summary"]["evals"], 0)
                 self.assertGreater(report["summary"]["trigger_queries"], 0)

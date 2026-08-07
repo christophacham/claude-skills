@@ -33,9 +33,9 @@ Other skills, agents, installers (non-search paths), docs, and tests remain fair
 | Layer | Role |
 |-------|------|
 | **Skills** (`skills/`) | Judgment libraries and operational skills Claude loads by trigger |
-| **Agents** (`agents/`) | Dispatchable subagents (coder, reviewer, beads, design panelists) |
+| **Agents** (`agents/`) | Dispatchable subagents (coder, reviewer, design panelists) |
 | **Installer** (`bin/`, `lib/`) | Full-screen Ink TUI: pick skills → plan → apply (project-default) |
-| **Docs** | `README.md` (users), `SLIM.md` (suite shape), `docs/node-native-installer-pattern.md` (installer contract) |
+| **Docs** | `README.md` (users), `SLIM.md` (suite shape), `docs/01`–`03` product handbooks, `docs/node-native-installer-pattern.md` (installer) |
 
 **Not:** a product app, a personal CLI zoo, or a bulk “install everything by default” distribution.
 
@@ -64,7 +64,7 @@ agents/*.md + panelists/   # custom agents
 pool.md                    # optional routing note (with beads)
 tests/                     # Python suite contracts + Node installer tests
 personal-skill-archive/    # NOT managed suite — do not re-catalog into install
-docs/                      # installer pattern essay
+docs/                      # product handbooks 01–03 + installer pattern essay
 ```
 
 ---
@@ -74,9 +74,9 @@ docs/                      # installer pattern essay
 | Group | Default in cart? | Contents (approx.) |
 |-------|------------------|--------------------|
 | **SEARCH** | yes | `ddg-search`, `brave-search`, `tavily-search` (**bodies frozen** — see ban) |
-| **CORE** | yes | `operating-mode`, `peek-repo`, `simple-design`, `refactoring` |
+| **CORE** | yes | `operating-mode`, `beads-om`, `capability-plan`, `simple-design`, `refactoring` |
 | **AUTHOR** | yes | `skill-creator` |
-| **BEADS** | no | `beads` (+ agents + optional `pool.md` when applied) |
+| **BEADS** | no | `beads` (full tracker skill only) |
 | **OPT_IN** | no | `architecture-design`, `distributed-architecture`, `geometric-robustness` |
 | **SPECIALIST** | no | load-on-demand niches, e.g. `ink-cli-tui` |
 
@@ -129,16 +129,17 @@ When doing or planning product implementation **in a consuming app** (or when th
 
 ---
 
-## Agents (when beads / roster installed)
+## Agents (OM roster)
 
 | Agent | Role |
 |-------|------|
-| `coder` | Scoped implementation |
-| `reviewer` | Independent read-only audit |
-| `beads-creator` / `beads-reviewer` | Beads tracker ops (with `beads` skill) |
-| `panelists/deep-module`, `minimal-diff`, `seam` | Design lenses |
+| `coder` | One-unit implementer (live gates, unit health; no tracker) |
+| `reviewer` | Independent read-only unit/PR audit |
+| `scope-scout` | Feasibility/research for capability-plan (no Beads writes) |
+| `scope-auditor` | Plan verify / progress (read-only) |
+| `panelists/deep-module`, `minimal-diff`, `seam` | Design×3 lenses (one unit) |
 
-Roster installs with **beads** (or explicit agent install paths). Preloads favor **simple-design** + **refactoring** — not the whole suite.
+Roster installs when **operating-mode**, **capability-plan**, or design preloads are applied. Optional `pool.md` with operating-mode. Coder/reviewer preload **simple-design** + **refactoring**. No beads tracker agents.
 
 ---
 
@@ -166,4 +167,8 @@ Do not invent CI requirements that are not in-repo; keep help/README/catalog/tes
 | TUI | `lib/tui/` |
 | Build another Ink wizard | skill `ink-cli-tui` |
 | Product cadence skill | `operating-mode` |
+| Product handbooks | `docs/01-handbook-product-flow.md` → `02` plan → `03` unit |
+| Epic→feature→task map | `capability-plan` (+ `scope-scout` / `scope-auditor`) |
+| Beads + OM (thin) | `beads-om` (CORE; no roster) |
+| Full Beads skill | `beads` (BEADS group; skill only) |
 | Search skills | **leave alone** |

@@ -36,6 +36,7 @@ describe('catalog groups', () => {
   it('defaultSelected includes CORE+AUTHOR+SEARCH not beads/opt_in/specialist', () => {
     const d = new Set(defaultSelectedSkillIds());
     assert.ok(d.has('operating-mode'));
+    assert.ok(d.has('beads-om'));
     assert.ok(d.has('skill-creator'));
     assert.ok(d.has('ddg-search'));
     assert.ok(!d.has('beads'));
@@ -108,22 +109,48 @@ describe('desired planChanges', () => {
     assert.equal(rem[0].tree, 'agents');
   });
 
-  it('needAgents only when beads selected and agents missing', () => {
+  it('needAgents when operating-mode selected and agents missing', () => {
     const state = createDesiredState({
       projectRoot: '/tmp/proj',
-      selected: ['beads'],
+      selected: ['operating-mode'],
     });
     const planMissing = planChanges(state, [], { agentsPresent: false });
     assert.equal(planMissing.needAgents, true);
-    const planPresent = planChanges(state, [], { agentsPresent: true, poolPresent: true });
+    assert.equal(planMissing.needPool, true);
+    const planPresent = planChanges(state, [], {
+      agentsPresent: true,
+      poolPresent: true,
+    });
     assert.equal(planPresent.needAgents, false);
     assert.equal(planPresent.needPool, false);
+  });
+
+  it('beads and beads-om do not pull agents', () => {
+    for (const id of ['beads', 'beads-om']) {
+      const state = createDesiredState({
+        projectRoot: '/tmp/proj',
+        selected: [id],
+      });
+      const plan = planChanges(state, [], { agentsPresent: false });
+      assert.equal(plan.needAgents, false, id);
+      assert.equal(plan.needPool, false, id);
+    }
+  });
+
+  it('capability-plan pulls agents but not pool', () => {
+    const state = createDesiredState({
+      projectRoot: '/tmp/proj',
+      selected: ['capability-plan'],
+    });
+    const plan = planChanges(state, [], { agentsPresent: false, poolPresent: false });
+    assert.equal(plan.needAgents, true);
+    assert.equal(plan.needPool, false);
   });
 
   it('summarizePlan lists ops', () => {
     const state = createDesiredState({
       projectRoot: '/tmp/proj',
-      selected: ['peek-repo'],
+      selected: ['simple-design'],
     });
     const lines = summarizePlan(planChanges(state, []));
     assert.ok(lines.some((l) => l.includes('install')));
