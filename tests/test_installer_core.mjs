@@ -26,14 +26,15 @@ import { skillsDestForTree } from '../lib/paths.js';
 const known = allSkillIds();
 
 describe('catalog groups', () => {
-  it('exposes six groups covering all skill ids', () => {
-    assert.equal(SKILL_GROUPS.length, 6);
+  it('exposes seven groups covering all skill ids', () => {
+    assert.equal(SKILL_GROUPS.length, 7);
     const fromGroups = SKILL_GROUPS.flatMap((g) => g.skills.map((s) => s.id)).sort();
     assert.deepEqual(fromGroups, [...known].sort());
     assert.ok(SKILL_GROUPS.some((g) => g.id === 'specialist'));
+    assert.ok(SKILL_GROUPS.some((g) => g.id === 'security'));
   });
 
-  it('defaultSelected includes CORE+AUTHOR+SEARCH not beads/opt_in/specialist', () => {
+  it('defaultSelected includes CORE+AUTHOR+SEARCH not beads/opt_in/security/specialist', () => {
     const d = new Set(defaultSelectedSkillIds());
     assert.ok(d.has('operating-mode'));
     assert.ok(d.has('beads-om'));
@@ -41,6 +42,7 @@ describe('catalog groups', () => {
     assert.ok(d.has('ddg-search'));
     assert.ok(!d.has('beads'));
     assert.ok(!d.has('architecture-design'));
+    assert.ok(!d.has('defectdojo-fix'));
     assert.ok(!d.has('ink-cli-tui'));
   });
 });

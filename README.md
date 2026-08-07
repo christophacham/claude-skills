@@ -69,7 +69,7 @@ If the active scope already has suite skills on disk, selection seeds from the s
 
 1. **Scope: project \| global** — project = `<root>/.claude/skills`; global = `~/.claude/skills`
 2. **Targets** — `.claude/skills` always primary; optional `.agents/skills` portable mirror (symlink → copy fallback)
-3. **Browse & select skills** — groups: Search · Core · Author · Beads · Opt-in · Specialist; optional filter; toggle is a cart, not an install
+3. **Browse & select skills** — groups: Search · Core · Author · Beads · Opt-in · Security · Specialist; optional filter; toggle is a cart, not an install
 4. **Status detail** — selected (●) vs on-disk; pending `+install` / `−remove`; paths that would change
 5. **Apply changes** — sole write path; confirms with file side-effect list for the active scope/targets  
    —  
@@ -175,7 +175,7 @@ Optional: **`beads-om`** (CORE) for a thin Beads queue around operating-mode uni
 
 ## Bundled Skills
 
-Catalog groups (selective Node installer): **SEARCH** · **CORE** (default-yes) · **AUTHOR** · **BEADS** · **OPT_IN** · **SPECIALIST** (last two: offer, never default-yes).
+Catalog groups (selective Node installer): **SEARCH** · **CORE** (default-yes) · **AUTHOR** · **BEADS** · **OPT_IN** · **SECURITY** · **SPECIALIST** (last three: offer, never default-yes).
 
 ### SEARCH
 - **`ddg-search`**: Free web/news search via `ddgs` (no API key). Always forks into an Explore subagent.
@@ -199,6 +199,11 @@ Catalog groups (selective Node installer): **SEARCH** · **CORE** (default-yes) 
 - **`architecture-design`**: Clean Architecture layering, ports & adapters.
 - **`distributed-architecture`**: Trade-offs across deployables — granularity, monolith decomposition, data, sagas, contracts.
 - **`geometric-robustness`**: Float/geometry robustness for slicers and CAD/CAM (Rust).
+
+### SECURITY (offer, never default-yes)
+Vuln-tracker integrations. Need host credentials (env / settings / credentials file); not a substitute for PR security review.
+
+- **`defectdojo-fix`**: Pull active findings from self-hosted DefectDojo, triage, and fix what is safely fixable in the current repo (any severity). Needs `DEFECTDOJO_API_TOKEN` and `DEFECTDOJO_URL` (or `DEFECTDOJO_HOST` + `DEFECTDOJO_PORT`).
 
 ### SPECIALIST (load on demand — never default-yes)
 Narrow, task-specific skills. Install only when you need that specialty (wizard group **Specialist**).

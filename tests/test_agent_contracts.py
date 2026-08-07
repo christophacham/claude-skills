@@ -205,7 +205,7 @@ class CoordinationDocumentationTests(unittest.TestCase):
         package = json.loads(read_repo_file("package.json"))
         expected_skills = {
             "architecture-design", "beads", "beads-om", "brave-search", "capability-plan",
-            "ddg-search", "distributed-architecture",
+            "ddg-search", "defectdojo-fix", "distributed-architecture",
             "geometric-robustness", "ink-cli-tui", "operating-mode",
             "refactoring", "simple-design", "skill-creator",
             "tavily-search",
@@ -213,6 +213,7 @@ class CoordinationDocumentationTests(unittest.TestCase):
         catalog = read_repo_file("lib/catalog.js")
         self.assertIn("export const CORE_SKILLS", catalog)
         self.assertIn("export const OPT_IN_SKILLS", catalog)
+        self.assertIn("export const SECURITY_SKILLS", catalog)
         self.assertIn("export const SPECIALIST_SKILLS", catalog)
         self.assertIn("export const BEADS_SKILLS", catalog)
         for core_id in (
@@ -239,7 +240,9 @@ class CoordinationDocumentationTests(unittest.TestCase):
         self.assertIn("export const SKILL_GROUPS", catalog)
         self.assertIn("skills: CORE_SKILLS", catalog)
         self.assertIn("skills: OPT_IN_SKILLS", catalog)
+        self.assertIn("skills: SECURITY_SKILLS", catalog)
         self.assertIn("skills: SPECIALIST_SKILLS", catalog)
+        self.assertIn("id: 'defectdojo-fix'", catalog)
         self.assertIn("id: 'ink-cli-tui'", catalog)
         install_flow = read_repo_file("lib/install-flow-legacy.js")
         self.assertIn("CORE_SKILLS", install_flow)

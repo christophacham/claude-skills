@@ -77,6 +77,7 @@ docs/                      # product handbooks 01–03 + installer pattern essay
 | **AUTHOR** | yes | `skill-creator` |
 | **BEADS** | no | `beads` (full tracker skill only) |
 | **OPT_IN** | no | `architecture-design`, `distributed-architecture`, `geometric-robustness` |
+| **SECURITY** | no | vuln trackers, e.g. `defectdojo-fix` |
 | **SPECIALIST** | no | load-on-demand niches, e.g. `ink-cli-tui` |
 
 Fresh project with nothing on disk: cart seeds **CORE + AUTHOR + SEARCH**. Nothing hits disk until **Apply**.  
