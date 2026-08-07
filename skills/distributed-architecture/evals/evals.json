@@ -16,11 +16,11 @@
     {
       "id": 2,
       "prompt": "In one deployable Rust application, should the SQL repository implementation live in domain, application, or infrastructure?",
-      "expected_output": "A scope correction that hands single-application layer placement to architecture-design.",
+      "expected_output": "Scope correction: single-application layer placement is out of scope for deployable-boundary work; identifies dependency direction and port ownership as the relevant single-app topics without inventing a service split.",
       "files": [],
       "expectations": [
         "Negative: does not apply service-splitting, saga, or database-per-service doctrine to a single-application placement question.",
-        "Routes to architecture-design and briefly identifies dependency direction/port ownership as the relevant topic."
+        "States the question belongs to single-app dependency direction / port ownership, not distributed granularity."
       ]
     },
     {

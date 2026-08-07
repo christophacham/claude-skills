@@ -15,11 +15,11 @@
     {
       "id": 2,
       "prompt": "Should billing and invoicing remain one deployable or become two microservices with separate databases?",
-      "expected_output": "A boundary-aware response that identifies this as a cross-deployable granularity decision for distributed-architecture rather than forcing Clean Architecture layers onto it.",
+      "expected_output": "Identifies the question as a cross-deployable granularity decision rather than forcing Clean Architecture layers onto it; names coupling, transactions, data ownership, and deployment trade-offs as the relevant evidence without prescribing a service split recipe here.",
       "files": [],
       "expectations": [
-        "Negative: does not decide service granularity using domain/application/infrastructure layering.",
-        "Routes the decision to distributed-architecture and names coupling, transactions, data ownership, and deployment trade-offs as the relevant evidence."
+        "Negative: does not decide service granularity using domain/application/infrastructure layering alone.",
+        "Frames the decision as deployable-boundary / quantum trade-offs (coupling, transactions, data ownership, deployment) rather than single-app layer placement."
       ]
     },
     {

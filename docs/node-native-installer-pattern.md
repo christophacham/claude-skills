@@ -7,9 +7,9 @@ package.
 ## Package contract
 
 `package.json` exposes `claude-skills` from `bin/cli.js`, requires Node
-`>=20.11.0`, and ships complete `bin/`, `lib/`, `skills/`, and `agents/` trees
+`>=20.11.0`, and ships complete `bin/`, `lib/`, and `skills/` trees
 plus README. The entrypoint has a Node shebang and no Bun runtime
-dependency, so both `npx` and `bunx` can launch it.
+dependency, so both `npx` and `bunx` can launch it. No custom agents ship.
 
 Because the whole `skills/` tree is packaged, adding an eval/reference/script
 under an already-shipped skill does not require another `package.json.files`
@@ -50,18 +50,17 @@ apply      = applyPlan(plan, desired)        // sole mutator
 | Agents tree | off until toggled under Targets |
 | Claude install | full **copy** from package `skills/<id>` |
 | Agents install | **symlink/junction** to Claude skill dir → **copy** fallback |
-| Agent roster | under `.claude/agents` when operating-mode / capability-plan / design-preload skills selected |
+| Agent roster | none (suite does not install agents) |
 | API keys | always `~/.claude/settings.json` |
 | Deps | run against **claude** skill path only |
 
 ### Groups (`lib/catalog.js` → `SKILL_GROUPS`)
 
 1. **SEARCH** — default-selected in a fresh cart  
-2. **CORE** — default-selected  
-3. **AUTHOR** — default-selected (skill-creator)  
-4. **BEADS** — offer only  
-5. **OPT_IN** — offer only (broad domain craft)  
-6. **SPECIALIST** — offer only (narrow load-on-demand; e.g. `ink-cli-tui`)  
+2. **CORE** — default-selected (`simple-design`, `refactoring`)  
+3. **OPT_IN** — offer only (architecture / distributed / geometry)  
+4. **SECURITY** — offer only (vuln trackers; e.g. `defectdojo-fix`)  
+5. **SPECIALIST** — offer only (narrow load-on-demand; e.g. `ink-cli-tui`)  
 
 Fresh project with nothing installed: seed selected = `defaultSelectedSkillIds()`.
 If the active scope already has suite skills on disk: seed selected from scan.

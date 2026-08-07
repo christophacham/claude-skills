@@ -15,11 +15,11 @@
     {
       "id": 2,
       "prompt": "Where should an OrderRepository port live in a Clean Architecture application, and how should Postgres implement it?",
-      "expected_output": "A boundary-aware handoff to architecture-design rather than a module-depth answer pretending to own application layering.",
+      "expected_output": "Declines a pure module-depth answer for application layering; states that port placement and Clean Architecture layering are out of scope for this skill, and answers only the interface-depth aspects if any.",
       "files": [],
       "expectations": [
-        "Negative: does not present simple-design as the authority for application layers, ports, or composition roots.",
-        "Routes to architecture-design while noting that client-owned abstraction and interface depth remain relevant supporting concerns."
+        "Negative: does not present module-depth guidance as the authority for application layers, ports, or composition roots.",
+        "Names layering/port placement as a separate concern from module interface depth; keeps any depth advice limited to the port surface if discussed at all."
       ]
     },
     {

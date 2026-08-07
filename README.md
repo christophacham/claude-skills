@@ -1,6 +1,6 @@
 # claude-skills
 
-Software engineering skills and custom agents for Claude Code: architecture, simple design, refactoring, search helpers, plus an operating-mode subagent roster (coder, reviewer, design panelists) you dispatch from the main agent.
+Selective Claude Code skills: search helpers, simple design, refactoring, architecture craft, DefectDojo ops, and Ink TUI craft — plus a plan-then-apply Node installer.
 
 ---
 
@@ -60,8 +60,8 @@ Defaults on a fresh project (nothing installed yet):
 |------|---------|
 | Scope | **project** (`cwd` or `--project`) |
 | Skill target | `.claude/skills` only |
-| Selection seed | **CORE + AUTHOR + SEARCH** (cart only — not on disk until Apply) |
-| Beads / Opt-in | off until you select them |
+| Selection seed | **CORE + SEARCH** (cart only — not on disk until Apply) |
+| Opt-in / Security / Specialist | off until you select them |
 
 If the active scope already has suite skills on disk, selection seeds from the scan instead.
 
@@ -69,12 +69,12 @@ If the active scope already has suite skills on disk, selection seeds from the s
 
 1. **Scope: project \| global** — project = `<root>/.claude/skills`; global = `~/.claude/skills`
 2. **Targets** — `.claude/skills` always primary; optional `.agents/skills` portable mirror (symlink → copy fallback)
-3. **Browse & select skills** — groups: Search · Core · Author · Beads · Opt-in · Specialist; optional filter; toggle is a cart, not an install
+3. **Browse & select skills** — groups: Search · Core · Opt-in · Security · Specialist; optional filter; toggle is a cart, not an install
 4. **Status detail** — selected (●) vs on-disk; pending `+install` / `−remove`; paths that would change
 5. **Apply changes** — sole write path; confirms with file side-effect list for the active scope/targets  
    —  
 6. **API keys** — Brave / Tavily into `~/.claude/settings.json` only
-7. **Manage installation** — resync from disk · select defaults (CORE+AUTHOR+SEARCH) · clear selection · uninstall tracked GLOBAL items  
+7. **Manage installation** — resync from disk · select defaults (CORE+SEARCH) · clear selection · uninstall tracked GLOBAL items  
    —  
 8. **Exit** — confirms if cart still has pending changes, then discards
 
@@ -84,11 +84,10 @@ If the active scope already has suite skills on disk, selection seeds from the s
 |------|---------------|--------------|
 | Skills (primary) | `<project>/.claude/skills/<id>` | `~/.claude/skills/<id>` |
 | Skills (optional mirror) | `<project>/.agents/skills/<id>` | `~/.agents/skills/<id>` |
-| Agent roster (when **operating-mode** / design-preload skills selected) | `<project>/.claude/agents/` | `~/.claude/agents/` |
 | API keys (Brave / Tavily) | always `~/.claude/settings.json` (never the project tree) | same |
 | Global install manifest | — | `~/.claude/claude-skills-manifest.json` |
 
-Claude skill dirs are a full **copy** from the package. The `.agents/skills` mirror prefers **symlink** to the Claude skill dir, **copy** on failure. Agent files under `.claude/agents` prefer symlink to the package, copy on failure.
+Claude skill dirs are a full **copy** from the package. The `.agents/skills` mirror prefers **symlink** to the Claude skill dir, **copy** on failure. This suite does **not** ship custom agent files.
 
 ### Apply model
 
@@ -125,57 +124,9 @@ Tracked global uninstall does **not** touch project installs, API keys, or npm/P
 
 ---
 
-## Operating mode
-
-We work in **tiny vertical units** on year-scale product work: deep modules, light structure, quality over speed. An agent may write every line; the human rarely codes but **must understand every line that merges**. Hard human stops are **kickoff**, **PR review**, and **defining principles when missing**—not mid-unit micromanagement. After kickoff the main agent runs **hands-off inside one unit** until a feature-branch PR is ready: design ×3 → pick, refactor-then-integrate, live Rust watch/tests and/or Playwright as soon as UI exists, early SoC/errors/traces/unknowns. It may dispatch `coder` / `reviewer` / panelists **without asking**. It asks only on blockers or missing project law (then helps define that law). Unit size guidance ~200–300 LOC production (one idea). Oneshot multi-feature work and unattended multi-unit loops are out; **Ralf-style iteration inside one unit until PR is in**.
-
-**In one line:** plan the initiative (what/why) → kick off one unit → main runs hands-off to PR → you understand and merge → repeat.
-
-Handbooks (execution order):
-
-1. **[`docs/01-handbook-product-flow.md`](docs/01-handbook-product-flow.md)** — combined plan + unit flow  
-2. **[`docs/02-handbook-capability-plan.md`](docs/02-handbook-capability-plan.md)** — epic → features → OM tasks  
-3. **[`docs/03-handbook-operating-mode.md`](docs/03-handbook-operating-mode.md)** — one unit → PR  
-
-Spine: Beck (small steps + feedback), Fowler (tidy/refactor), Ousterhout (deep modules), Hohpe (architecture that reaches working code). CI is the hard gate (lefthook/mise-class checks, strict Rust); UI confidence is Playwright. There is **no** grill→tickets product pipeline—main is the kernel; subagents are optional tools for the current unit. The main agent loads this cadence via **`operating-mode`** (CORE).
-
-Default: you kick off one unit → agent runs to PR (assuming repo principles) → you review for understanding → merge only when you understand and gates are green → optional prototype → next unit.
-
-```
-YOU: kick off ONE unit
-        │
-        ▼
-MAIN (hands-off until PR)
-  principles clear? ──no──► propose → agree → write down → continue
-        │
-  design ×3 → pick → refactor existing → integrate
-  live Rust / Playwright + errors · traces · SoC · unknowns
-  may dispatch coder / reviewer / panelists (no ask)
-  open/update feature-branch PR
-        │
-        ▼
-YOU: review PR (understand / change / reject)
-        │
-        ▼
-merge only if understood + green
-  → optional prototype → next ONE unit
-```
-
-### Core doctrine (judgment libraries)
-
-- **Deep modules, small surfaces** — Maximize benefit per unit of interface cost when the boundary is earned (`simple-design`).
-- **Live how-you-know** — Run the checks relevant to the surface under change (Rust watch/tests; Playwright for UI), not a final oneshot hope.
-- **Tidy First** — Separate structural and behavioral changes when doing so improves reviewability (`refactoring`).
-- **Independent review** — Review from a fresh context and require evidence-based findings. Same-model review remains valid; a different model tier is an optional source of diversity.
-- **Ceremony follows irreversibility** — Ports, ADRs, and sagas only when earned (`architecture-design`, `distributed-architecture`).
-
-Optional: **`beads-om`** (CORE) for a thin Beads queue around operating-mode units; full **`beads`** for general tracker ops (skill only). The OM roster (`coder` / `reviewer` / panelists) installs with **operating-mode** (and design preloads). `coder` and `reviewer` do not mutate trackers.
-
----
-
 ## Bundled Skills
 
-Catalog groups (selective Node installer): **SEARCH** · **CORE** (default-yes) · **AUTHOR** · **BEADS** · **OPT_IN** · **SPECIALIST** (last two: offer, never default-yes).
+Catalog groups (selective Node installer): **SEARCH** · **CORE** (default-yes) · **OPT_IN** · **SECURITY** · **SPECIALIST** (OPT_IN + SECURITY + SPECIALIST: offer, never default-yes).
 
 ### SEARCH
 - **`ddg-search`**: Free web/news search via `ddgs` (no API key). Always forks into an Explore subagent.
@@ -183,22 +134,18 @@ Catalog groups (selective Node installer): **SEARCH** · **CORE** (default-yes) 
 - **`tavily-search`**: Tavily CLI (`TAVILY_API_KEY`). Search/extract; forked Explore worker.
 
 ### CORE (default-yes)
-- **`operating-mode`**: Hands-off one-unit run to PR; design×3; live gates; main may dispatch subagents; human reviews at PR.
-- **`beads-om`**: Thin Beads companion to operating-mode (claim unit bead, park discoveries, close post-merge). Skill only; needs `bd` + initialized `.beads/`.
-- **`capability-plan`**: Epic → features (what/why) → OM-sized tasks; create/verify/modify/progress. Research stays out of Beads. Agents: `scope-scout`, `scope-auditor`.
 - **`simple-design`**: Ousterhout deep modules, information hiding, red flags.
 - **`refactoring`**: Fowler smells and safe structural steps.
-
-### AUTHOR (project path)
-- **`skill-creator`**: Create, validate, evaluate, and package Agent Skills; audit Claude Code load-time shell injection.
-
-### BEADS (profile — only when chosen)
-- **`beads`**: Full `bd` tracker skill (create/claim/deps/Dolt). Does **not** install agents; use `beads-om` for OM-thin usage.
 
 ### OPT_IN (offer, never default-yes)
 - **`architecture-design`**: Clean Architecture layering, ports & adapters.
 - **`distributed-architecture`**: Trade-offs across deployables — granularity, monolith decomposition, data, sagas, contracts.
 - **`geometric-robustness`**: Float/geometry robustness for slicers and CAD/CAM (Rust).
+
+### SECURITY (offer, never default-yes)
+Vuln-tracker integrations. Need host credentials (env / settings / credentials file); not a substitute for PR security review.
+
+- **`defectdojo-fix`**: Pull active findings from self-hosted DefectDojo, triage, and fix what is safely fixable in the current repo (any severity). Needs `DEFECTDOJO_API_TOKEN` and `DEFECTDOJO_URL` (or `DEFECTDOJO_HOST` + `DEFECTDOJO_PORT`).
 
 ### SPECIALIST (load on demand — never default-yes)
 Narrow, task-specific skills. Install only when you need that specialty (wizard group **Specialist**).
@@ -207,25 +154,7 @@ Narrow, task-specific skills. Install only when you need that specialty (wizard 
 
 ---
 
-## Custom Agents (`agents/`)
-
-Install into `~/.claude/agents` (or project `.claude/agents`) when **operating-mode** (or `simple-design` / `refactoring`) is applied. Dispatch from main under operating-mode — no permission ping for unit work.
-
-| Agent | Role |
-|-------|------|
-| **`coder`** | One-unit implementer: refactor-then-integrate, live gates, unit health; optional user-authorized commit; no tracker |
-| **`reviewer`** | Read-only unit/PR audit → PASS / CHANGES_REQUESTED / REPLAN_RECOMMENDED (includes OM PR bar) |
-| **`scope-scout`** | Research/feasibility for capability-plan; what-level split hints; no Beads writes, no how-for-tracker |
-| **`scope-auditor`** | Verify plan OM-fit / what-why purity or report epic·feature progress; read-only |
-| **`panelists/deep-module`** | Design×3 lens: natural ownership, information hiding, justified module depth (one unit) |
-| **`panelists/minimal-diff`** | Design×3 lens: every touch point and structural cost must be earned (one unit) |
-| **`panelists/seam`** | Design×3 lens: smallest justified contract that contains demonstrated coupling (one unit) |
-
-Same-model review remains valid; independence comes from fresh context and evidence, not model diversity.
-
----
-
 ## Extension & Customization
 
-- **Agent shadowing**: project `.claude/agents/coder.md` (etc.) overrides the global role.
-- **Project bindings**: test commands, commit formats, and non-negotiables from `CLAUDE.md`.
+- **Project bindings**: test commands, commit formats, and non-negotiables from `CLAUDE.md` in the consuming app.
+- **Add a skill**: drop `skills/<id>/SKILL.md`, register it in `lib/catalog.js`, update README and installer tests.

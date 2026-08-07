@@ -1107,8 +1107,8 @@ def main(argv: list[str]) -> int:
         description="Validate an Agent Skill directory.",
         epilog=(
             "Examples:\n"
-            "  scripts/validate_skill.py ~/.agents/skills/my-skill --mode portable --format text\n"
-            "  scripts/validate_skill.py .claude/skills/my-skill --mode claude-code --format text"
+            "  tools/validate_skill.py ~/.agents/skills/my-skill --mode portable --format text\n"
+            "  tools/validate_skill.py .claude/skills/my-skill --mode claude-code --format text"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )

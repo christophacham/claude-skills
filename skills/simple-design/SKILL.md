@@ -1,17 +1,17 @@
 ---
 name: simple-design
-description: Module and API design judgment — deep modules, information hiding, general-purpose interfaces, error handling, naming. Use when designing or reviewing any class/module/function interface, judging whether a module is too shallow, deciding how general an API should be, simplifying error handling, naming things, or scanning for design red flags (shallow module, information leakage, temporal decomposition, pass-through method, vague name). Applies to nearly all coding work. Not for application layering/ports (architecture-design), service or monolith splitting (distributed-architecture), or step-by-step refactor mechanics (refactoring).
+description: Module and API design judgment — deep modules, information hiding, general-purpose interfaces, error handling, naming. Use when designing or reviewing any class/module/function interface, judging whether a module is too shallow, deciding how general an API should be, simplifying error handling, naming things, or scanning for design red flags (shallow module, information leakage, temporal decomposition, pass-through method, vague name). Applies to nearly all coding work. Not for application layering or ports, service or monolith splitting, or step-by-step refactor mechanics.
 ---
 
 # Simple Design
 
 Module-level design judgment from John Ousterhout's *A Philosophy of Software Design*. One goal: **reduce complexity**. Section 9 is the triage index; sections 1–8 carry the detail.
 
-**Escalate (do not answer here):**
+**Out of scope here (do not answer as module-depth work):**
 
-- "Where does this code live?", dependency direction, ports/use cases, composition root → `architecture-design`
-- Split/merge deployables, sagas, multi-service data ownership, cross-service contracts → `distributed-architecture`
-- Behavior-preserving structural steps / smell mechanics → `refactoring`
+- Application layering: "where does this code live?", dependency direction, ports/use cases, composition root
+- Cross-deployable design: split/merge services, sagas, multi-service data ownership, cross-service contracts
+- Behavior-preserving structural steps and smell mechanics (refactor process)
 
 ## 1. Complexity Is the Only Budget
 
@@ -162,7 +162,7 @@ Expose an error when a caller can choose a meaningful response. Otherwise contai
 - **Strategic ≠ speculative.** Investing in generality for change you cannot name is tactical programming in disguise — "somewhat general-purpose," never maximally general.
 - **Name the red flag before proposing structure.** If you can't point at a smell in the code *as it is*, don't add structure.
 - **Depth before breadth.** One deep module beats three shallow ones; never split a module because "classes should be small."
-- **SOLID in one breath:** SRP ≈ one reason to change (§3 knowledge ownership), OCP ≈ extend without editing (§2 depth + §4 generality), LSP ≈ behavioral substitutability, ISP ≈ no client forced to depend on what it doesn't use (§2 interface cost). They are this skill's ideas in another vocabulary — DIP belongs to layering (architecture-design). No separate ceremony needed.
+- **SOLID in one breath:** SRP ≈ one reason to change (§3 knowledge ownership), OCP ≈ extend without editing (§2 depth + §4 generality), LSP ≈ behavioral substitutability, ISP ≈ no client forced to depend on what it doesn't use (§2 interface cost). They are this skill's ideas in another vocabulary — DIP belongs to application layering and dependency direction. No separate ceremony needed.
 
 ## 9. Red Flags Checklist
 
