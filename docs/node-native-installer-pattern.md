@@ -19,96 +19,121 @@ README examples/catalog text.
 ## Current CLI
 
 ```text
-claude-skills install [--project <dir>] [--skip-deps]
+claude-skills                      # wizard (default)
+claude-skills wizard
+claude-skills install              # alias of wizard
+claude-skills install --legacy     # old linear flow
 claude-skills uninstall [--yes]
 claude-skills --help
 ```
 
-No subcommand defaults to `install`. The CLI is intentionally interactive; it
-does **not** currently implement `--all`, `--group`, `--dry-run`, project
-uninstall, target-root selection, or `.agents/` installation. Do not put those
-flags in skill instructions unless the implementation changes in the same task.
+Options: `-p/--project <dir>`, `--skip-deps`, `--legacy`, `-y/--yes`.
 
-`--project` accepts an absolute path or a path relative to the invocation working
-directory. The package root is used only as the copy source; project output is
-never resolved relative to the installed package.
+No subcommand opens the **menu wizard**. The linear confirm ladder remains only
+behind `--legacy`.
 
-## Selection and placement
+## Wizard model (plan-then-apply)
 
-`lib/catalog.js` is the selectable inventory (SLIM groups):
+```
+installed  = scanAllInstalled(projectRoot)   // catalog ids on disk
+desired    = DesiredState                    // in-memory selection + scope + trees
+plan       = planChanges(desired, installed) // pure delta
+apply      = applyPlan(plan, desired)        // sole mutator
+```
 
-1. **SEARCH** — offered for global install under `~/.claude/skills` (default-yes multiselect).
-2. **AUTHOR** — `skill-creator` suggested for the chosen project's `.claude/skills`.
-3. **CORE** — `operating-mode`, `peek-repo`, `simple-design`, `refactoring` (confirm default-yes; multiselect all selected; global or project placement).
-4. **OPT_IN + BEADS** — architecture, distributed, geometric, beads — one by one as skip (default) / global / project / done.
-5. Skills that declare agent/pool coupling in the catalog install those related
-   resources through the shared filesystem operations.
+### Defaults
+
+| Knob | Default |
+|---|---|
+| Scope | **project** (`--project` or cwd) |
+| Skill trees | `['claude']` only |
+| Agents tree | off until toggled under Targets |
+| Claude install | full **copy** from package `skills/<id>` |
+| Agents install | **symlink/junction** to Claude skill dir → **copy** fallback |
+| Agent roster / pool | under `.claude/agents` + `pool.md` when beads selected |
+| API keys | always `~/.claude/settings.json` |
+| Deps | run against **claude** skill path only |
+
+### Groups (`lib/catalog.js` → `SKILL_GROUPS`)
+
+1. **SEARCH** — default-selected in a fresh cart  
+2. **CORE** — default-selected  
+3. **AUTHOR** — default-selected (skill-creator)  
+4. **BEADS** — offer only  
+5. **OPT_IN** — offer only  
+
+Fresh project with nothing installed: seed selected = `defaultSelectedSkillIds()`.
+If the active scope already has suite skills on disk: seed selected from scan.
+
+### Main menu
+
+Browse groups · Scope · Targets · Status · Apply · API keys · Manage · Exit.
+
+Apply is the only path that writes skills/agents/pool/manifest for the wizard.
+Cancel discards the in-memory cart (no partial mid-menu writes).
+
+## Placement
 
 `lib/paths.js` is the placement authority:
 
-- global Claude root: `~/.claude`;
-- project Claude root: `<resolved-project>/.claude`;
-- skill/agent/pool destinations are derived from that root.
-
-There is no automatic mirror to `~/.agents` or `.agents` in this Node flow.
-Portable-client distribution must be a separately designed feature with tests.
+- Claude tree: `~/.claude` or `<project>/.claude`  
+- Agents skill tree: `~/.agents` or `<project>/.agents`  
+- Skill dirs: `<tree-root>/skills/<id>`  
+- Custom agents (coder/reviewer/…): always under Claude tree `.claude/agents`  
 
 ## Manifest and uninstall ownership
 
-The Node installer records only global items it installed in
+The Node installer records only **global** items it installed in
 `~/.claude/claude-skills-manifest.json`. `lib/uninstall-flow.js` removes only
 those recorded global skills/agents/panelists/pool entries, then clears the
 manifest.
 
-It deliberately leaves these untouched:
+There is **no project manifest**. Project uninstall is “deselect + Apply” in the
+wizard for the active project scope/targets.
 
-- project `.claude` installs;
-- API keys in `~/.claude/settings.json`;
-- installed npm/Python/uv dependencies; and
-- files placed only by `install.sh` or `install.ps1`.
+Left alone by smart global uninstall:
 
-The shell/PowerShell bulk installers have matching bulk uninstallers and are a
-separate ownership path. Do not make the Node uninstaller infer ownership by
-scanning arbitrary directories.
+- project `.claude` / `.agents` installs  
+- API keys in `~/.claude/settings.json`  
+- npm/Python/uv dependencies  
 
-## Change map
-
-Inspect all owners before editing behavior:
+## Module map
 
 | Concern | Source |
 |---|---|
 | CLI arguments/help/default command | `bin/cli.js` |
-| Selectable skills and coupled resources | `lib/catalog.js` |
-| Interactive install sequence | `lib/install-flow.js` |
+| Selectable skills and groups | `lib/catalog.js` |
+| Menu wizard | `lib/wizard.js` |
+| Desired state + pure plan | `lib/desired.js` |
+| Disk scan of installed skills | `lib/scan.js` |
+| Apply plan (sole mutator) | `lib/apply.js` |
+| Legacy linear flow | `lib/install-flow-legacy.js` |
+| Compat `runInstallFlow` → wizard | `lib/install-flow.js` |
 | Tracked global uninstall | `lib/uninstall-flow.js` |
-| Global/project destination paths | `lib/paths.js` |
-| Copy/remove behavior | `lib/fs-ops.js` |
+| Dual-tree destinations | `lib/paths.js` |
+| Copy / symlink / remove | `lib/fs-ops.js` |
 | Dependency setup | `lib/deps.js` |
 | Manifest schema/merge | `lib/manifest.js` |
 | API-key presence/storage | `lib/settings.js` |
-| Published files/runtime/dependencies | `package.json` |
-
-Keep help text, SKILL guidance, README, tests, and implementation synchronized.
-Install and uninstall must share ownership data; duplicated hand-maintained lists
-will drift.
+| Unit tests (no TTY) | `tests/test_installer_core.mjs` |
 
 ## Verification
 
-At minimum:
-
 ```bash
 node bin/cli.js --help
+npm run test:installer
 npm pack --dry-run
 ```
 
 For flow changes, use isolated temporary HOME/project directories and verify:
 
-- absolute and relative `--project` resolution;
-- selected items land only in the intended `.claude` root;
-- global manifest entries are deduplicated and sorted;
-- uninstall removes recorded global items only;
-- project files, foreign files, settings keys, and dependencies survive; and
-- no credential value appears on stdout/stderr.
+- absolute and relative `--project` resolution  
+- selected items land only in the intended roots  
+- agents tree is symlink (or copy fallback) to claude tree  
+- global manifest entries are deduplicated and sorted  
+- uninstall removes recorded global items only  
+- project files, foreign files, settings keys, and dependencies survive  
+- no credential value appears on stdout/stderr  
 
 If adding non-interactive flags, test them directly with Node before documenting
 `npx`; `bunx` success alone does not prove the Node path works.

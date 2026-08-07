@@ -18,8 +18,10 @@
     "node": ">=20.11.0"
   },
   "scripts": {
+    "wizard": "node bin/cli.js wizard",
     "install-ui": "node bin/cli.js install",
-    "uninstall-ui": "node bin/cli.js uninstall"
+    "uninstall-ui": "node bin/cli.js uninstall",
+    "test:installer": "node --test tests/test_installer_core.mjs"
   },
   "dependencies": {
     "@clack/prompts": "^0.10.1",

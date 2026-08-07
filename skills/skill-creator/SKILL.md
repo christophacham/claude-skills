@@ -304,8 +304,7 @@ then OPT_IN/beads individually as skip-default/global/project. Global means
 
 The Node uninstaller removes only global items recorded in
 `~/.claude/claude-skills-manifest.json`; it leaves project installs, API keys,
-dependencies, and bulk-shell installs alone. `install.sh`/`install.ps1` and their
-matching uninstallers are separate bulk flows.
+and dependencies alone. Remove project installs via the wizard (deselect + Apply).
 
 When changing this repository's package behavior, read
 `docs/node-native-installer-pattern.md` at the package root and inspect

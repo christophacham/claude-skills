@@ -3,8 +3,8 @@
 **This folder is a preservation archive — not part of the managed skill suite.**
 
 It was copied from `~/.claude/skills/` on 2026-08-05 as a backup before wiping
-the machine. These skills are **not** installed or wired by `install.ps1` /
-`install.sh`, and they are **not** validated against the suite's standards.
+the machine. These skills are **not** installed or wired by the Node installer
+(`npx`/`bunx` claude-skills), and they are **not** validated against the suite's standards.
 They are kept here only so nothing is lost.
 
 ---

@@ -6,93 +6,47 @@ Software engineering skills and custom agents for Claude Code: architecture, sim
 
 ## Quick Start & Installation
 
-### Remote One-Liner Install (No clone needed)
-Installs directly from GitHub into `~/.claude/`:
+Menu-driven wizard (Clack UI) — **project scope by default**, not global.
+Pick skills by group, see what’s on disk, apply a pending plan.
 
 ```sh
-# macOS / Linux (POSIX)
-curl -fsSL https://raw.githubusercontent.com/christophacham/claude-skills/main/install.sh | sh
-
-# Windows (PowerShell)
-iwr -useb https://raw.githubusercontent.com/christophacham/claude-skills/main/install.ps1 | iex
+# from npm (once published) or a clone
+npx -y claude-skills@latest
+# or: bunx claude-skills
+# or: npm install && node bin/cli.js
+# or: node bin/cli.js --project /path/to/app
 ```
 
-### Local Repo Install
-Run from inside a cloned copy of this repository:
+**Main menu**
 
-```sh
-# macOS / Linux (POSIX)
-./install.sh                       # Global (~/.claude/)
-./install.sh --project             # Project-local: $PWD/.claude
-./install.sh --project /path/to/app   # Project-local: /path/to/app/.claude (relative or absolute)
-./install.sh --brave-api-key "$BRAVE_API_KEY" --tavily-api-key "$TAVILY_API_KEY"
+1. **Browse & select skills** — groups: Search · Core · Author · Beads · Opt-in  
+2. **Scope** — Project (default, `<cwd>/.claude/skills`) or Global (`~/.claude/skills`)  
+3. **Targets** — `.claude/skills` always; optional `.agents/skills` mirror (symlink → copy fallback)  
+4. **Status** — selected (●) vs on-disk; pending +install / −remove  
+5. **Apply changes** — installs/removes the diff for the active scope/targets  
+6. **API keys** — Brave / Tavily into `~/.claude/settings.json` only  
+7. **Manage** — resync selection from disk, seed defaults, clear selection, tracked global uninstall  
+8. **Exit**
 
-# Windows (PowerShell)
-.\install.ps1                      # Global (~/.claude/)
-.\install.ps1 -Project             # Project-local: current location\.claude
-.\install.ps1 -Project C:\path\to\app   # Project-local: C:\path\to\app\.claude
-.\install.ps1 -BraveApiKey $env:BRAVE_API_KEY -TavilyApiKey $env:TAVILY_API_KEY
-```
+Defaults when the project has nothing installed yet: **CORE + AUTHOR + SEARCH** selected (not applied until you hit Apply). Beads / Opt-in stay off until you opt in.
 
-Install also:
+`beads` still pulls the agent roster into `.claude/agents` (+ optional `pool.md`); agent files prefer symlink to the package, copy on failure.
+
+Install also (when you apply skills that need them):
 - runs `npm install` in the installed `brave-search` skill (Node 20 or >=22)
 - ensures the `ddgs` Python package when Python >=3.10 is available (`ddg-search`)
 - ensures the Tavily CLI (`tvly`) when possible (`tavily-search`)
-- interactively prompts for **Brave** and **Tavily** API keys (optional) and writes
-  `env.BRAVE_API_KEY` / `env.TAVILY_API_KEY` into `~/.claude/settings.json`
-  (never into the project tree). Skip with `--skip-brave-key` / `-SkipBraveKey`,
-  `--skip-tavily-key` / `-SkipTavilyKey`, or deps with `--skip-deps` / `-SkipDeps`.
-  Restart Claude Code after setting keys.
-
-### Selective installer (Node, interactive)
-
-Keeps bulk `install.sh` / `install.ps1` for full installs. For pick-and-place:
-
-```sh
-npm install          # once, from a clone
-node bin/cli.js install
-# or: npx . install   /   node bin/cli.js install --project /path/to/app
-```
-
-Guided flow (Clack UI):
-
-1. **Search skills globally?** → multiselect `ddg-search` / `brave-search` / `tavily-search` (default-yes)
-2. **API keys** only if a key-backed skill was chosen and the key is not already set
-3. **AUTHOR (project tools)?** → `skill-creator` into the project `.claude/` (authoring + injection audit)
-4. **CORE skills?** → `operating-mode`, `peek-repo`, `simple-design`, `refactoring` (default-yes; global or project)
-5. **OPT_IN / beads one-by-one?** → architecture, distributed, geometric, beads — **Skip default** · Global · Project · Done
+- can write **Brave** / **Tavily** API keys into `~/.claude/settings.json` via the API keys menu (never into the project tree). Restart Claude Code after setting keys.
 
 Global installs from this CLI are recorded in `~/.claude/claude-skills-manifest.json`.
 
 ```sh
 node bin/cli.js uninstall        # removes only those tracked global items
 node bin/cli.js uninstall --yes  # no confirm
+node bin/cli.js install --legacy # old linear confirm ladder (compat)
 ```
 
-Project installs and bulk shell installs are **not** removed by the Node uninstall
-(use `./uninstall.sh` / `.\uninstall.ps1` for bulk).
-
-### Uninstall (bulk shell)
-
-Removes only the skills, agents, and `pool.md` that this repo installs. Leaves other
-`.claude` content, global packages (`ddgs`, `tvly`, npm modules), and API keys alone
-unless you ask:
-
-```sh
-# macOS / Linux (POSIX)
-./uninstall.sh                         # Global (~/.claude/)
-./uninstall.sh --project               # Project-local: $PWD/.claude
-./uninstall.sh --project /path/to/app  # Project-local: /path/to/app/.claude
-./uninstall.sh --remove-keys           # also drop BRAVE_* / TAVILY_API_KEY from ~/.claude/settings.json
-curl -fsSL https://raw.githubusercontent.com/christophacham/claude-skills/main/uninstall.sh | sh
-
-# Windows (PowerShell)
-.\uninstall.ps1                        # Global (~/.claude/)
-.\uninstall.ps1 -Project               # Project-local: current location\.claude
-.\uninstall.ps1 -Project C:\path\to\app
-.\uninstall.ps1 -RemoveKeys            # also drop API keys from settings
-iwr -useb https://raw.githubusercontent.com/christophacham/claude-skills/main/uninstall.ps1 | iex
-```
+Project installs are removed via the wizard (deselect + Apply), not by the tracked global uninstall.
 
 ---
 
@@ -138,7 +92,7 @@ Optional: Beads (`bd`) for issue tracking; design panelists for multi-lens desig
 
 ## Bundled Skills
 
-Catalog groups (selective Node installer): **SEARCH** · **CORE** (default-yes) · **AUTHOR** · **BEADS** · **OPT_IN** (offer, never default-yes). Bulk `install.sh` / `install.ps1` still install everything.
+Catalog groups (selective Node installer): **SEARCH** · **CORE** (default-yes) · **AUTHOR** · **BEADS** · **OPT_IN** (offer, never default-yes).
 
 ### SEARCH
 - **`ddg-search`**: Free web/news search via `ddgs` (no API key). Always forks into an Explore subagent.
