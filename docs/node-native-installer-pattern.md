@@ -8,7 +8,7 @@ package.
 
 `package.json` exposes `claude-skills` from `bin/cli.js`, requires Node
 `>=20.11.0`, and ships complete `bin/`, `lib/`, `skills/`, and `agents/` trees
-plus `pool.md` and README. The entrypoint has a Node shebang and no Bun runtime
+plus README. The entrypoint has a Node shebang and no Bun runtime
 dependency, so both `npx` and `bunx` can launch it.
 
 Because the whole `skills/` tree is packaged, adding an eval/reference/script
@@ -50,7 +50,7 @@ apply      = applyPlan(plan, desired)        // sole mutator
 | Agents tree | off until toggled under Targets |
 | Claude install | full **copy** from package `skills/<id>` |
 | Agents install | **symlink/junction** to Claude skill dir → **copy** fallback |
-| Agent roster / pool | under `.claude/agents` + `pool.md` when operating-mode (or design preloads) selected |
+| Agent roster | under `.claude/agents` when operating-mode / capability-plan / design-preload skills selected |
 | API keys | always `~/.claude/settings.json` |
 | Deps | run against **claude** skill path only |
 
@@ -72,7 +72,7 @@ Workflow order (separators in the TUI):
 
 **Scope · Targets · Browse · Status · Apply** · | · **API keys · Manage** · | · **Exit**
 
-Apply is the only path that writes skills/agents/pool/manifest for the wizard.
+Apply is the only path that writes skills/agents/manifest for the wizard.
 Cancel discards the in-memory cart (no partial mid-menu writes).
 
 ## Placement
@@ -88,7 +88,7 @@ Cancel discards the in-memory cart (no partial mid-menu writes).
 
 The Node installer records only **global** items it installed in
 `~/.claude/claude-skills-manifest.json`. `lib/uninstall-flow.js` removes only
-those recorded global skills/agents/panelists/pool entries, then clears the
+those recorded global skills/agents/panelists entries, then clears the
 manifest.
 
 There is **no project manifest**. Project uninstall is “deselect + Apply” in the

@@ -80,7 +80,6 @@ Newcomer placement: rare domain → archive or external project skill; agent-pul
 | `scope-scout`, `scope-auditor` | **KEEP · plan roster** | capability-plan research + verify/progress |
 | `beads-creator`, `beads-reviewer` | **DELETE** | Removed; thin beads-om on main; no tracker subagents |
 | `panelists/*` ×3 | **KEEP · OM roster** | Design×3 for one unit |
-| `pool.md` | **KEEP advisory** | Install with operating-mode |
 | Install product | **Node CLI only** (`npx`/`bunx`); shell install/uninstall scripts removed |
 | Evals | **git / `dev/` only** where easy without touching search | Never npm install surface for non-search |
 | Skill-linked `references/` | **SHIP with skill** | Progressive disclosure intact |
@@ -132,7 +131,7 @@ Agent preloads no longer include `testing-tdd`.
 - Body budgets on absorb (no wholesale paste).  
 - One catalog law in code for non-search groups; **SEARCH group frozen**.  
 - Prefer invariant tests over frozen doctrine phrases.  
-- Optional later only: collapse panelists → one `design-panel`; drop pool from package.  
+- Optional later only: collapse panelists → one `design-panel`.
 - Installer simplification only if search install paths stay behavior-identical.
 
 ## Risks accepted

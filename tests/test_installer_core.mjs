@@ -116,13 +116,8 @@ describe('desired planChanges', () => {
     });
     const planMissing = planChanges(state, [], { agentsPresent: false });
     assert.equal(planMissing.needAgents, true);
-    assert.equal(planMissing.needPool, true);
-    const planPresent = planChanges(state, [], {
-      agentsPresent: true,
-      poolPresent: true,
-    });
+    const planPresent = planChanges(state, [], { agentsPresent: true });
     assert.equal(planPresent.needAgents, false);
-    assert.equal(planPresent.needPool, false);
   });
 
   it('beads and beads-om do not pull agents', () => {
@@ -133,18 +128,16 @@ describe('desired planChanges', () => {
       });
       const plan = planChanges(state, [], { agentsPresent: false });
       assert.equal(plan.needAgents, false, id);
-      assert.equal(plan.needPool, false, id);
     }
   });
 
-  it('capability-plan pulls agents but not pool', () => {
+  it('capability-plan pulls agents', () => {
     const state = createDesiredState({
       projectRoot: '/tmp/proj',
       selected: ['capability-plan'],
     });
-    const plan = planChanges(state, [], { agentsPresent: false, poolPresent: false });
+    const plan = planChanges(state, [], { agentsPresent: false });
     assert.equal(plan.needAgents, true);
-    assert.equal(plan.needPool, false);
   });
 
   it('summarizePlan lists ops', () => {
