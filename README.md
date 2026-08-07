@@ -6,47 +6,100 @@ Software engineering skills and custom agents for Claude Code: architecture, sim
 
 ## Quick Start & Installation
 
-Menu-driven wizard (Clack UI) — **project scope by default**, not global.
-Pick skills by group, see what’s on disk, apply a pending plan.
+Node CLI only (`npx` / `bunx` / `node bin/cli.js`). Menu-driven **plan-then-apply** wizard (Clack UI). **Project scope by default** — not global.
+
+### Quick start
 
 ```sh
-# from npm (once published) or a clone
+# from any project directory
 npx -y claude-skills@latest
-# or: bunx claude-skills
-# or: npm install && node bin/cli.js
-# or: node bin/cli.js --project /path/to/app
 ```
 
-**Main menu**
+Same entrypoint:
 
-1. **Browse & select skills** — groups: Search · Core · Author · Beads · Opt-in  
-2. **Scope** — Project (default, `<cwd>/.claude/skills`) or Global (`~/.claude/skills`)  
-3. **Targets** — `.claude/skills` always; optional `.agents/skills` mirror (symlink → copy fallback)  
-4. **Status** — selected (●) vs on-disk; pending +install / −remove  
-5. **Apply changes** — installs/removes the diff for the active scope/targets  
-6. **API keys** — Brave / Tavily into `~/.claude/settings.json` only  
-7. **Manage** — resync selection from disk, seed defaults, clear selection, tracked global uninstall  
-8. **Exit**
+```sh
+bunx claude-skills
+```
 
-Defaults when the project has nothing installed yet: **CORE + AUTHOR + SEARCH** selected (not applied until you hit Apply). Beads / Opt-in stay off until you opt in.
+From a clone of this repo:
 
-`beads` still pulls the agent roster into `.claude/agents` (+ optional `pool.md`); agent files prefer symlink to the package, copy on failure.
+```sh
+npm install
+node bin/cli.js
+# or: node bin/cli.js --project /path/to/app
+# or: npm run wizard
+```
 
-Install also (when you apply skills that need them):
+No subcommand opens the wizard. Compat aliases: `wizard`, `install` (same UI). Options: `-p/--project <dir>`, `--skip-deps`, `--legacy` (old linear confirm ladder), `-y/--yes` (uninstall only).
+
+### What the wizard does
+
+Defaults on a fresh project (nothing installed yet):
+
+| Knob | Default |
+|------|---------|
+| Scope | **project** (`cwd` or `--project`) |
+| Skill target | `.claude/skills` only |
+| Selection seed | **CORE + AUTHOR + SEARCH** (cart only — not on disk until Apply) |
+| Beads / Opt-in | off until you select them |
+
+If the active scope already has suite skills on disk, selection seeds from the scan instead.
+
+**Main menu** (labels match the live wizard):
+
+1. **Browse & select skills** — groups: Search · Core · Author · Beads · Opt-in; optional filter; toggle is a cart, not an install
+2. **Scope: project \| global** — project = `<root>/.claude/skills`; global = `~/.claude/skills`
+3. **Targets** — `.claude/skills` always primary; optional `.agents/skills` portable mirror (symlink → copy fallback)
+4. **Status detail** — selected (●) vs on-disk; pending `+install` / `−remove`; paths that would change
+5. **Apply changes** — sole write path; confirms with file side-effect list for the active scope/targets
+6. **API keys** — Brave / Tavily into `~/.claude/settings.json` only
+7. **Manage installation** — resync from disk · select defaults (CORE+AUTHOR+SEARCH) · clear selection · uninstall tracked GLOBAL items
+8. **Exit** — confirms if cart still has pending changes, then discards
+
+### Where files land
+
+| What | Project scope | Global scope |
+|------|---------------|--------------|
+| Skills (primary) | `<project>/.claude/skills/<id>` | `~/.claude/skills/<id>` |
+| Skills (optional mirror) | `<project>/.agents/skills/<id>` | `~/.agents/skills/<id>` |
+| Agent roster (when **beads** selected) | `<project>/.claude/agents/` | `~/.claude/agents/` |
+| Optional `pool.md` (with beads) | `<project>/.claude/pool.md` | `~/.claude/pool.md` |
+| API keys (Brave / Tavily) | always `~/.claude/settings.json` (never the project tree) | same |
+| Global install manifest | — | `~/.claude/claude-skills-manifest.json` |
+
+Claude skill dirs are a full **copy** from the package. The `.agents/skills` mirror prefers **symlink** to the Claude skill dir, **copy** on failure. Agent files under `.claude/agents` prefer symlink to the package, copy on failure.
+
+### Apply model
+
+Selection is an in-memory **cart**. Nothing is written until **Apply changes**.
+
+- Select skills → **Apply** → installs the pending `+` set for the active scope/targets  
+- Deselect skills → **Apply** → removes the pending `−` set (project uninstall)  
+- Cancel / Exit with pending changes → cart discarded; disk unchanged  
+
+When you apply skills that need them, the CLI also:
+
 - runs `npm install` in the installed `brave-search` skill (Node 20 or >=22)
 - ensures the `ddgs` Python package when Python >=3.10 is available (`ddg-search`)
 - ensures the Tavily CLI (`tvly`) when possible (`tavily-search`)
-- can write **Brave** / **Tavily** API keys into `~/.claude/settings.json` via the API keys menu (never into the project tree). Restart Claude Code after setting keys.
+- may prompt for **Brave** / **Tavily** keys into `~/.claude/settings.json` (or set them later via **API keys**). Restart Claude Code after setting keys.
 
-Global installs from this CLI are recorded in `~/.claude/claude-skills-manifest.json`.
+Use `--skip-deps` to skip npm/pip/uv setup on apply.
+
+### Uninstall
+
+| Scope | How |
+|-------|-----|
+| **Project** | Wizard: deselect skills (or **Manage → Clear selection**) → **Apply**. No project manifest. |
+| **Global (tracked)** | Only items recorded in `~/.claude/claude-skills-manifest.json` |
 
 ```sh
-node bin/cli.js uninstall        # removes only those tracked global items
-node bin/cli.js uninstall --yes  # no confirm
-node bin/cli.js install --legacy # old linear confirm ladder (compat)
+npx -y claude-skills@latest uninstall   # confirm, then remove tracked global items
+node bin/cli.js uninstall --yes         # no confirm
+# or from Manage installation → Uninstall tracked GLOBAL items
 ```
 
-Project installs are removed via the wizard (deselect + Apply), not by the tracked global uninstall.
+Tracked global uninstall does **not** touch project installs, API keys, or npm/Python deps.
 
 ---
 

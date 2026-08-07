@@ -220,10 +220,11 @@ class CoordinationDocumentationTests(unittest.TestCase):
             "geometric-robustness",
         ):
             self.assertIn(f"id: '{opt_id}'", catalog)
-        # CORE and OPT_IN are separate exports (not a flat OTHER-only list for craft)
-        self.assertIn("...CORE_SKILLS.map", catalog)
-        self.assertIn("...OPT_IN_SKILLS.map", catalog)
-        install_flow = read_repo_file("lib/install-flow.js")
+        # CORE and OPT_IN are separate exports; groups drive the wizard
+        self.assertIn("export const SKILL_GROUPS", catalog)
+        self.assertIn("skills: CORE_SKILLS", catalog)
+        self.assertIn("skills: OPT_IN_SKILLS", catalog)
+        install_flow = read_repo_file("lib/install-flow-legacy.js")
         self.assertIn("CORE_SKILLS", install_flow)
         self.assertIn("Install CORE skills?", install_flow)
         self.assertIn("OPT_IN / beads", install_flow)

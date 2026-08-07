@@ -77,7 +77,7 @@ Newcomer placement: rare domain → archive or external project skill; agent-pul
 | `beads-creator`, `beads-reviewer` | **KEEP · BEADS-only** | Install only with beads |
 | `panelists/*` ×3 | **KEEP** | Lenses stay separate |
 | `pool.md` | **KEEP advisory** | Prefer exclude from npm `files` if trivial |
-| Install product | **Prefer Node CLI**; bulk shell may remain if deleting them risks search install paths — **do not break search install** |
+| Install product | **Node CLI only** (`npx`/`bunx`); shell install/uninstall scripts removed |
 | Evals | **git / `dev/` only** where easy without touching search | Never npm install surface for non-search |
 | Skill-linked `references/` | **SHIP with skill** | Progressive disclosure intact |
 
@@ -137,7 +137,7 @@ Agent preloads no longer include `testing-tdd`.
 - Archiving niches loses default discoverability (VCS preserves content).  
 - Two architecture IDs remain (trigger precision over mega-chapter).  
 - Panelist trio roster tax deferred.  
-- Users of bulk shell installers must switch to Node CLI (document once).
+- Users of removed bulk shell installers must use Node CLI (`npx`/`bunx` claude-skills).
 
 ## Sources
 
