@@ -311,7 +311,7 @@ When changing this repository's package behavior, read
 `bin/cli.js`, `lib/catalog.js`, `lib/install-flow.js`, `lib/uninstall-flow.js`,
 and `lib/paths.js`. Do not document aspirational flags as implemented.
 `package.json.files` currently ships whole `bin/`, `lib/`, `skills/`, and
-`agents/` trees plus `pool.md` and README, so a new file under a shipped skill
+`agents/` trees plus README, so a new file under a shipped skill
 does not require a per-skill package entry. Catalog/README updates are still
 needed when adding a selectable skill.
 

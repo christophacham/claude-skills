@@ -85,7 +85,6 @@ If the active scope already has suite skills on disk, selection seeds from the s
 | Skills (primary) | `<project>/.claude/skills/<id>` | `~/.claude/skills/<id>` |
 | Skills (optional mirror) | `<project>/.agents/skills/<id>` | `~/.agents/skills/<id>` |
 | Agent roster (when **operating-mode** / design-preload skills selected) | `<project>/.claude/agents/` | `~/.claude/agents/` |
-| Optional `pool.md` (with operating-mode) | `<project>/.claude/pool.md` | `~/.claude/pool.md` |
 | API keys (Brave / Tavily) | always `~/.claude/settings.json` (never the project tree) | same |
 | Global install manifest | — | `~/.claude/claude-skills-manifest.json` |
 
@@ -222,7 +221,7 @@ Install into `~/.claude/agents` (or project `.claude/agents`) when **operating-m
 | **`panelists/minimal-diff`** | Design×3 lens: every touch point and structural cost must be earned (one unit) |
 | **`panelists/seam`** | Design×3 lens: smallest justified contract that contains demonstrated coupling (one unit) |
 
-Optional **`pool.md`** (global or project `.claude/pool.md`) provides advisory routing preferences for agent model tiers. Agents do not require it, and same-model review remains valid.
+Same-model review remains valid; independence comes from fresh context and evidence, not model diversity.
 
 ---
 

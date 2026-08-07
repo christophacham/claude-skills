@@ -61,7 +61,6 @@ lib/
   install-flow-legacy.js   # --legacy linear ladder
 skills/<id>/SKILL.md       # skill payloads
 agents/*.md + panelists/   # custom agents
-pool.md                    # optional routing note (with beads)
 tests/                     # Python suite contracts + Node installer tests
 personal-skill-archive/    # NOT managed suite — do not re-catalog into install
 docs/                      # product handbooks 01–03 + installer pattern essay
@@ -90,7 +89,7 @@ Adding a skill: `skills/<id>/` + entry in the right group in `lib/catalog.js` + 
 - **Default UI:** full-screen **Ink** TUI (clear screen, sticky plan header, redraw in place) — not a scrolling Clack log.
 - **Menu order (workflow):** Scope → Targets → Browse → Status → Apply · | · API keys · Manage · | · Exit.
 - **Defaults:** scope **project**; target **`.claude/skills`** only; optional **`.agents/skills`** mirror (symlink → copy).
-- **Plan-then-apply:** selection is a cart; Apply is the sole mutator for skills/agents/pool/manifest.
+- **Plan-then-apply:** selection is a cart; Apply is the sole mutator for skills/agents/manifest.
 - **Cross-scope guard:** same skill **name** already in the other scope (project ↔ global) → **install blocked** with clear warnings; removes in the active scope still work.
 - **Keys:** Brave/Tavily only in `~/.claude/settings.json` (never project tree).
 - **Global uninstall:** tracked only via `~/.claude/claude-skills-manifest.json` (`uninstall` / Manage).
@@ -139,7 +138,7 @@ When doing or planning product implementation **in a consuming app** (or when th
 | `scope-auditor` | Plan verify / progress (read-only) |
 | `panelists/deep-module`, `minimal-diff`, `seam` | Design×3 lenses (one unit) |
 
-Roster installs when **operating-mode**, **capability-plan**, or design preloads are applied. Optional `pool.md` with operating-mode. Coder/reviewer preload **simple-design** + **refactoring**. No beads tracker agents.
+Roster installs when **operating-mode**, **capability-plan**, or design preloads are applied. Coder/reviewer preload **simple-design** + **refactoring**. No beads tracker agents.
 
 ---
 

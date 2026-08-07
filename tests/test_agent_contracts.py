@@ -186,20 +186,10 @@ class CoordinationDocumentationTests(unittest.TestCase):
             text,
         )
         self.assertIn("Same-model review remains valid", text)
-        self.assertIn("advisory routing preferences", text)
+        self.assertNotIn("advisory routing preferences", text)
         self.assertNotIn("PASS / FIX / ROLLBACK", text)
         self.assertNotIn("beads-creator", text)
         self.assertNotIn("beads-reviewer", text)
-
-    def test_pool_is_advisory_and_same_model_review_is_valid(self) -> None:
-        text = read_repo_file("pool.md")
-
-        self.assertIn("advisory", text.lower())
-        self.assertIn("Same-model review remains valid", text)
-        self.assertIn("Pins are optional preferences", text)
-        self.assertNotIn("degraded", text.lower())
-        self.assertNotIn("config bug", text.lower())
-        self.assertNotIn("beads-creator", text)
 
     def test_archive_points_to_current_root_readme_without_stale_suite_claims(self) -> None:
         text = read_repo_file("personal-skill-archive/README.md")
@@ -267,7 +257,7 @@ class CoordinationDocumentationTests(unittest.TestCase):
 
         package = json.loads(read_repo_file("package.json"))
         self.assertEqual(
-            ["bin/", "lib/", "skills/", "agents/", "pool.md", "README.md", "LICENSE"],
+            ["bin/", "lib/", "skills/", "agents/", "README.md", "LICENSE"],
             package["files"],
         )
         self.assertEqual(
