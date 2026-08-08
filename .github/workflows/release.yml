@@ -1,0 +1,99 @@
+# Auto version/tag on merges to main.
+#
+# Policy (lib/release-plan.js):
+#   - No v* tags yet → tag package.json as-is (first release; major set by humans)
+#   - package.json == latest tag → bump patch +1, commit, tag, push
+#   - package.json > latest tag → tag package.json as-is (manual major/minor)
+#   - package.json < latest tag → skip
+#
+# Loop break: release commits use subject "chore(release): …" and this job skips them.
+# Escape hatch: put [skip version] in the merge commit message.
+name: release
+
+on:
+  push:
+    branches: [main]
+
+# One release at a time; never cancel mid-push.
+concurrency:
+  group: release-main
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    if: >-
+      github.event.head_commit != null
+      && !startsWith(github.event.head_commit.message, 'chore(release):')
+      && !contains(github.event.head_commit.message, '[skip version]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # Default token is enough for contents:write push to main when
+          # branch protection does not block github-actions[bot].
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Fetch tags
+        run: git fetch --tags --force origin
+
+      - name: Plan release
+        id: plan
+        run: node scripts/release-version.mjs plan --github-output
+
+      - name: Skip (nothing to do)
+        if: steps.plan.outputs.action == 'none'
+        run: |
+          echo "action=none — ${{ steps.plan.outputs.reason }}"
+          exit 0
+
+      - name: Configure git identity
+        if: steps.plan.outputs.action == 'bump_and_tag' || steps.plan.outputs.action == 'tag_only'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump package.json (patch)
+        if: steps.plan.outputs.action == 'bump_and_tag'
+        run: node scripts/release-version.mjs write "${{ steps.plan.outputs.release_version }}"
+
+      - name: Commit bump + annotated tag
+        if: steps.plan.outputs.action == 'bump_and_tag'
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.plan.outputs.release_tag }}"
+          VER="${{ steps.plan.outputs.release_version }}"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists — abort to avoid loop/collision"
+            exit 1
+          fi
+          git add package.json package-lock.json
+          git commit -m "chore(release): v${VER}"
+          git tag -a "$TAG" -m "$TAG"
+          # Push commit first; follow-tags sends the new tag. The new push
+          # retriggers this workflow once, then the chore(release): guard exits.
+          git push origin HEAD:main
+          git push origin "$TAG"
+
+      - name: Annotated tag only (manual major/minor or first release)
+        if: steps.plan.outputs.action == 'tag_only'
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.plan.outputs.release_tag }}"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists — nothing to do"
+            exit 0
+          fi
+          git tag -a "$TAG" -m "$TAG"
+          git push origin "$TAG"
+          echo "Tagged $TAG (${{ steps.plan.outputs.reason }})"

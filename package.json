@@ -20,7 +20,9 @@
     "wizard": "node bin/cli.js wizard",
     "install-ui": "node bin/cli.js install",
     "uninstall-ui": "node bin/cli.js uninstall",
-    "test:installer": "node --test tests/test_installer_core.mjs"
+    "test:installer": "node --test tests/test_installer_core.mjs",
+    "release:plan": "node scripts/release-version.mjs plan",
+    "release:write": "node scripts/release-version.mjs write"
   },
   "repository": {
     "type": "git",

@@ -26,6 +26,27 @@ import { scanAllInstalled, isInstalled, skillStatus } from '../lib/scan.js';
 import { applyPlan } from '../lib/apply.js';
 import { installSkillToTree, removeSkillFromTree, trySymlink } from '../lib/fs-ops.js';
 import { skillsDestForTree } from '../lib/paths.js';
+import {
+  suiteVersion,
+  releaseGitRef,
+  findRetiredSkillsPresent,
+  isStaleSuitePayload,
+  formatStaleSuiteMessage,
+  assertFreshSuitePayload,
+  FIRST_RELEASE_TAG,
+} from '../lib/suite-version.js';
+import {
+  parseSemver,
+  compareSemver,
+  bumpPatch,
+  latestReleaseTag,
+  planRelease,
+  shouldSkipReleaseCommit,
+  RELEASE_COMMIT_PREFIX,
+  SKIP_VERSION_TOKEN,
+  tagFromVersion,
+  versionFromTag,
+} from '../lib/release-plan.js';
 
 const known = allSkillIds();
 
@@ -433,5 +454,130 @@ describe('installSkillToTree direct', () => {
     } finally {
       rmSync(projectRoot, { recursive: true, force: true });
     }
+  });
+});
+
+describe('suite version + stale payload gate', () => {
+  it('reads package.json version as 1.0.0', () => {
+    assert.equal(suiteVersion(), '1.0.0');
+    assert.equal(releaseGitRef(), 'v1.0.0');
+    assert.equal(FIRST_RELEASE_TAG, 'v1.0.0');
+  });
+
+  it('current package skills/ has no retired ids', () => {
+    assert.deepEqual(findRetiredSkillsPresent(), []);
+    assert.equal(isStaleSuitePayload(), false);
+  });
+
+  it('detects retired skill dirs in a fake skills tree', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'cs-stale-'));
+    try {
+      mkdirSync(join(dir, 'operating-mode'));
+      mkdirSync(join(dir, 'beads-om'));
+      writeFileSync(join(dir, 'operating-mode', 'SKILL.md'), '# fake\n');
+      const found = findRetiredSkillsPresent(dir);
+      assert.ok(found.includes('operating-mode'));
+      assert.ok(found.includes('beads-om'));
+      assert.equal(isStaleSuitePayload(dir), true);
+      const msg = formatStaleSuiteMessage({ retired: found, version: '1.0.0' });
+      assert.match(msg, /stale suite payload/);
+      assert.match(msg, /operating-mode/);
+      assert.match(msg, /#v1\.0\.0/);
+      assert.match(msg, /bunx github:christophacham\/claude-skills#v1\.0\.0/);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('assertFreshSuitePayload exits on stale tree without mutating disk', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'cs-gate-'));
+    try {
+      mkdirSync(join(dir, 'capability-plan'));
+      let exitCode;
+      const lines = [];
+      const ok = assertFreshSuitePayload({
+        skillsSrc: dir,
+        write: (s) => lines.push(s),
+        exit: (c) => {
+          exitCode = c;
+        },
+      });
+      assert.equal(ok, false);
+      assert.equal(exitCode, 2);
+      assert.ok(lines.some((l) => /capability-plan/.test(l)));
+      assert.ok(existsSync(join(dir, 'capability-plan')));
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('assertFreshSuitePayload allows current package tree', () => {
+    let exited = false;
+    const ok = assertFreshSuitePayload({
+      exit: () => {
+        exited = true;
+      },
+    });
+    assert.equal(ok, true);
+    assert.equal(exited, false);
+  });
+});
+
+describe('release plan (DIY semver, no external libs)', () => {
+  it('parses and compares X.Y.Z only', () => {
+    assert.deepEqual(parseSemver('2.0.0'), { major: 2, minor: 0, patch: 0 });
+    assert.equal(parseSemver('2.0.0-beta'), null);
+    assert.equal(parseSemver('v2.0.0'), null);
+    assert.equal(compareSemver('2.0.0', '2.0.1'), -1);
+    assert.equal(compareSemver('2.1.0', '2.0.9'), 1);
+    assert.equal(compareSemver('2.0.0', '2.0.0'), 0);
+    assert.equal(bumpPatch('2.0.0'), '2.0.1');
+    assert.equal(tagFromVersion('2.0.1'), 'v2.0.1');
+    assert.equal(versionFromTag('v2.0.1'), '2.0.1');
+    assert.equal(versionFromTag('2.0.1'), null);
+  });
+
+  it('picks latest v* tag and ignores junk', () => {
+    assert.equal(latestReleaseTag(['v1.0.0', 'v2.0.0', 'v2.0.1', 'nightly']), 'v2.0.1');
+    assert.equal(latestReleaseTag(['v2.0.0', 'v10.0.0', 'v9.9.9']), 'v10.0.0');
+    assert.equal(latestReleaseTag(['foo', 'bar']), null);
+  });
+
+  it('first release: no tags → tag package as-is', () => {
+    const p = planRelease({ packageVersion: '1.0.0', latestTag: null });
+    assert.equal(p.action, 'tag_only');
+    assert.equal(p.releaseVersion, '1.0.0');
+    assert.equal(p.releaseTag, 'v1.0.0');
+  });
+
+  it('auto patch when package equals latest tag', () => {
+    const p = planRelease({ packageVersion: '1.0.0', latestTag: 'v1.0.0' });
+    assert.equal(p.action, 'bump_and_tag');
+    assert.equal(p.releaseVersion, '1.0.1');
+    assert.equal(p.releaseTag, 'v1.0.1');
+  });
+
+  it('manual major/minor: package ahead → tag as-is', () => {
+    const p = planRelease({ packageVersion: '2.0.0', latestTag: 'v1.0.5' });
+    assert.equal(p.action, 'tag_only');
+    assert.equal(p.releaseVersion, '2.0.0');
+    assert.equal(p.releaseTag, 'v2.0.0');
+  });
+
+  it('package behind latest tag → none (no auto-downgrade)', () => {
+    const p = planRelease({ packageVersion: '1.0.0', latestTag: 'v1.0.3' });
+    assert.equal(p.action, 'none');
+    assert.equal(p.releaseTag, null);
+  });
+
+  it('invalid package version → none', () => {
+    const p = planRelease({ packageVersion: 'nope', latestTag: null });
+    assert.equal(p.action, 'none');
+  });
+
+  it('skips release commits and escape hatch', () => {
+    assert.equal(shouldSkipReleaseCommit(`${RELEASE_COMMIT_PREFIX} v2.0.1`), true);
+    assert.equal(shouldSkipReleaseCommit(`feat: x ${SKIP_VERSION_TOKEN}`), true);
+    assert.equal(shouldSkipReleaseCommit('feat: add skill'), false);
   });
 });
