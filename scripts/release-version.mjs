@@ -4,7 +4,7 @@
  *
  *   node scripts/release-version.mjs plan
  *   node scripts/release-version.mjs plan --github-output
- *   node scripts/release-version.mjs write 2.0.1
+ *   node scripts/release-version.mjs write 1.0.1
  *   node scripts/release-version.mjs list-tags   # debug
  *
  * Pure plan lives in lib/release-plan.js. This CLI reads package.json + git tags.
@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import {
   planRelease,
-  latestReleaseTag,
+  highestReleaseTag,
   parseSemver,
   RELEASE_COMMIT_PREFIX,
 } from '../lib/release-plan.js';
@@ -56,7 +56,7 @@ function listGitTags() {
  */
 function writeVersion(version) {
   if (!parseSemver(version)) {
-    throw new Error(`write: invalid version ${version} (need X.Y.Z)`);
+    throw new Error(`write: invalid version ${version} (need X.Y.Z, no leading zeros)`);
   }
   const pkg = JSON.parse(readFileSync(PKG_PATH, 'utf8'));
   pkg.version = version;
@@ -84,7 +84,9 @@ function emitGithubOutput(plan) {
   const lines = [
     `action=${plan.action}`,
     `package_version=${plan.packageVersion}`,
-    `latest_tag=${plan.latestTag ?? ''}`,
+    `highest_tag=${plan.highestTag ?? ''}`,
+    // Alias for older workflow consumers
+    `latest_tag=${plan.highestTag ?? ''}`,
     `release_version=${plan.releaseVersion ?? ''}`,
     `release_tag=${plan.releaseTag ?? ''}`,
     `reason=${plan.reason.replace(/\r?\n/g, ' ')}`,
@@ -102,7 +104,7 @@ Usage:
 
 Policy:
   • Manual major/minor: bump package.json in a PR, merge → CI tags as-is
-  • Auto patch: each main merge where package == latest tag → patch+1 + tag
+  • Auto patch: each main merge where package == highest tag → patch+1 + tag
   • First release: no tags yet → tag package.json version as-is
   • Release commits use prefix "${RELEASE_COMMIT_PREFIX}" so CI does not re-run
 `);
@@ -118,16 +120,16 @@ if (!cmd || cmd === '-h' || cmd === '--help') {
 
 if (cmd === 'list-tags') {
   const tags = listGitTags();
-  const latest = latestReleaseTag(tags);
-  console.log(JSON.stringify({ tags, latest }, null, 2));
+  const highest = highestReleaseTag(tags);
+  console.log(JSON.stringify({ tags, highest }, null, 2));
   process.exit(0);
 }
 
 if (cmd === 'plan') {
   const packageVersion = readPackageVersion();
   const tags = listGitTags();
-  const latestTag = latestReleaseTag(tags);
-  const plan = planRelease({ packageVersion, latestTag });
+  const highestTag = highestReleaseTag(tags);
+  const plan = planRelease({ packageVersion, highestTag });
   console.log(JSON.stringify(plan, null, 2));
   if (args.includes('--github-output')) {
     emitGithubOutput(plan);

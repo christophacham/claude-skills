@@ -29,16 +29,21 @@ import { skillsDestForTree } from '../lib/paths.js';
 import {
   suiteVersion,
   releaseGitRef,
+  preferredInstallTag,
+  installPin,
   findRetiredSkillsPresent,
   isStaleSuitePayload,
   formatStaleSuiteMessage,
   assertFreshSuitePayload,
   FIRST_RELEASE_TAG,
+  _resetSuiteVersionCacheForTests,
 } from '../lib/suite-version.js';
 import {
   parseSemver,
+  formatSemver,
   compareSemver,
   bumpPatch,
+  highestReleaseTag,
   latestReleaseTag,
   planRelease,
   shouldSkipReleaseCommit,
@@ -459,9 +464,18 @@ describe('installSkillToTree direct', () => {
 
 describe('suite version + stale payload gate', () => {
   it('reads package.json version as 1.0.0', () => {
+    _resetSuiteVersionCacheForTests();
     assert.equal(suiteVersion(), '1.0.0');
     assert.equal(releaseGitRef(), 'v1.0.0');
+    assert.equal(preferredInstallTag(), 'v1.0.0');
+    assert.equal(installPin(), 'github:christophacham/claude-skills#v1.0.0');
     assert.equal(FIRST_RELEASE_TAG, 'v1.0.0');
+  });
+
+  it('preferredInstallTag uses claimed version when valid, else floor', () => {
+    assert.equal(preferredInstallTag('1.0.3'), 'v1.0.3');
+    assert.equal(preferredInstallTag('0.0.0'), FIRST_RELEASE_TAG);
+    assert.equal(preferredInstallTag('nope'), FIRST_RELEASE_TAG);
   });
 
   it('current package skills/ has no retired ids', () => {
@@ -469,7 +483,7 @@ describe('suite version + stale payload gate', () => {
     assert.equal(isStaleSuitePayload(), false);
   });
 
-  it('detects retired skill dirs in a fake skills tree', () => {
+  it('detects retired skill dirs and pins recovery to claimed version', () => {
     const dir = mkdtempSync(join(tmpdir(), 'cs-stale-'));
     try {
       mkdirSync(join(dir, 'operating-mode'));
@@ -479,11 +493,13 @@ describe('suite version + stale payload gate', () => {
       assert.ok(found.includes('operating-mode'));
       assert.ok(found.includes('beads-om'));
       assert.equal(isStaleSuitePayload(dir), true);
-      const msg = formatStaleSuiteMessage({ retired: found, version: '1.0.0' });
+      const msg = formatStaleSuiteMessage({ retired: found, version: '1.0.3' });
       assert.match(msg, /stale suite payload/);
       assert.match(msg, /operating-mode/);
-      assert.match(msg, /#v1\.0\.0/);
-      assert.match(msg, /bunx github:christophacham\/claude-skills#v1\.0\.0/);
+      assert.match(msg, /claims v1\.0\.3/);
+      assert.match(msg, /bunx github:christophacham\/claude-skills#v1\.0\.3/);
+      const floor = formatStaleSuiteMessage({ retired: found, version: '0.0.0' });
+      assert.match(floor, /#v1\.0\.0/);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -521,63 +537,112 @@ describe('suite version + stale payload gate', () => {
     assert.equal(ok, true);
     assert.equal(exited, false);
   });
+
+  it('suiteVersion caches successful reads', () => {
+    _resetSuiteVersionCacheForTests();
+    const a = suiteVersion();
+    const b = suiteVersion();
+    assert.equal(a, '1.0.0');
+    assert.equal(b, '1.0.0');
+  });
 });
 
 describe('release plan (DIY semver, no external libs)', () => {
-  it('parses and compares X.Y.Z only', () => {
+  it('parses strict X.Y.Z and rejects leading zeros / prerelease', () => {
     assert.deepEqual(parseSemver('2.0.0'), { major: 2, minor: 0, patch: 0 });
+    assert.deepEqual(parseSemver('0.0.0'), { major: 0, minor: 0, patch: 0 });
     assert.equal(parseSemver('2.0.0-beta'), null);
     assert.equal(parseSemver('v2.0.0'), null);
+    assert.equal(parseSemver('01.0.0'), null);
+    assert.equal(parseSemver('1.02.0'), null);
+    assert.equal(parseSemver('1.0.03'), null);
+    assert.equal(parseSemver(''), null);
+    assert.equal(parseSemver(null), null);
+    assert.equal(formatSemver({ major: 1, minor: 2, patch: 3 }), '1.2.3');
+  });
+
+  it('compare / bump / tag helpers and error paths', () => {
     assert.equal(compareSemver('2.0.0', '2.0.1'), -1);
     assert.equal(compareSemver('2.1.0', '2.0.9'), 1);
     assert.equal(compareSemver('2.0.0', '2.0.0'), 0);
+    assert.equal(compareSemver({ major: 1, minor: 0, patch: 0 }, '1.0.1'), -1);
+    assert.throws(() => compareSemver('nope', '1.0.0'), /invalid input/);
+    assert.throws(() => compareSemver('1.0.0', '01.0.0'), /invalid input/);
     assert.equal(bumpPatch('2.0.0'), '2.0.1');
+    assert.throws(() => bumpPatch('x'), /invalid version/);
     assert.equal(tagFromVersion('2.0.1'), 'v2.0.1');
+    assert.throws(() => tagFromVersion('v2.0.1'), /invalid version/);
     assert.equal(versionFromTag('v2.0.1'), '2.0.1');
     assert.equal(versionFromTag('2.0.1'), null);
+    assert.equal(versionFromTag('v01.0.0'), null);
   });
 
-  it('picks latest v* tag and ignores junk', () => {
-    assert.equal(latestReleaseTag(['v1.0.0', 'v2.0.0', 'v2.0.1', 'nightly']), 'v2.0.1');
-    assert.equal(latestReleaseTag(['v2.0.0', 'v10.0.0', 'v9.9.9']), 'v10.0.0');
-    assert.equal(latestReleaseTag(['foo', 'bar']), null);
+  it('picks highest semver v* tag (not chronological) and ignores junk', () => {
+    assert.equal(highestReleaseTag(['v1.0.0', 'v2.0.0', 'v2.0.1', 'nightly']), 'v2.0.1');
+    assert.equal(highestReleaseTag(['v2.0.0', 'v10.0.0', 'v9.9.9']), 'v10.0.0');
+    // Chronologically "later" older major does not win.
+    assert.equal(highestReleaseTag(['v2.0.0', 'v1.0.6']), 'v2.0.0');
+    assert.equal(highestReleaseTag(['foo', 'bar']), null);
+    // Compat alias
+    assert.equal(latestReleaseTag(['v1.0.0', 'v1.0.2']), 'v1.0.2');
   });
 
   it('first release: no tags → tag package as-is', () => {
-    const p = planRelease({ packageVersion: '1.0.0', latestTag: null });
+    const p = planRelease({ packageVersion: '1.0.0', highestTag: null });
     assert.equal(p.action, 'tag_only');
     assert.equal(p.releaseVersion, '1.0.0');
     assert.equal(p.releaseTag, 'v1.0.0');
+    assert.equal(p.highestTag, null);
   });
 
-  it('auto patch when package equals latest tag', () => {
-    const p = planRelease({ packageVersion: '1.0.0', latestTag: 'v1.0.0' });
+  it('trims whitespace package version and empty highestTag', () => {
+    const p = planRelease({ packageVersion: '  1.0.0  ', highestTag: '' });
+    assert.equal(p.action, 'tag_only');
+    assert.equal(p.packageVersion, '1.0.0');
+  });
+
+  it('auto patch when package equals highest tag', () => {
+    const p = planRelease({ packageVersion: '1.0.0', highestTag: 'v1.0.0' });
     assert.equal(p.action, 'bump_and_tag');
     assert.equal(p.releaseVersion, '1.0.1');
     assert.equal(p.releaseTag, 'v1.0.1');
   });
 
   it('manual major/minor: package ahead → tag as-is', () => {
-    const p = planRelease({ packageVersion: '2.0.0', latestTag: 'v1.0.5' });
+    const p = planRelease({ packageVersion: '2.0.0', highestTag: 'v1.0.5' });
     assert.equal(p.action, 'tag_only');
     assert.equal(p.releaseVersion, '2.0.0');
     assert.equal(p.releaseTag, 'v2.0.0');
   });
 
-  it('package behind latest tag → none (no auto-downgrade)', () => {
-    const p = planRelease({ packageVersion: '1.0.0', latestTag: 'v1.0.3' });
+  it('package behind highest tag → none (no auto-downgrade)', () => {
+    const p = planRelease({ packageVersion: '1.0.0', highestTag: 'v1.0.3' });
     assert.equal(p.action, 'none');
     assert.equal(p.releaseTag, null);
   });
 
   it('invalid package version → none', () => {
-    const p = planRelease({ packageVersion: 'nope', latestTag: null });
+    assert.equal(planRelease({ packageVersion: 'nope', highestTag: null }).action, 'none');
+    assert.equal(planRelease({ packageVersion: '01.0.0', highestTag: null }).action, 'none');
+  });
+
+  it('invalid highest tag string → none', () => {
+    const p = planRelease({ packageVersion: '1.0.0', highestTag: 'nightly' });
     assert.equal(p.action, 'none');
+  });
+
+  it('accepts latestTag alias for highestTag', () => {
+    const p = planRelease({ packageVersion: '1.0.0', latestTag: 'v1.0.0' });
+    assert.equal(p.action, 'bump_and_tag');
+    assert.equal(p.highestTag, 'v1.0.0');
   });
 
   it('skips release commits and escape hatch', () => {
     assert.equal(shouldSkipReleaseCommit(`${RELEASE_COMMIT_PREFIX} v2.0.1`), true);
     assert.equal(shouldSkipReleaseCommit(`feat: x ${SKIP_VERSION_TOKEN}`), true);
     assert.equal(shouldSkipReleaseCommit('feat: add skill'), false);
+    assert.equal(shouldSkipReleaseCommit(null), false);
+    assert.equal(shouldSkipReleaseCommit(undefined), false);
+    assert.equal(shouldSkipReleaseCommit(''), false);
   });
 });

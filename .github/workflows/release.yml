@@ -2,12 +2,15 @@
 #
 # Policy (lib/release-plan.js):
 #   - No v* tags yet → tag package.json as-is (first release; major set by humans)
-#   - package.json == latest tag → bump patch +1, commit, tag, push
-#   - package.json > latest tag → tag package.json as-is (manual major/minor)
-#   - package.json < latest tag → skip
+#   - package.json == highest tag → bump patch +1, commit, tag, push
+#   - package.json > highest tag → tag package.json as-is (manual major/minor)
+#   - package.json < highest tag → skip
 #
 # Loop break: release commits use subject "chore(release): …" and this job skips them.
 # Escape hatch: put [skip version] in the merge commit message.
+#
+# Race: concurrency serializes this workflow; bump step rebases onto origin/main
+# before push and tags the exact bump commit SHA (not a floating branch tip).
 name: release
 
 on:
@@ -44,8 +47,10 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Fetch tags
-        run: git fetch --tags --force origin
+      - name: Fetch tags + tip of main
+        run: |
+          git fetch --tags --force origin
+          git fetch origin main:refs/remotes/origin/main
 
       - name: Plan release
         id: plan
@@ -67,33 +72,86 @@ jobs:
         if: steps.plan.outputs.action == 'bump_and_tag'
         run: node scripts/release-version.mjs write "${{ steps.plan.outputs.release_version }}"
 
-      - name: Commit bump + annotated tag
+      - name: Commit bump + annotated tag on exact SHA
         if: steps.plan.outputs.action == 'bump_and_tag'
         run: |
           set -euo pipefail
           TAG="${{ steps.plan.outputs.release_tag }}"
           VER="${{ steps.plan.outputs.release_version }}"
-          if git rev-parse "$TAG" >/dev/null 2>&1; then
+
+          # Tag-only check (not branches that share the name).
+          if git rev-parse --verify "refs/tags/${TAG}" >/dev/null 2>&1; then
             echo "Tag $TAG already exists — abort to avoid loop/collision"
             exit 1
           fi
+
           git add package.json package-lock.json
           git commit -m "chore(release): v${VER}"
-          git tag -a "$TAG" -m "$TAG"
-          # Push commit first; follow-tags sends the new tag. The new push
-          # retriggers this workflow once, then the chore(release): guard exits.
-          git push origin HEAD:main
-          git push origin "$TAG"
+          BUMP_SHA="$(git rev-parse HEAD)"
+
+          # Annotated tag on the exact bump commit (not a floating branch tip).
+          git tag -a "$TAG" -m "$TAG" "$BUMP_SHA"
+
+          # Rebase onto current main so a concurrent merge does not force-push.
+          # If rebase conflicts or push is rejected, fail closed (rerun workflow).
+          git fetch origin main
+          if ! git rebase origin/main; then
+            echo "Rebase onto origin/main failed — concurrent change; abort (no force-push)."
+            git rebase --abort || true
+            # Drop the local tag so a retry can recreate it cleanly.
+            git tag -d "$TAG" || true
+            exit 1
+          fi
+
+          # After rebase the bump commit may have a new SHA; retag if needed.
+          NEW_SHA="$(git rev-parse HEAD)"
+          if [ "$NEW_SHA" != "$BUMP_SHA" ]; then
+            git tag -d "$TAG"
+            git tag -a "$TAG" -m "$TAG" "$NEW_SHA"
+            BUMP_SHA="$NEW_SHA"
+          fi
+
+          # Re-plan against post-rebase package.json + tags. Abort if the world
+          # moved (e.g. concurrent human version bump) so we never publish a
+          # stale planned tag.
+          REPLAN="$(node scripts/release-version.mjs plan)"
+          echo "$REPLAN"
+          REPLAN_VER="$(node -e "const p=JSON.parse(process.argv[1]); process.stdout.write(p.packageVersion||'')" "$REPLAN")"
+          if [ "$REPLAN_VER" != "$VER" ]; then
+            echo "Post-rebase package version is $REPLAN_VER, expected $VER — abort."
+            git tag -d "$TAG" || true
+            exit 1
+          fi
+          if git rev-parse --verify "refs/tags/${TAG}" >/dev/null 2>&1; then
+            # We own the local tag; remote may have raced — check remote tip.
+            if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
+              echo "Remote already has $TAG — abort to avoid overwrite."
+              git tag -d "$TAG" || true
+              exit 1
+            fi
+          fi
+
+          # Push commit first, then the tag. The commit push retriggers this
+          # workflow once; chore(release): guard exits without re-bumping.
+          if ! git push origin HEAD:main; then
+            echo "Push to main rejected (race or protection). Tag not published. Re-run after main settles."
+            git tag -d "$TAG" || true
+            exit 1
+          fi
+          git push origin "refs/tags/${TAG}"
+          echo "Released $TAG at $BUMP_SHA"
 
       - name: Annotated tag only (manual major/minor or first release)
         if: steps.plan.outputs.action == 'tag_only'
         run: |
           set -euo pipefail
           TAG="${{ steps.plan.outputs.release_tag }}"
-          if git rev-parse "$TAG" >/dev/null 2>&1; then
+          if git rev-parse --verify "refs/tags/${TAG}" >/dev/null 2>&1; then
             echo "Tag $TAG already exists — nothing to do"
             exit 0
           fi
-          git tag -a "$TAG" -m "$TAG"
-          git push origin "$TAG"
-          echo "Tagged $TAG (${{ steps.plan.outputs.reason }})"
+          # Tag the exact commit that triggered this workflow (package version as-is).
+          SHA="$(git rev-parse HEAD)"
+          git tag -a "$TAG" -m "$TAG" "$SHA"
+          git push origin "refs/tags/${TAG}"
+          echo "Tagged $TAG at $SHA (${{ steps.plan.outputs.reason }})"

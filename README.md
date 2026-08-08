@@ -55,8 +55,8 @@ Check what you ran: `npx -y github:christophacham/claude-skills#v1.0.0 --version
 | Who | What |
 |-----|------|
 | **Human** | Sets the **major** (and optional **minor**) in `package.json` in a PR — first release is `1.0.0` |
-| **CI on merge to `main`** | If `package.json` already equals the latest `v*` tag → **patch +1**, commit `chore(release): vX.Y.Z`, push tag |
-| **CI** | If `package.json` is **ahead** of the latest tag (manual major/minor) → **tag as-is** only |
+| **CI on merge to `main`** | If `package.json` already equals the **highest** semver `v*` tag → **patch +1**, commit `chore(release): vX.Y.Z`, push tag on that SHA |
+| **CI** | If `package.json` is **ahead** of the highest tag (manual major/minor) → **tag as-is** only |
 | **Loop break** | Release commits start with `chore(release):` — the release workflow skips them |
 | **Escape hatch** | Put `[skip version]` in a merge commit message to skip auto versioning once |
 

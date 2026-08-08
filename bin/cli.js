@@ -18,7 +18,7 @@ import {
   assertFreshSuitePayload,
   suiteVersion,
   releaseGitRef,
-  GITHUB_PACKAGE,
+  installPin,
 } from '../lib/suite-version.js';
 
 const { values, positionals } = parseArgs({
@@ -37,7 +37,7 @@ const { values, positionals } = parseArgs({
 
 const command = positionals[0] || 'wizard';
 const ver = suiteVersion();
-const pin = `${GITHUB_PACKAGE}#${releaseGitRef()}`;
+const pin = installPin();
 
 if (values.version) {
   console.log(`claude-skills v${ver}`);

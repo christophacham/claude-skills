@@ -14,12 +14,14 @@ dependency, so both `npx` and `bunx` can launch it. No custom agents ship.
 **Versioning (DIY):** `package.json` `"version"` and git tag `vX.Y.Z` stay
 in lockstep. Documented install pins use `#vX.Y.Z` (not npm `@latest`).
 Major/minor are human PR bumps; each merge to `main` auto-increments
-**patch** when package already matches the latest tag (see
-`lib/release-plan.js`, `scripts/release-version.mjs`,
+**patch** when package already matches the **highest** semver tag (see
+`highestReleaseTag` in `lib/release-plan.js`, `scripts/release-version.mjs`,
 `.github/workflows/release.yml`). Release commits use
-`chore(release):` so the workflow does not loop. On startup,
-`lib/suite-version.js` refuses the wizard if the package `skills/` tree
-still contains retired ids (stale github:/bunx cache).
+`chore(release):` so the workflow does not loop. Tag checks use
+`refs/tags/…` only; bump rebases onto `origin/main` and tags the exact
+SHA. On startup, `lib/suite-version.js` refuses the wizard if the package
+`skills/` tree still contains retired ids (stale github:/bunx cache);
+recovery pins use `preferredInstallTag()` (running version when valid).
 
 Because the whole `skills/` tree is packaged, adding an eval/reference/script
 under an already-shipped skill does not require another `package.json.files`
