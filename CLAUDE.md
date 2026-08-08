@@ -91,7 +91,7 @@ Adding a skill: `skills/<id>/` + entry in the right group in `lib/catalog.js` + 
 - **Defaults:** scope **project**; target **`.claude/skills`** only; optional **`.agents/skills`** mirror (symlink → copy).
 - **Plan-then-apply:** selection is a cart; Apply is the sole mutator for skills/manifest.
 - **Cross-scope guard:** same skill **name** already in the other scope (project ↔ global) → **install blocked** with clear warnings; removes in the active scope still work.
-- **Keys:** Brave/Tavily only in `~/.claude/settings.json` (never project tree).
+- **Keys:** Brave/Tavily/DefectDojo only in `~/.claude/settings.json` (never project tree).
 - **Global uninstall:** tracked only via `~/.claude/claude-skills-manifest.json` (`uninstall` / Manage).
 - **Project uninstall:** deselect → Apply (no project manifest).
 - Fallbacks: `--clack`, `--legacy`. Deps skip: `--skip-deps`.

@@ -318,6 +318,87 @@ describe('apply + scan integration (isolated project)', () => {
   });
 });
 
+describe('settings helpers (DefectDojo)', () => {
+  it('reports missing / partial / ok with isolated settings path', async () => {
+    const {
+      hasDefectDojoUrl,
+      hasDefectDojoToken,
+      hasDefectDojoConfig,
+      defectDojoConfigStatus,
+      setSettingsPathForTests,
+      setEnvKey,
+    } = await import('../lib/settings.js');
+
+    const dir = mkdtempSync(join(tmpdir(), 'cs-settings-'));
+    const settingsFile = join(dir, 'settings.json');
+    // Empty isolated file — no host ~/.claude/settings.json bleed-through.
+    writeFileSync(settingsFile, '{}\n', 'utf8');
+
+    const prevUrl = process.env.DEFECTDOJO_URL;
+    const prevHost = process.env.DEFECTDOJO_HOST;
+    const prevTok = process.env.DEFECTDOJO_API_TOKEN;
+    const prevApi = process.env.API_TOKEN;
+    try {
+      setSettingsPathForTests(settingsFile);
+      delete process.env.DEFECTDOJO_URL;
+      delete process.env.DEFECTDOJO_HOST;
+      delete process.env.DEFECTDOJO_API_TOKEN;
+      delete process.env.API_TOKEN;
+
+      assert.equal(defectDojoConfigStatus(), 'missing');
+      assert.equal(hasDefectDojoConfig(), false);
+      assert.equal(hasDefectDojoUrl(), false);
+      assert.equal(hasDefectDojoToken(), false);
+
+      // URL only → partial
+      process.env.DEFECTDOJO_URL = 'http://example.test:8080';
+      assert.equal(hasDefectDojoUrl(), true);
+      assert.equal(hasDefectDojoToken(), false);
+      assert.equal(defectDojoConfigStatus(), 'partial');
+      assert.equal(hasDefectDojoConfig(), false);
+
+      // URL + token via env → ok
+      process.env.DEFECTDOJO_API_TOKEN = 'unit-test-token-not-a-secret';
+      assert.equal(hasDefectDojoToken(), true);
+      assert.equal(hasDefectDojoConfig(), true);
+      assert.equal(defectDojoConfigStatus(), 'ok');
+
+      // Token only (clear URL/host env) → partial
+      delete process.env.DEFECTDOJO_URL;
+      delete process.env.DEFECTDOJO_HOST;
+      assert.equal(hasDefectDojoUrl(), false);
+      assert.equal(hasDefectDojoToken(), true);
+      assert.equal(defectDojoConfigStatus(), 'partial');
+
+      // HOST alias counts as URL present
+      delete process.env.DEFECTDOJO_API_TOKEN;
+      delete process.env.API_TOKEN;
+      process.env.DEFECTDOJO_HOST = '192.0.2.1';
+      assert.equal(hasDefectDojoUrl(), true);
+      assert.equal(defectDojoConfigStatus(), 'partial');
+
+      // settings.json write path (no env) still visible after clear
+      delete process.env.DEFECTDOJO_HOST;
+      setEnvKey('DEFECTDOJO_URL', 'http://from-settings.test:8080');
+      setEnvKey('DEFECTDOJO_API_TOKEN', 'from-settings-token');
+      assert.equal(hasDefectDojoConfig(), true);
+      assert.equal(defectDojoConfigStatus(), 'ok');
+      assert.ok(existsSync(settingsFile));
+    } finally {
+      setSettingsPathForTests(null);
+      if (prevUrl === undefined) delete process.env.DEFECTDOJO_URL;
+      else process.env.DEFECTDOJO_URL = prevUrl;
+      if (prevHost === undefined) delete process.env.DEFECTDOJO_HOST;
+      else process.env.DEFECTDOJO_HOST = prevHost;
+      if (prevTok === undefined) delete process.env.DEFECTDOJO_API_TOKEN;
+      else process.env.DEFECTDOJO_API_TOKEN = prevTok;
+      if (prevApi === undefined) delete process.env.API_TOKEN;
+      else process.env.API_TOKEN = prevApi;
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
 describe('trySymlink', () => {
   it('creates a usable symlink when permitted', () => {
     const dir = mkdtempSync(join(tmpdir(), 'cs-link-'));
