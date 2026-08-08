@@ -12,32 +12,55 @@ Node CLI only. Full-screen **plan-then-apply** wizard (Ink TUI, like ccstatuslin
 
 ### Quick start (no clone)
 
-Always pin **`#main`** so bunx/npx resolve the tip of this branch (plain `github:…` often reuses a stale local cache).
+**Prefer a release tag** (`#vX.Y.Z`). Immutable tags get a fresh bunx/npx cache key; branch pins like `#main` often reuse a prior commit SHA and can show a pre-slim catalog (retired process skills that no longer ship).
+
+First release is **`v1.0.0`**. Each merge to `main` auto-tags the next **patch** (`v1.0.1`, …). Major/minor bumps are manual in a PR.
 
 ```sh
-# from any project directory — runs the interactive wizard
-npx -y github:christophacham/claude-skills#main
+# from any project directory — pin a known release
+npx -y github:christophacham/claude-skills#v1.0.0
 ```
 
 Same idea with Bun:
 
 ```sh
+bunx github:christophacham/claude-skills#v1.0.0
+```
+
+Tip of `main` (always newest commit; may stick in runner caches after merges):
+
+```sh
+npx -y github:christophacham/claude-skills#main
 bunx github:christophacham/claude-skills#main
 ```
 
-If it still looks old after a merge, clear the runner cache and re-run with `#main`:
+If a run still shows retired process skills (pre-suite CORE), the CLI exits with resync instructions. Clear the runner cache once and re-run a **tag**:
 
 ```sh
 # Bun
-rm -rf ~/.bun/install/cache ~/.bun/install/git
-bunx github:christophacham/claude-skills#main
+rm -rf ~/.bun/install/cache ~/.bun/install/git /tmp/bunx-*-claude-skills*
+bunx github:christophacham/claude-skills#v1.0.0
 
 # npm / npx
 npm cache clean --force
-npx -y github:christophacham/claude-skills#main
+npx -y github:christophacham/claude-skills#v1.0.0
 ```
 
-Do **not** use `@latest` here — that is npm-registry semantics. This suite is installed from GitHub; the unscoped npm name `claude-skills` is a different package.
+Do **not** use `@latest` / `npx claude-skills@…` — that is npm-registry semantics. This suite is installed from GitHub; the unscoped npm name `claude-skills` is a different package.
+
+Check what you ran: `npx -y github:christophacham/claude-skills#v1.0.0 --version`
+
+### Versioning (DIY — no external version packages)
+
+| Who | What |
+|-----|------|
+| **Human** | Sets the **major** (and optional **minor**) in `package.json` in a PR — first release is `1.0.0` |
+| **CI on merge to `main`** | If `package.json` already equals the **highest** semver `v*` tag → **patch +1**, commit `chore(release): vX.Y.Z`, push tag on that SHA |
+| **CI** | If `package.json` is **ahead** of the highest tag (manual major/minor) → **tag as-is** only |
+| **Loop break** | Release commits start with `chore(release):` — the release workflow skips them |
+| **Escape hatch** | Put `[skip version]` in a merge commit message to skip auto versioning once |
+
+Local plan (no network write): `npm run release:plan` → `node scripts/release-version.mjs plan`.
 
 ### From a clone
 
@@ -116,7 +139,7 @@ Use `--skip-deps` to skip npm/pip/uv setup on apply.
 | **Global (tracked)** | Only items recorded in `~/.claude/claude-skills-manifest.json` |
 
 ```sh
-npx -y github:christophacham/claude-skills#main uninstall   # confirm, then remove tracked global items
+npx -y github:christophacham/claude-skills#v1.0.0 uninstall   # confirm, then remove tracked global items
 node bin/cli.js uninstall --yes                            # no confirm (from a clone)
 # or from Manage installation → Uninstall tracked GLOBAL items
 ```

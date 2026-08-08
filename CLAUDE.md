@@ -39,8 +39,9 @@ Other skills, installers (non-search paths), docs, and tests remain fair game un
 **Not:** a product app, an agent roster distribution, or a bulk “install everything by default” package.
 
 **GitHub:** `https://github.com/christophacham/claude-skills`  
-**Run installer (no clone):** `npx -y github:christophacham/claude-skills#main` or `bunx github:christophacham/claude-skills#main` (pin `#main` so bunx/npx do not reuse a stale github: cache)  
-**Do not use** `npx claude-skills@latest` — unscoped npm name is a **different** package; `@latest` is not the lever for this GitHub install.
+**Run installer (no clone):** `npx -y github:christophacham/claude-skills#v1.0.0` or `bunx github:christophacham/claude-skills#v1.0.0` (prefer release tags; `#main` may stick in bunx/npx github: caches)  
+**Do not use** `npx claude-skills@latest` — unscoped npm name is a **different** package; `@latest` is not the lever for this GitHub install.  
+**Suite version:** `package.json` / git tag `vX.Y.Z` in lockstep. **Major/minor manual** in a PR; **patch auto** on each merge to `main` via `.github/workflows/release.yml` + `lib/release-plan.js` / `scripts/release-version.mjs` (no external version libs). Loop break: commits prefixed `chore(release):`. Startup refuses pre-slim payloads (`lib/suite-version.js`).
 
 Bulk `install.sh` / `install.ps1` are **gone**. Node CLI only.
 
